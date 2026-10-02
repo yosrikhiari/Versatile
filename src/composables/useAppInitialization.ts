@@ -10,8 +10,6 @@ import { useArchiveStore } from '../stores/archiveStore'
 import { getLatestStateSnapshot } from '../services/dbService'
 import { useStateSummarizer } from './useStateSummarizer'
 import { useStoryDocuments } from './useStoryDocuments'
-import { STORAGE_KEYS } from '../config/storageKeys'
-import { useLocalStorage } from '../utils/useLocalStorage'
 import { resume as resumeEmbeddingQueue } from '../services/embeddingQueue'
 import { markStale, pruneEmbeddingCache } from '../services/researchDb'
 import { resolveEmbeddingConfig } from '../services/embeddingConfig'
@@ -34,7 +32,6 @@ export function useAppInitialization() {
   /** Name of the configured embedding model when it is not installed, else ''. */
   const embeddingModelMissing = ref('')
   const hasLoaded = ref(false)
-  const onboardingStatus = useLocalStorage(STORAGE_KEYS.ONBOARDING_V2, '')
 
   // Embedding models can't generate prose. Ollama's /api/tags doesn't reliably
   // distinguish them (family is model-specific — nomic-embed-text reports
@@ -143,18 +140,13 @@ export function useAppInitialization() {
       hasProject = await projectStore.loadLastProject()
     }
 
-    if (!hasProject && !isOnboardingDismissed()) {
-      hasLoaded.value = true
-      await probe
-      return { showOnboarding: true }
-    } else if (projectStore.currentProjectId) {
+    if (hasProject && projectStore.currentProjectId) {
       await loadProjectData()
     }
 
     hasLoaded.value = true
     // Settled before returning so callers still see a decided `ollamaAvailable`.
     await probe
-    return { showOnboarding: false }
   }
 
   async function loadProjectData() {
@@ -250,25 +242,6 @@ export function useAppInitialization() {
     })()
   }
 
-  function isOnboardingDismissed() {
-    return onboardingStatus.value === 'done'
-  }
-
-  async function onOnboardingComplete() {
-    onboardingStatus.value = 'done'
-
-    if (projectStore.currentProjectId) {
-      await loadProjectData()
-    }
-
-    return { showOnboarding: false }
-  }
-
-  function onOnboardingSkip() {
-    onboardingStatus.value = 'done'
-    return { showOnboarding: false }
-  }
-
   return {
     ollamaAvailable,
     modelNotFound,
@@ -278,9 +251,6 @@ export function useAppInitialization() {
     hasLoaded,
     checkModelAvailability,
     initializeApp,
-    loadProjectData,
-    isOnboardingDismissed,
-    onOnboardingComplete,
-    onOnboardingSkip
+    loadProjectData
   }
 }

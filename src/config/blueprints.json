@@ -12,7 +12,7 @@
           {
             "title": "Chapter 1: The Ordinary World",
             "summary": "Establish the hero's everyday life, desires, and flaws.",
-            "content": "## Chapter 1: The Ordinary World\n\nDescribe the protagonist in their natural habitat ΓÇö their routines, relationships, and the subtle discontent that simmers beneath the surface..."
+            "content": "## Chapter 1: The Ordinary World\n\nDescribe the protagonist in their natural habitat — their routines, relationships, and the subtle discontent that simmers beneath the surface..."
           },
           {
             "title": "Chapter 2: The Call to Adventure",
@@ -37,8 +37,8 @@
           },
           {
             "title": "Chapter 5: The Ordeal",
-            "summary": "The central crisis ΓÇö a death and rebirth moment.",
-            "content": "## Chapter 5: The Central Ordeal\n\nThe hero faces their greatest fear. Something must die ΓÇö a belief, a relationship, or the hero themselves ΓÇö for transformation to occur..."
+            "summary": "The central crisis — a death and rebirth moment.",
+            "content": "## Chapter 5: The Central Ordeal\n\nThe hero faces their greatest fear. Something must die — a belief, a relationship, or the hero themselves — for transformation to occur..."
           }
         ]
       },
@@ -64,7 +64,7 @@
     "type": "novel",
     "id": "novel_three_act",
     "name": "Three-Act Structure",
-    "description": "Setup, Confrontation, Resolution ΓÇö a reliable dramatic arc for commercial fiction.",
+    "description": "Setup, Confrontation, Resolution — a reliable dramatic arc for commercial fiction.",
     "sections": [
       {
         "title": "Act I: Setup",
@@ -109,7 +109,7 @@
           },
           {
             "title": "Chapter 6",
-            "summary": "The denouement ΓÇö tying loose ends.",
+            "summary": "The denouement — tying loose ends.",
             "content": "## Chapter 6\n\nThe dust settles. Show how the world and characters have changed, and hint at what comes next..."
           }
         ]
@@ -123,13 +123,13 @@
     "description": "A three-act screenplay outline with standard beat sheet.",
     "sections": [
       {
-        "title": "Act I ΓÇö The Setup",
+        "title": "Act I — The Setup",
         "summary": "Establish the world, protagonist, and inciting incident within the first ~25 pages.",
         "subsections": [
           {
             "title": "Opening Image",
             "summary": "A visual snapshot of the protagonist before the journey.",
-            "content": "**OPENING IMAGE**\n\nA single image that captures who the protagonist is right now ΓÇö before everything changes.\n\n[Scene description, character introduction, tone-setting moment]"
+            "content": "**OPENING IMAGE**\n\nA single image that captures who the protagonist is right now — before everything changes.\n\n[Scene description, character introduction, tone-setting moment]"
           },
           {
             "title": "Inciting Incident",
@@ -139,7 +139,7 @@
         ]
       },
       {
-        "title": "Act II ΓÇö The Confrontation",
+        "title": "Act II — The Confrontation",
         "summary": "Rising action from page 25 to 85. The protagonist pursues their goal through escalating obstacles.",
         "subsections": [
           {
@@ -155,7 +155,7 @@
         ]
       },
       {
-        "title": "Act III ΓÇö The Resolution",
+        "title": "Act III — The Resolution",
         "summary": "From page 85 to 110. The climax and aftermath.",
         "subsections": [
           {
@@ -166,7 +166,7 @@
           {
             "title": "Final Image",
             "summary": "A visual bookend showing how the protagonist has changed.",
-            "content": "**FINAL IMAGE**\n\nThe closing image of the film ΓÇö a mirror of the opening image that shows the transformation.\n\n[Scene description, resolution, thematic closure]"
+            "content": "**FINAL IMAGE**\n\nThe closing image of the film — a mirror of the opening image that shows the transformation.\n\n[Scene description, resolution, thematic closure]"
           }
         ]
       }
@@ -241,7 +241,7 @@
           {
             "title": "Title Slide",
             "summary": "Project name, tagline, and presenter name.",
-            "content": "# [Presentation Title]\n\n*[Tagline / One-liner]*\n\n[Presenter Name] ΓÇö [Date]"
+            "content": "# [Presentation Title]\n\n*[Tagline / One-liner]*\n\n[Presenter Name] — [Date]"
           },
           {
             "title": "The Problem",
@@ -291,7 +291,7 @@
     "description": "A 3-email nurture sequence for onboarding new subscribers or customers.",
     "sections": [
       {
-        "title": "Email 1 ΓÇö Welcome & Value",
+        "title": "Email 1 — Welcome & Value",
         "summary": "First impression and immediate value delivery.",
         "subsections": [
           {
@@ -307,7 +307,7 @@
         ]
       },
       {
-        "title": "Email 2 ΓÇö Story & Connection",
+        "title": "Email 2 — Story & Connection",
         "summary": "Share the brand story and build a deeper connection.",
         "subsections": [
           {
@@ -318,12 +318,12 @@
           {
             "title": "Email Body",
             "summary": "Founder story, mission, and values.",
-            "content": "## Hi [First Name],\n\nWe believe **[core belief]**.\n\nThat's why we started **[Brand]**. [2-3 sentences about the founder story / mission].\n\nWe're here to **[big picture goal]**.\n\nReply to this email ΓÇö I'd love to hear your story too.\n\n[Your Name]"
+            "content": "## Hi [First Name],\n\nWe believe **[core belief]**.\n\nThat's why we started **[Brand]**. [2-3 sentences about the founder story / mission].\n\nWe're here to **[big picture goal]**.\n\nReply to this email — I'd love to hear your story too.\n\n[Your Name]"
           }
         ]
       },
       {
-        "title": "Email 3 ΓÇö Offer & CTA",
+        "title": "Email 3 — Offer & CTA",
         "summary": "Present the primary offer with a clear call to action.",
         "subsections": [
           {
@@ -334,7 +334,7 @@
           {
             "title": "Email Body",
             "summary": "Offer presentation with social proof and clear CTA.",
-            "content": "## Hi [First Name],\n\nBy now you've seen what **[Brand]** is all about. Ready to take the next step?\n\n**[Offer Name]** ΓÇö **[Brief description of what they get]**\n\n> \"[Testimonial from a happy customer]\"\n\n**Claim your offer now**: [CTA Button Link]\n\nThis exclusive offer expires **[date]**.\n\n[Your Name]"
+            "content": "## Hi [First Name],\n\nBy now you've seen what **[Brand]** is all about. Ready to take the next step?\n\n**[Offer Name]** — **[Brief description of what they get]**\n\n> \"[Testimonial from a happy customer]\"\n\n**Claim your offer now**: [CTA Button Link]\n\nThis exclusive offer expires **[date]**.\n\n[Your Name]"
           }
         ]
       }
@@ -409,7 +409,7 @@
           {
             "title": "Headline & Subhead",
             "summary": "Catchy headline with a supporting subhead.",
-            "content": "# [Catchy Headline: Company Name Announces Product Name]\n\n*[Subhead: A one-sentence value proposition that expands on the headline]*\n\n---\n\n[CITY, State] ΓÇö [Date] ΓÇö [Company Name], a leader in [industry], today announced [announcement summary in 1-2 sentences]."
+            "content": "# [Catchy Headline: Company Name Announces Product Name]\n\n*[Subhead: A one-sentence value proposition that expands on the headline]*\n\n---\n\n[CITY, State] — [Date] — [Company Name], a leader in [industry], today announced [announcement summary in 1-2 sentences]."
           },
           {
             "title": "Boilerplate",
@@ -430,7 +430,7 @@
           {
             "title": "Executive Quote",
             "summary": "Quote from company leadership.",
-            "content": "> \"[Compelling quote from CEO or executive about the announcement and its significance.]\"\n> ΓÇö **[Name]**, [Title], [Company Name]\n\n[Optional: Additional quote from a customer, partner, or industry analyst]"
+            "content": "> \"[Compelling quote from CEO or executive about the announcement and its significance.]\"\n> — **[Name]**, [Title], [Company Name]\n\n[Optional: Additional quote from a customer, partner, or industry analyst]"
           }
         ]
       },
@@ -441,7 +441,7 @@
           {
             "title": "Availability",
             "summary": "When and how to access the announced product.",
-            "content": "## Availability\n\n**[Product Name]** is available [starting date / immediately] at [pricing details].\n\n- **[Plan/Tier 1]**: $X ΓÇö [Description]\n- **[Plan/Tier 2]**: $X ΓÇö [Description]\n\n[Link to product page or press kit]"
+            "content": "## Availability\n\n**[Product Name]** is available [starting date / immediately] at [pricing details].\n\n- **[Plan/Tier 1]**: $X — [Description]\n- **[Plan/Tier 2]**: $X — [Description]\n\n[Link to product page or press kit]"
           }
         ]
       }
@@ -516,7 +516,7 @@
           {
             "title": "Meeting Info",
             "summary": "Date, time, location, and attendees.",
-            "content": "# Meeting Minutes\n\n**Project**: [Project/Initiative Name]\n**Date**: [Date]\n**Time**: [Start] ΓÇö [End]\n**Location**: [Room / Video Link]\n\n**Facilitator**: [Name]\n**Note Taker**: [Name]\n\n### Attendees\n- [Name] ΓÇö [Role]\n- [Name] ΓÇö [Role]\n\n### Absent\n- [Name]"
+            "content": "# Meeting Minutes\n\n**Project**: [Project/Initiative Name]\n**Date**: [Date]\n**Time**: [Start] — [End]\n**Location**: [Room / Video Link]\n\n**Facilitator**: [Name]\n**Note Taker**: [Name]\n\n### Attendees\n- [Name] — [Role]\n- [Name] — [Role]\n\n### Absent\n- [Name]"
           }
         ]
       },
@@ -527,7 +527,7 @@
           {
             "title": "Agenda",
             "summary": "List of discussion topics.",
-            "content": "## Agenda\n\n1. **Topic 1** ([time] min) ΓÇö [Owner]\n2. **Topic 2** ([time] min) ΓÇö [Owner]\n3. **Topic 3** ([time] min) ΓÇö [Owner]"
+            "content": "## Agenda\n\n1. **Topic 1** ([time] min) — [Owner]\n2. **Topic 2** ([time] min) — [Owner]\n3. **Topic 3** ([time] min) — [Owner]"
           },
           {
             "title": "Discussion Notes",
@@ -562,7 +562,7 @@
           {
             "title": "At a Glance",
             "summary": "Quick reference table.",
-            "content": "# [Customer Name] ΓÇö [Project Title]\n\n## At a Glance\n\n| | |\n|---|----|\n| **Customer** | [Name, Industry] |\n| **Challenge** | [Core problem in one sentence] |\n| **Solution** | [Brief solution description] |\n| **Results** | [Key metric: X% improvement] |\n| **Timeline** | [Duration] |"
+            "content": "# [Customer Name] — [Project Title]\n\n## At a Glance\n\n| | |\n|---|----|\n| **Customer** | [Name, Industry] |\n| **Challenge** | [Core problem in one sentence] |\n| **Solution** | [Brief solution description] |\n| **Results** | [Key metric: X% improvement] |\n| **Timeline** | [Duration] |"
           },
           {
             "title": "Executive Summary",
@@ -599,7 +599,7 @@
           {
             "title": "Customer Testimonial",
             "summary": "Quote from the customer.",
-            "content": "## What the Customer Says\n\n> \"[Powerful quote from the customer about their experience and the value delivered.]\"\n> ΓÇö **[Name]**, [Title], [Customer Company]"
+            "content": "## What the Customer Says\n\n> \"[Powerful quote from the customer about their experience and the value delivered.]\"\n> — **[Name]**, [Title], [Customer Company]"
           }
         ]
       }
@@ -609,7 +609,7 @@
     "type": "general",
     "id": "general_blank",
     "name": "Blank Document",
-    "description": "Start with a completely empty document ΓÇö full freedom.",
+    "description": "Start with a completely empty document — full freedom.",
     "sections": [
       {
         "title": "Untitled Section",

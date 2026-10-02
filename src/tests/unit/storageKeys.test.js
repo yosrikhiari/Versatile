@@ -7,10 +7,6 @@ describe('storageKeys config', () => {
       expect(STORAGE_KEYS.CORE_LOOP_SEEN).toBe('versatile_core_loop_seen')
     })
 
-    it('defines ONBOARDING_V2', () => {
-      expect(STORAGE_KEYS.ONBOARDING_V2).toBe('versatile_onboarding_v2')
-    })
-
     it('defines SETTINGS', () => {
       expect(STORAGE_KEYS.SETTINGS).toBe('versatile_settings')
     })

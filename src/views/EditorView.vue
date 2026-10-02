@@ -8,7 +8,7 @@ import { useExportImport } from '../composables/useExportImport'
 import AppShell from '../components/layout/AppShell.vue'
 import SettingsModal from '../components/layout/SettingsModal.vue'
 import TemplatePicker from '../components/editor/TemplatePicker.vue'
-import WelcomeOnboarding from '../components/layout/WelcomeOnboarding.vue'
+import NewProjectDialog from '../components/layout/NewProjectDialog.vue'
 import FlowEditor from '../components/flow/FlowEditor.vue'
 import PolishDrawer from '../components/polish/PolishDrawer.vue'
 import StoryBiblePanel from '../components/storybible/StoryBiblePanel.vue'
@@ -49,7 +49,7 @@ const timer = useFlowSession()
 
 const showSettingsModal = ref(false)
 const showShortcutsModal = ref(false)
-const showOnboarding = ref(false)
+const showNewProject = ref(false)
 const showAuthModal = ref(false)
 const polishDrawerRef = ref(null)
 const flowEditorRef = ref(null)
@@ -128,11 +128,8 @@ const {
   showModelBanner,
   adoptedModel,
   embeddingModelMissing,
-  hasLoaded,
   initializeApp,
-  checkModelAvailability,
-  onOnboardingComplete,
-  onOnboardingSkip
+  checkModelAvailability
 } = useAppInitialization()
 const {
   importStatus,
@@ -184,10 +181,7 @@ useKeyboardShortcuts({
 onMounted(async () => {
   const projectId = Number(route.params.projectId)
   if (projectId) {
-    const result = await initializeApp(projectId)
-    if (result?.showOnboarding) {
-      showOnboarding.value = true
-    }
+    await initializeApp(projectId)
   }
   const wrapper = editorWrapperRef.value
   if (wrapper) {
@@ -302,20 +296,10 @@ function handleBetaReaderNavigate(action) {
   handleConsistencyNavigate(action)
 }
 
-async function handleOnboardingCompleteWrapper() {
-  showOnboarding.value = false
-  await onOnboardingComplete()
-}
-
 function onCharacterChatClose() {
   showCharacterChatModal.value = false
   if (characterChatStore.modalClaim === 'editor') characterChatStore.claimChatModal(null)
   characterChatStore.clearSession()
-}
-
-function handleOnboardingSkipWrapper() {
-  showOnboarding.value = false
-  onOnboardingSkip()
 }
 </script>
 
@@ -381,7 +365,7 @@ function handleOnboardingSkipWrapper() {
       @import="handleImport"
       @open-settings="showSettingsModal = true"
       @open-auth="showAuthModal = true"
-      @create-project="showOnboarding = true"
+      @create-project="showNewProject = true"
     >
       <template #editor>
         <div
@@ -492,12 +476,7 @@ function handleOnboardingSkipWrapper() {
       </template>
     </AppShell>
 
-    <WelcomeOnboarding
-      v-if="showOnboarding && hasLoaded"
-      :show="true"
-      @complete="handleOnboardingCompleteWrapper"
-      @skip="handleOnboardingSkipWrapper"
-    />
+    <NewProjectDialog :show="showNewProject" @close="showNewProject = false" />
 
     <Transition name="anim-scale">
       <div

@@ -17,7 +17,7 @@ test('Agents panel: orchestrator, empty state, placement error', async ({ page }
   await expect(page).toHaveURL(/\/workspace$/)
 
   await page.getByRole('button', { name: 'New' }).click()
-  await page.fill('#wp-name', 'Agents Panel Probe')
+  await page.getByLabel('Project name').fill('Agents Panel Probe')
   await page.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(page).toHaveURL(/\/editor\//)
 

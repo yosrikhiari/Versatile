@@ -4,7 +4,6 @@
 export const STORAGE_KEYS = {
   // App State & Onboarding
   CORE_LOOP_SEEN: 'versatile_core_loop_seen',
-  ONBOARDING_V2: 'versatile_onboarding_v2',
 
   // Settings & Configuration
   SETTINGS: 'versatile_settings',

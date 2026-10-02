@@ -19,6 +19,12 @@ was verified.
   openings, published ones in 12 %. Showing the writer the openings to
   avoid made it worse (16/24 -> 21/24 on a paired probe; e44c8883), so the
   check only records `opening_reuse` in runHealth and leaves the prose.
+- **One New project dialog** (#67). The workspace's New and the editor's
+  "Create new project" open the same dialog: name and genre, with project
+  type, blueprint, synopsis and a first character under More options. It
+  replaces the onboarding wizard, which was the only way to pick a type or a
+  blueprint and left the URL on the previous project. Blueprint em dashes
+  were stored mis-decoded ("ΓÇö") and are fixed.
 
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,

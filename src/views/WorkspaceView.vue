@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import { getAllProjects, createProject, getManuscript } from '../services/db-projects'
+import { getAllProjects, getManuscript } from '../services/db-projects'
 import { seedSampleStory } from '../services/seedSampleStory'
 import { editedAgo } from '../utils/relativeTime'
 import { useWritingStats } from '../composables/useWritingStats'
@@ -13,6 +13,7 @@ import EmptyState from '../components/shared/EmptyState.vue'
 import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
 import CreateOrganizationDialog from '../components/org/CreateOrganizationDialog.vue'
 import ImportNovelModal from '../components/import/ImportNovelModal.vue'
+import NewProjectDialog from '../components/layout/NewProjectDialog.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -24,8 +25,6 @@ const loading = ref(true)
 const showCreate = ref(false)
 const showImportNovel = ref(false)
 const seedingSample = ref(false)
-const newProjectName = ref('')
-const newProjectGenre = ref('')
 
 const localUser = auth.localUser || { displayName: 'User' }
 
@@ -106,20 +105,6 @@ async function openSample() {
   } finally {
     seedingSample.value = false
   }
-}
-
-async function handleCreate() {
-  if (!newProjectName.value.trim()) return
-  const id = await createProject(
-    newProjectName.value.trim(),
-    newProjectGenre.value,
-    '',
-    auth.localUser?.id ?? undefined
-  )
-  showCreate.value = false
-  newProjectName.value = ''
-  newProjectGenre.value = ''
-  router.push(`/editor/${id}`)
 }
 
 async function handleLogout() {
@@ -290,59 +275,7 @@ async function handleLogout() {
       </div>
     </main>
 
-    <div
-      v-if="showCreate"
-      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-      @click.self="showCreate = false"
-    >
-      <div
-        class="bg-bg-secondary border border-border-subtle rounded-xl shadow-warm-lg p-6 w-full max-w-sm animate-fade-in"
-      >
-        <h2 class="type-display text-sm text-text-primary mb-4">New project</h2>
-        <form class="space-y-4" @submit.prevent="handleCreate">
-          <div>
-            <label for="wp-name" class="block font-manuscript text-xs text-text-secondary mb-2">
-              Project name
-            </label>
-            <input
-              id="wp-name"
-              ref="nameInput"
-              v-model="newProjectName"
-              type="text"
-              required
-              autofocus
-              class="w-full px-3.5 py-2.5 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent placeholder:text-text-hint transition-colors"
-              placeholder="My Novel"
-            />
-          </div>
-          <div>
-            <label for="wp-genre" class="block font-manuscript text-xs text-text-secondary mb-2">
-              Genre <span class="text-text-hint">(optional)</span>
-            </label>
-            <input
-              id="wp-genre"
-              v-model="newProjectGenre"
-              type="text"
-              class="w-full px-3.5 py-2.5 border border-border-subtle bg-bg-primary text-text-primary rounded-md text-sm focus:border-accent placeholder:text-text-hint transition-colors"
-              placeholder="Fantasy, Sci-Fi, …"
-            />
-          </div>
-          <div class="flex gap-3 pt-2">
-            <BaseButton
-              variant="outline"
-              size="lg"
-              custom-class="flex-1"
-              @click="showCreate = false"
-            >
-              Cancel
-            </BaseButton>
-            <BaseButton type="submit" variant="primary" size="lg" custom-class="flex-1">
-              Create
-            </BaseButton>
-          </div>
-        </form>
-      </div>
-    </div>
+    <NewProjectDialog :show="showCreate" @close="showCreate = false" />
 
     <CreateOrganizationDialog v-if="showCreateOrg" @close="showCreateOrg = false" />
     <ImportNovelModal :show="showImportNovel" @close="showImportNovel = false" />

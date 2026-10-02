@@ -93,6 +93,26 @@ describe('projectStore', () => {
     expect(dbService.createProject).toHaveBeenCalledWith('Owned', '', '', 42, '')
   })
 
+  it('stores the genre the New project dialog asks for (#67)', async () => {
+    const store = useProjectStore()
+    dbService.createProject.mockResolvedValue('p-7')
+    dbService.getProject.mockResolvedValue({ id: 'p-7', name: 'Salt', category: 'novel' })
+    dbService.getManuscript.mockResolvedValue(null)
+    dbService.getDailyGoal.mockResolvedValue(500)
+    dbService.getStreakData.mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
+    dbService.getLastSessionData.mockResolvedValue(null)
+
+    await store.createNewProject('Salt', 'novel', 'A road.', null, 'Historical')
+
+    expect(dbService.createProject).toHaveBeenCalledWith(
+      'Salt',
+      'Historical',
+      'A road.',
+      null,
+      'novel'
+    )
+  })
+
   it('should update content and recalculate word count', () => {
     vi.useFakeTimers()
     const store = useProjectStore()

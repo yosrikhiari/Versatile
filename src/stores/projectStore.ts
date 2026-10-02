@@ -306,20 +306,21 @@ export const useProjectStore = defineStore('project', () => {
     name: any,
     category: any = '',
     description: any = '',
-    blueprintId: any = null
+    blueprintId: any = null,
+    genre = ''
   ) {
     getSyncEngine().clearStoryId()
 
     // Owner must be stamped at creation. `createProject`'s `userId` defaults to
     // null, and `getAllProjects(userId)` filters on it — so a project made here
-    // (onboarding, "Create new project") was written unowned and then vanished
+    // (the New project dialog) was written unowned and then vanished
     // from the workspace list and the project switcher. It was only reachable
     // by loading its id directly, which is why the header could name a project
     // the switcher refused to show.
     const authStore = useAuthStore()
     const ownerId = authStore.localUser?.id ?? authStore.user?.id ?? null
 
-    const id = await createProject(name, '', description, ownerId, category)
+    const id = await createProject(name, genre, description, ownerId, category)
     await loadProject(id)
 
     try {

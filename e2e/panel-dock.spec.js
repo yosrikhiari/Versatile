@@ -14,7 +14,7 @@ test('tool panel docks right of the canvas', async ({ page }) => {
   await expect(page).toHaveURL(/\/workspace$/)
 
   await page.getByRole('button', { name: 'New' }).click()
-  await page.fill('#wp-name', 'Panel Dock Probe')
+  await page.getByLabel('Project name').fill('Panel Dock Probe')
   await page.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(page).toHaveURL(/\/editor\//)
 

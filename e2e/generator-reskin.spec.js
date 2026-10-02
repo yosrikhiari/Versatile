@@ -13,7 +13,7 @@ async function openGenerator(page) {
   await expect(page).toHaveURL(/\/workspace$/)
 
   await page.getByRole('button', { name: 'New' }).click()
-  await page.fill('#wp-name', 'Generator Reskin Probe')
+  await page.getByLabel('Project name').fill('Generator Reskin Probe')
   await page.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(page).toHaveURL(/\/editor\//)
 
