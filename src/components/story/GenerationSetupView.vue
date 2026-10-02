@@ -23,12 +23,15 @@ defineProps({
   disabled: Boolean,
   /** Line under the action row: what the run will cost. */
   footnote: { type: String, default: '' },
-  testPrefix: { type: String, default: '' }
+  testPrefix: { type: String, default: '' },
+  /** Only pipelines with continuity fix rounds offer the switch. */
+  showContinuityFixes: Boolean
 })
 
 const autoRun = defineModel('autoRun', { type: Boolean, default: false })
 const sceneReview = defineModel('sceneReview', { type: Boolean, default: false })
 const inlineEval = defineModel('inlineEval', { type: Boolean, default: false })
+const continuityFixes = defineModel('continuityFixes', { type: Boolean, default: false })
 
 const emit = defineEmits([
   'resume',
@@ -140,6 +143,18 @@ const emit = defineEmits([
           size="sm"
           label="Critique each scene"
           description="Run the critic inline and show its verdict"
+        />
+        <BaseSwitch
+          v-if="showContinuityFixes"
+          v-model="continuityFixes"
+          size="sm"
+          label="Fix continuity issues"
+          :description="
+            autoRun
+              ? 'Rewrite the scenes the final audit flags. Slower: each fix rewrites a whole scene'
+              : 'One click only. Otherwise the audit lists issues and the prose stands'
+          "
+          :disabled="!autoRun"
         />
       </div>
     </BaseSection>

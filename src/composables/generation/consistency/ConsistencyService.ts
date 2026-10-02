@@ -123,6 +123,12 @@ export class ConsistencyService {
   chapterPlan: any
   spineArray: any
   autoMode: any
+  /**
+   * Opt-in (UX-AUDIT #51): the fix rounds rewrite scenes the writer has seen
+   * land and cost more than the writing on a local model, so the audit only
+   * reports unless the writer asked for fixes. Off when not supplied.
+   */
+  fixesEnabled: { value: boolean }
   writtenScenes: any
   consistencyReport: any
   phase: any
@@ -142,6 +148,7 @@ export class ConsistencyService {
     chapterPlan,
     spineArray,
     autoMode,
+    fixesEnabled,
     writtenScenes,
     consistencyReport,
     phase,
@@ -158,6 +165,7 @@ export class ConsistencyService {
     chapterPlan: any
     spineArray: any
     autoMode: any
+    fixesEnabled?: { value: boolean }
     writtenScenes: any
     consistencyReport: any
     phase: any
@@ -174,6 +182,7 @@ export class ConsistencyService {
     this.chapterPlan = chapterPlan
     this.spineArray = spineArray
     this.autoMode = autoMode
+    this.fixesEnabled = fixesEnabled ?? { value: false }
     this.writtenScenes = writtenScenes
     this.consistencyReport = consistencyReport
     this.phase = phase
@@ -356,7 +365,27 @@ export class ConsistencyService {
       this.consistencyReport.value = report
     }
 
-    if (this.autoMode.value && canCheck && this.consistencyReport.value) {
+    const foundIssues =
+      (this.consistencyReport.value?.characterIssues?.length || 0) +
+      (this.consistencyReport.value?.locationIssues?.length || 0)
+    if (this.autoMode.value && !this.fixesEnabled.value && canCheck && foundIssues > 0) {
+      // Say why nothing was rewritten, so a report of issues does not read as
+      // fixes that failed.
+      this.actLog.appendThought?.(
+        currentTaskId,
+        consistencyPhase,
+        `
+${foundIssues} continuity issue${foundIssues === 1 ? '' : 's'} found. Fixing continuity is off, so the prose stands as written; the finished run lists them.
+`
+      )
+    }
+
+    if (
+      this.autoMode.value &&
+      this.fixesEnabled.value &&
+      canCheck &&
+      this.consistencyReport.value
+    ) {
       const storyDocuments = useStoryDocuments()
       const storyBibleDocs =
         this.writeParams.value?.storyBibleDocs ||

@@ -134,6 +134,8 @@ export function useVolumeStoryGenerator() {
   /** Bumped after a run is written to `generatedStories`, so a panel can re-read its history. */
   const historyVersion = ref(0)
   const continuityFixesSkipped = ref(false)
+  /** "Fix continuity issues" (opt-in, one-click runs only): rewrite what the audit flags. */
+  const continuityFixesEnabled = ref(false)
   function skipContinuityFixes() {
     continuityFixesSkipped.value = true
     consistencyService.skipFixes()
@@ -497,6 +499,7 @@ export function useVolumeStoryGenerator() {
     chapterPlan,
     spineArray,
     autoMode,
+    fixesEnabled: continuityFixesEnabled,
     writtenScenes,
     consistencyReport,
     phase,
@@ -2955,6 +2958,10 @@ export function useVolumeStoryGenerator() {
     stop,
     skipContinuityFixes,
     continuityFixesSkipped,
+    continuityFixesEnabled,
+    // The fix rounds run only when both hold; the run view offers "Keep the
+    // prose as written" only then.
+    continuityFixesActive: computed(() => autoMode.value && continuityFixesEnabled.value),
     historyVersion,
     isCancelling,
     pause,

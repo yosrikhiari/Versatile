@@ -97,6 +97,13 @@ export function useGenerationRunController(generator: any, deps: RunControllerDe
       generator.inlineEvalEnabled.value = val
     }
   })
+  // Only the volume generator has fix rounds; the chapter generator has no ref.
+  const continuityFixesEnabled = computed({
+    get: () => !!generator.continuityFixesEnabled?.value,
+    set: (val: boolean) => {
+      if (generator.continuityFixesEnabled) generator.continuityFixesEnabled.value = val
+    }
+  })
   const autoRun = computed({
     get: () => generator.autoMode.value,
     set: (val: boolean) => {
@@ -361,6 +368,7 @@ export function useGenerationRunController(generator: any, deps: RunControllerDe
     previewScenes,
     sceneReviewEnabled,
     inlineEvalEnabled,
+    continuityFixesEnabled,
     autoRun,
     noteLiveEntity,
     beginRun,

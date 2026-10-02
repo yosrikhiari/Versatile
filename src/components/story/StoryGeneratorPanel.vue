@@ -229,6 +229,7 @@ const chapterRun = useGenerationRunController(chapterGenerator, {
 const autoRun = volumeRun.autoRun
 const sceneReviewEnabled = volumeRun.sceneReviewEnabled
 const inlineEvalEnabled = volumeRun.inlineEvalEnabled
+const continuityFixesEnabled = volumeRun.continuityFixesEnabled
 const chapterAutoRun = chapterRun.autoRun
 const chapterSceneReviewEnabled = chapterRun.sceneReviewEnabled
 const chapterInlineEvalEnabled = chapterRun.inlineEvalEnabled
@@ -889,6 +890,8 @@ onBeforeUnmount(() => {
               v-model:auto-run="autoRun"
               v-model:scene-review="sceneReviewEnabled"
               v-model:inline-eval="inlineEvalEnabled"
+              v-model:continuity-fixes="continuityFixesEnabled"
+              show-continuity-fixes
               :resumable="resumableRun"
               :research="researchState"
               :spark-context="sparkContext"

@@ -238,7 +238,7 @@ const phase = () => generator.phase.value
         {{ generator.progress.statusText || consistencyHint }}
       </p>
       <div
-        v-if="generator.skipContinuityFixes"
+        v-if="generator.skipContinuityFixes && generator.continuityFixesActive?.value"
         class="flex items-center justify-between gap-2 pt-1"
       >
         <p class="font-ui text-xs text-text-hint">Each fix rewrites a scene with the model.</p>
