@@ -9,6 +9,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { AutoDialogue } from '../../extensions/AutoDialogue'
 import FlowTimer from './FlowTimer.vue'
+import { countWords } from '../../utils/textUtils'
 import FlowNudge from './FlowNudge.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseButton from '../ui/BaseButton.vue'
@@ -88,12 +89,30 @@ let lastPushedHtml = null
 function syncDocumentToStore() {
   documentSyncTimer = null
   if (!editor.value) return
-  const textContent = editor.value.state.doc.textContent
+  const doc = editor.value.state.doc
+  const textContent = doc.textContent
   contentSize.value = textContent.length
-  if (!manuscriptStore.activeSubsectionId && !manuscriptStore.activeSectionId) {
+  // `textContent` runs paragraphs together ("sky.Ilse" is one word); the
+  // save counts the HTML with a space between blocks, so count the same way.
+  const countedText = doc.textBetween(0, doc.content.size, ' ', ' ')
+  if (manuscriptStore.activeSubsectionId) {
+    // A scene's count is stored at the save, 10 s on; until then the header
+    // and the daily goal read this (UX-AUDIT #14).
+    manuscriptStore.setLiveWordCount(
+      'subsection',
+      manuscriptStore.activeSubsectionId,
+      countWords(countedText)
+    )
+  } else if (manuscriptStore.activeSectionId) {
+    manuscriptStore.setLiveWordCount(
+      'section',
+      manuscriptStore.activeSectionId,
+      countWords(countedText)
+    )
+  } else {
     const html = editor.value.getHTML()
     lastPushedHtml = html
-    projectStore.updateContent(html, textContent)
+    projectStore.updateContent(html, countedText)
   }
 }
 

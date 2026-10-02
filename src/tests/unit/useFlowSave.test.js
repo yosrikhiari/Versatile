@@ -142,6 +142,33 @@ describe('useFlowSave records progress for structured saves', () => {
     expect(projectStore.recordProgress).toHaveBeenCalledTimes(1)
   })
 
+  // UX-AUDIT #14: the editor puts the open scene's count in the store ahead
+  // of the save; once the save stores that count, the live one is dropped.
+  it('drops the live count the save just stored', async () => {
+    const { manuscriptStore } = setupMocks()
+    manuscriptStore.activeSubsectionId = 'sub1'
+    manuscriptStore.liveWordCount = { kind: 'subsection', id: 'sub1', words: 3 }
+    manuscriptStore.setLiveWordCount = vi.fn()
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(manuscriptStore.setLiveWordCount).toHaveBeenCalledWith(null)
+  })
+
+  it('keeps a live count that is newer than the save, or for another row', async () => {
+    const { manuscriptStore } = setupMocks()
+    manuscriptStore.activeSubsectionId = 'sub1'
+    manuscriptStore.setLiveWordCount = vi.fn()
+    // Typed on during the save: 5 words on screen, 3 stored.
+    manuscriptStore.liveWordCount = { kind: 'subsection', id: 'sub1', words: 5 }
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    // A section that happens to share the scene's id.
+    manuscriptStore.liveWordCount = { kind: 'section', id: 'sub1', words: 3 }
+    useFlowSave(editorRef).scheduleSave()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(manuscriptStore.setLiveWordCount).not.toHaveBeenCalled()
+  })
+
   it('root save does not record progress twice', async () => {
     const { projectStore } = setupMocks()
     useFlowSave(editorRef).scheduleSave()

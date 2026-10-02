@@ -131,6 +131,7 @@ export {
   getDailyGoal,
   setDailyGoal,
   updateDailyWordCount,
+  getTotalBefore,
   getStreakData,
   getLastSessionData,
   getDailyStatsForProjects

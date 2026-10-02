@@ -67,11 +67,12 @@ onMounted(async () => {
 
   // Writing history for the activity panel — one query over dailyGoals for all
   // of this user's projects, after the list is known.
-  // An imported book starts from what it arrived with; one imported before
-  // `importedWords` existed starts from its first recorded day.
+  // A book that arrived written (an import, the sample) starts from what it
+  // arrived with; one imported before `importedWords` existed starts from its
+  // first recorded day.
   const startFrom = Object.fromEntries(
     projects.value
-      .filter((p) => p.source === 'import')
+      .filter((p) => p.source === 'import' || typeof p.importedWords === 'number')
       .map((p) => [String(p.id), typeof p.importedWords === 'number' ? p.importedWords : 'first'])
   )
   await loadWritingStats(

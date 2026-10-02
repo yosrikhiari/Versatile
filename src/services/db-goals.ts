@@ -28,6 +28,23 @@ export async function updateDailyWordCount(projectId: string, wordCount: number)
   return db.dailyGoals.add({ projectId, date: today, goalWords: 500, wordCount })
 }
 
+/**
+ * The manuscript total stored on the last day before `date` (default today),
+ * or null when nothing earlier was recorded. Words written today are the live
+ * total minus this, the same day-over-day difference the workspace's writing
+ * history uses.
+ */
+export async function getTotalBefore(
+  projectId: string,
+  date: string = getTodayDateString()
+): Promise<number | null> {
+  const row = await db.dailyGoals
+    .where('[projectId+date]')
+    .between([projectId, ''], [projectId, date])
+    .last()
+  return row ? Number(row.wordCount) || 0 : null
+}
+
 export async function getStreakData(projectId: string) {
   const entries: Array<{ date: string; wordCount: number }> = await db.dailyGoals
     .where('projectId')

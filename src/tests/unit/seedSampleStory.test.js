@@ -37,6 +37,12 @@ describe('seedSampleStory', () => {
     expect(scenes).toHaveLength(4)
     expect(sections.every((s) => s.branchId === branch.id)).toBe(true)
     expect(scenes.every((s) => s.branchId === branch.id && s.wordCount > 50)).toBe(true)
+    // It arrives written: its words are the start of today's count and the
+    // writing history, not words written on the day it was opened (#14).
+    const total = scenes.reduce((n, s) => n + s.wordCount, 0)
+    expect(project.source).toBe('sample')
+    expect(project.importedWords).toBe(total)
+    expect(project.wordCount).toBe(total)
     // The root document stays empty: prose lives in the scenes (#19).
     const manuscript = await db.manuscripts.where('projectId').equals(first.projectId).first()
     expect(manuscript.content).toBe('')

@@ -573,9 +573,9 @@ watch(
 
         <div class="hidden sm:flex items-center gap-3 text-2xs text-text-hint whitespace-nowrap">
           <span class="tabular-nums font-ui">{{ wordCount.toLocaleString() }} words</span>
-          <span v-if="projectStore.currentStreak > 0" class="text-warning flex items-center gap-1">
+          <span v-if="projectStore.displayStreak > 0" class="text-warning flex items-center gap-1">
             <BaseIcon name="flame" :size="11" class="text-warning" />
-            {{ projectStore.currentStreak }}
+            {{ projectStore.displayStreak }}
           </span>
         </div>
 

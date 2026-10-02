@@ -94,6 +94,18 @@ export function useFlowSave(editorRef: any) {
         projectStore.updateContent(content, stripHtmlTags(content))
         await projectStore.saveDocumentNow()
       }
+      // The row now stores what the editor was showing; drop the live count
+      // so nothing else that later writes this row is shadowed by it. Not if
+      // the writer typed on during the save: then the live count is newer.
+      const live = manuscriptStore.liveWordCount
+      if (
+        live &&
+        live.words === wordCount &&
+        ((live.kind === 'subsection' && live.id === saveSubId) ||
+          (live.kind === 'section' && live.id === saveSecId))
+      ) {
+        manuscriptStore.setLiveWordCount(null)
+      }
       // Root saves record their own progress inside saveDocumentNow.
       if (saveSubId || saveSecId) await projectStore.recordProgress()
 

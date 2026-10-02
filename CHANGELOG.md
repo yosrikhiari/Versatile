@@ -52,6 +52,14 @@ was verified.
   brace-expansion, fflate, dompurify and postcss-selector-parser; `npm audit`
   reports 0 vulnerabilities and the seven open dependency reports are
   closed.
+- **The daily goal counts today's words, live** (UX-AUDIT #14). The goal
+  bar showed the whole manuscript's total, written only by the 10 s save, so
+  a book over the goal read "goal reached" before a word was written, and a
+  scene's words reached the header only at the save. Now the goal is the
+  live total minus the last total stored on an earlier day (from 0 for a new
+  project, from what an import or the sample arrived with); the open scene's
+  count is live; the streak counts today from the first word; and paragraphs
+  are no longer run together when counting.
 - **The `any` baseline is tightened** (b957c411): four files went down, and
   three entries for files removed in 2e6ed6bd are gone.
 

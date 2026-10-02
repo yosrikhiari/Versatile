@@ -138,14 +138,38 @@ export const useManuscriptStore = defineStore('manuscript', () => {
    * read only the root document, so a writer working in chapters — the path
    * the app recommends — saw "0 words" and a goal that never moved. Prefer the
    * count stored at save time; fall back to counting for rows written by
-   * older code or created with content but no count.
+   * older code or created with content but no count. The row open in the
+   * editor counts what is on screen (`liveWordCount`), so the header and the
+   * daily goal move as the writer types, not 10 s later at the save (#14).
    */
   const structuredWordCount = computed(() => {
+    const live = liveWordCount.value
     let total = 0
-    for (const s of sections.value) total += rowWordCount(s)
-    for (const s of subsections.value) total += rowWordCount(s)
+    for (const s of sections.value)
+      total += live?.kind === 'section' && live.id === s.id ? live.words : rowWordCount(s)
+    for (const s of subsections.value)
+      total += live?.kind === 'subsection' && live.id === s.id ? live.words : rowWordCount(s)
     return total
   })
+
+  /**
+   * The open chapter or scene's word count ahead of its save, set by the
+   * editor on its short sync timer and cleared once the save stores it.
+   * Section and subsection ids come from different tables and can collide,
+   * hence the kind.
+   */
+  const liveWordCount = ref<{
+    kind: 'section' | 'subsection'
+    id: number | string
+    words: number
+  } | null>(null)
+  function setLiveWordCount(
+    kind: 'section' | 'subsection' | null,
+    id?: number | string,
+    words = 0
+  ) {
+    liveWordCount.value = kind && id != null ? { kind, id, words } : null
+  }
 
   function rowWordCount(row: any) {
     if (typeof row?.wordCount === 'number') return row.wordCount
@@ -169,6 +193,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
   async function loadManuscript(projectId: any) {
     isLoading.value = true
     loadError.value = null
+    liveWordCount.value = null
     try {
       // Awaited, not read off the store: the shell loads the branches in
       // parallel with this, and reading before it finished loaded every
@@ -463,6 +488,8 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     activeSubsection,
     subsectionsBySection,
     structuredWordCount,
+    liveWordCount,
+    setLiveWordCount,
     sectionsById,
     isLoading,
     loadError,

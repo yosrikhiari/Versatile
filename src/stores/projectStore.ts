@@ -9,6 +9,8 @@ import {
   getAllProjects,
   updateDailyWordCount,
   getDailyGoal,
+  getTotalBefore,
+  getTodayDateString,
   getStreakData,
   getLastSessionData,
   saveAuthorProfile,
@@ -40,7 +42,14 @@ export const useProjectStore = defineStore('project', () => {
   const wordCount = ref(0)
   const sessionGoal = useLocalStorage(STORAGE_KEYS.SESSION_GOAL, 500)
   const dailyGoal = ref(500)
-  const dailyWordCount = ref(0)
+  /**
+   * The manuscript total when today began: the last total stored on an
+   * earlier day, or where a project with no earlier day started (0 for a new
+   * one, what an imported one arrived with). `dayStartDate` is the day it is
+   * for, so a session that runs past midnight takes a new one.
+   */
+  const dayStartWordCount = ref(0)
+  const dayStartDate = ref('')
   const lastSavedAt = ref<any | null>(null)
   const lastWrittenAt = ref<any | null>(null)
   const initialWordCount = ref(0)
@@ -130,6 +139,25 @@ export const useProjectStore = defineStore('project', () => {
   const sessionWordCount = computed(() =>
     Math.max(0, manuscriptWordCount.value - initialWordCount.value)
   )
+  /**
+   * Words written today, live: the header's total minus the total at the
+   * start of the day. It used to be a copy of the whole manuscript's total,
+   * written only by the 10 s save, so the goal bar lagged the header and a
+   * book over the goal read as "goal reached" before a word was written.
+   */
+  const dailyWordCount = computed(() =>
+    Math.max(0, manuscriptWordCount.value - dayStartWordCount.value)
+  )
+  /**
+   * The streak, counting today as soon as a word is written instead of at
+   * the first save. `lastWrittenDate` is the newest stored day with words.
+   */
+  const lastWrittenDate = ref<string | null>(null)
+  const displayStreak = computed(() =>
+    dailyWordCount.value > 0 && lastWrittenDate.value !== getTodayDateString()
+      ? currentStreak.value + 1
+      : currentStreak.value
+  )
 
   async function loadProject(id: any) {
     const [project, manuscript] = await Promise.all([getProject(id), getManuscript(id)])
@@ -149,7 +177,29 @@ export const useProjectStore = defineStore('project', () => {
       initialWordCount.value = manuscript.wordCount || 0
     }
 
+    // As the workspace's writing history: a project that arrived written (an
+    // import, the sample) starts from what it arrived with, or its own total
+    // for an import from before that was recorded; anything else from 0.
+    projectStartWordCount =
+      typeof project.importedWords === 'number'
+        ? project.importedWords
+        : project.source === 'import'
+          ? Number(project.wordCount) || 0
+          : 0
+    dayStartDate.value = ''
     await Promise.all([loadDailyGoal(), loadStreak(), loadLastSession(), loadPromptOverrides()])
+  }
+
+  let projectStartWordCount = 0
+
+  /** Sets `dayStartWordCount` for today, once per project per day. */
+  async function loadDayStart() {
+    if (!currentProjectId.value) return
+    const today = getTodayDateString()
+    if (dayStartDate.value === today) return
+    const earlier = await getTotalBefore(currentProjectId.value, today)
+    dayStartWordCount.value = earlier ?? projectStartWordCount
+    dayStartDate.value = today
   }
 
   async function loadStreak() {
@@ -157,6 +207,7 @@ export const useProjectStore = defineStore('project', () => {
     const data = await getStreakData(currentProjectId.value)
     currentStreak.value = data.currentStreak || 0
     longestStreak.value = data.longestStreak || 0
+    lastWrittenDate.value = data.lastWrittenDate || null
   }
 
   async function loadLastSession() {
@@ -187,6 +238,7 @@ export const useProjectStore = defineStore('project', () => {
     const data = await getStreakData(currentProjectId.value)
     currentStreak.value = data.currentStreak || 0
     longestStreak.value = data.longestStreak || 0
+    lastWrittenDate.value = data.lastWrittenDate || null
   }
 
   // Immediate write — the actual debounce lives in useFlowSave's 10s
@@ -211,12 +263,14 @@ export const useProjectStore = defineStore('project', () => {
   async function recordProgress() {
     if (!currentProjectId.value) return
     lastSavedAt.value = new Date().toISOString()
+    // Past midnight, today starts from yesterday's last total, so read the
+    // start before this save writes today's row.
+    await loadDayStart()
     const total = manuscriptWordCount.value
     // Denormalised onto the project row so the workspace index can show the
     // whole manuscript without loading every section of every project.
     await updateProject(currentProjectId.value, { wordCount: total })
     await updateDailyWordCount(currentProjectId.value, total)
-    dailyWordCount.value = total
     await updateStreakAfterSave()
     autoSnapshot()
   }
@@ -287,8 +341,8 @@ export const useProjectStore = defineStore('project', () => {
     const existing = await getDailyGoal(currentProjectId.value)
     if (existing) {
       dailyGoal.value = existing.goalWords
-      dailyWordCount.value = existing.wordCount
     }
+    await loadDayStart()
   }
 
   function resetSessionCount() {
@@ -297,9 +351,8 @@ export const useProjectStore = defineStore('project', () => {
 
   async function updateDailyWordCountFromTotal() {
     if (!currentProjectId.value) return
-    const total = manuscriptWordCount.value
-    dailyWordCount.value = total
-    await updateDailyWordCount(currentProjectId.value, total)
+    await loadDayStart()
+    await updateDailyWordCount(currentProjectId.value, manuscriptWordCount.value)
   }
 
   async function createNewProject(
@@ -410,6 +463,7 @@ export const useProjectStore = defineStore('project', () => {
     sessionGoal,
     dailyGoal,
     dailyWordCount,
+    displayStreak,
     lastSavedAt,
     lastSaved,
     manuscriptWordCount,

@@ -17,6 +17,8 @@ vi.mock('@/services/dbService', () => ({
   getStreakData: vi.fn(),
   getLastSessionData: vi.fn(),
   updateDailyWordCount: vi.fn(),
+  getTotalBefore: vi.fn(),
+  getTodayDateString: vi.fn(() => '2026-10-02'),
   countWords: vi.fn((text) => text.split(/\s+/).filter((w) => w.length > 0).length)
 }))
 
@@ -149,13 +151,98 @@ describe('projectStore', () => {
     expect(store.manuscriptWordCount).toBe(15)
   })
 
+  it('counts the open scene as it is on screen, not as last saved (#14)', () => {
+    const store = useProjectStore()
+    const manuscript = useManuscriptStore()
+    manuscript.sections = [{ id: 1, content: '', wordCount: 0 }]
+    manuscript.subsections = [{ id: 1, sectionId: 1, content: '<p>a b</p>', wordCount: 2 }]
+    expect(store.manuscriptWordCount).toBe(2)
+    manuscript.setLiveWordCount('subsection', 1, 9)
+    expect(store.manuscriptWordCount).toBe(9)
+    expect(store.dailyWordCount).toBe(9)
+    // Keyed by kind: section 1 and scene 1 are different rows.
+    manuscript.setLiveWordCount('section', 1, 4)
+    expect(store.manuscriptWordCount).toBe(6)
+    manuscript.setLiveWordCount(null)
+    expect(store.manuscriptWordCount).toBe(2)
+  })
+
   it('should calculate daily progress correctly', () => {
     const store = useProjectStore()
     store.dailyGoal = 500
-    store.dailyWordCount = 125
+    store.wordCount = 125
 
     const expectedProgress = Math.round((125 / 500) * 100)
     expect(store.dailyProgress).toBe(expectedProgress)
+  })
+
+  // UX-AUDIT #14: the goal bar was a copy of the whole manuscript's total,
+  // written only by the 10 s save. It lagged the header, and a book over the
+  // goal read as "goal reached" before a word was written today.
+  describe('words written today (#14)', () => {
+    async function open(project, { before = null, streak = {} } = {}) {
+      const store = useProjectStore()
+      dbService.getProject.mockResolvedValue({ id: 'p1', name: 'Salt', ...project })
+      dbService.getManuscript.mockResolvedValue({ content: '', wordCount: 0 })
+      dbService.getDailyGoal.mockResolvedValue({ goalWords: 500, wordCount: 1500 })
+      dbService.getTotalBefore.mockResolvedValue(before)
+      dbService.getStreakData.mockResolvedValue({
+        currentStreak: 0,
+        longestStreak: 0,
+        lastWrittenDate: null,
+        ...streak
+      })
+      dbService.getLastSessionData.mockResolvedValue(null)
+      await store.loadProject('p1')
+      return store
+    }
+
+    it('is the live total minus the last earlier day, with no save', async () => {
+      const store = await open({}, { before: 1200 })
+      store.wordCount = 1200
+      expect(store.dailyWordCount).toBe(0)
+      expect(store.dailyProgress).toBe(0)
+      store.wordCount = 1320
+      expect(store.dailyWordCount).toBe(120)
+      expect(dbService.updateDailyWordCount).not.toHaveBeenCalled()
+    })
+
+    it('counts a whole new project, but not what an import arrived with', async () => {
+      const fresh = await open({}, { before: null })
+      fresh.wordCount = 300
+      expect(fresh.dailyWordCount).toBe(300)
+
+      setActivePinia(createPinia())
+      const imported = await open({ source: 'import', importedWords: 40000 }, { before: null })
+      imported.wordCount = 40050
+      expect(imported.dailyWordCount).toBe(50)
+    })
+
+    it('never goes below zero on a day of cutting', async () => {
+      const store = await open({}, { before: 1200 })
+      store.wordCount = 1000
+      expect(store.dailyWordCount).toBe(0)
+    })
+
+    it('counts today in the streak from the first word, not the first save', async () => {
+      const store = await open(
+        {},
+        { before: 1200, streak: { currentStreak: 3, lastWrittenDate: '2026-10-01' } }
+      )
+      store.wordCount = 1200
+      expect(store.displayStreak).toBe(3)
+      store.wordCount = 1201
+      expect(store.displayStreak).toBe(4)
+    })
+
+    it('does not count today twice once it is saved', async () => {
+      const store = await open(
+        {},
+        { before: 1200, streak: { currentStreak: 4, lastWrittenDate: '2026-10-02' } }
+      )
+      store.wordCount = 1300
+      expect(store.displayStreak).toBe(4)
+    })
   })
 
   it('should save manuscript without debounce', async () => {

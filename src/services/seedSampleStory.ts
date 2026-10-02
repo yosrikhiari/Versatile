@@ -188,6 +188,7 @@ export async function seedSampleStory(
   ])
 
   let sceneNumber = 0
+  let total = 0
   for (let c = 0; c < CHAPTERS.length; c++) {
     const chapter = CHAPTERS[c]
     const sectionId = await db.sections.add({
@@ -207,6 +208,8 @@ export async function seedSampleStory(
     for (let s = 0; s < chapter.scenes.length; s++) {
       const scene = chapter.scenes[s]
       const content = html(scene.paragraphs)
+      const words = countWords(scene.paragraphs.join(' '))
+      total += words
       sceneNumber += 1
       await db.subsections.add({
         projectId,
@@ -218,7 +221,7 @@ export async function seedSampleStory(
         sceneNumber,
         contentStatus: 'draft',
         content,
-        wordCount: countWords(scene.paragraphs.join(' ')),
+        wordCount: words,
         charactersPresent: scene.characters,
         location: scene.location,
         tags: [],
@@ -227,6 +230,10 @@ export async function seedSampleStory(
       })
     }
   }
+
+  // The sample arrives written, like an import: its words are where today's
+  // count and the writing history start, not words the writer wrote.
+  await db.projects.update(projectId, { source: 'sample', importedWords: total, wordCount: total })
 
   return { projectId, created: true }
 }
