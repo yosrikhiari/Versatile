@@ -34,6 +34,9 @@ was verified.
   longer calls a retry "bloated" for moving toward the target from a short
   first attempt, and an attempt the gate accepts is committed over an
   earlier failed one even when the critic scored the failed one higher.
+- **Reused openings name the scene** (#105): "Ilse walks the breakwater"
+  instead of "scene 1", which in a continued book meant the wrong scene.
+- **Stopping a run no longer logs an uncaught AbortError** (#106).
 
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,

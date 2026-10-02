@@ -7,6 +7,7 @@ import {
   bookOpeningReuse,
   nearestWrittenScenes,
   nearbyOpeningReuse,
+  describeOpeningReuse,
   NEARBY_OPENINGS
 } from '@/services/generation/openingReuse'
 import { createSceneGate } from '@/composables/generation/writing/sceneGate'
@@ -103,12 +104,17 @@ describe('nearbyOpeningReuse', () => {
 
   it('names the nearby scene and the image an opening reuses', () => {
     expect(nearbyOpeningReuse(S14, written, 2, NAMES)).toEqual([
-      { sceneNumber: 2, shared: ['damp earth'] }
+      { sceneNumber: 2, title: '', shared: ['damp earth'] }
     ])
   })
 
   it('says nothing about a fresh opening', () => {
     expect(nearbyOpeningReuse(FRESH, written, 2, NAMES)).toEqual([])
+  })
+
+  it('carries the earlier scene title', () => {
+    const titled = [{ sceneNumber: 1, title: 'Ilse walks the breakwater', prose: S7 }]
+    expect(nearbyOpeningReuse(S14, titled, 1, NAMES)[0].title).toBe('Ilse walks the breakwater')
   })
 
   it('does not compare with scenes beyond the nearby window', () => {
@@ -117,6 +123,27 @@ describe('nearbyOpeningReuse', () => {
       ...Array.from({ length: 10 }, () => ({ prose: FRESH }))
     ]
     expect(nearbyOpeningReuse(S14, far, 11, NAMES)).toEqual([])
+  })
+})
+
+// #105: on the #68 run the detail said "scene 1", the run's first scene, which
+// in the continued sample book read as the book's first scene.
+describe('describeOpeningReuse names the scene by title', () => {
+  it('uses the title', () => {
+    expect(
+      describeOpeningReuse([
+        { sceneNumber: 1, title: 'Ilse walks the breakwater', shared: ['ston step'] }
+      ])
+    ).toBe('"Ilse walks the breakwater" (ston step)')
+  })
+
+  it('falls back to the number for an untitled scene, and joins several', () => {
+    expect(
+      describeOpeningReuse([
+        { sceneNumber: 1, title: '', shared: ['ston step'] },
+        { sceneNumber: 2, title: 'Tomas follows', shared: ['heel caught', 'loose plank'] }
+      ])
+    ).toBe('scene 1 (ston step); "Tomas follows" (heel caught, loose plank)')
   })
 })
 
@@ -164,8 +191,8 @@ describe('draftAttempt reports a reused opening and changes nothing (#66)', () =
     maxAttempts: 1
   })
   const written = [
-    { sceneNumber: 1, prose: S6 },
-    { sceneNumber: 2, prose: S7 }
+    { sceneNumber: 1, title: 'The dying man', prose: S6 },
+    { sceneNumber: 2, title: 'Over the body', prose: S7 }
   ]
 
   it('records opening_reuse with the scene and the image, and keeps the prose', async () => {
@@ -175,7 +202,7 @@ describe('draftAttempt reports a reused opening and changes nothing (#66)', () =
     expect(record).toHaveBeenCalledWith('opening_reuse', {
       stage: 'writer',
       sceneIndex: 2,
-      detail: 'opens on an image a nearby scene already opened on: scene 2 (damp earth)'
+      detail: 'opens on an image a nearby scene already opened on: "Over the body" (damp earth)'
     })
   })
 

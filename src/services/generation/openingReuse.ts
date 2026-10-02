@@ -152,7 +152,7 @@ export function bookOpeningReuse(proses: string[], names: string[] = []) {
  */
 export const NEARBY_OPENINGS = 8
 
-type WrittenLike = { prose?: string; sceneNumber?: number } | null | undefined
+type WrittenLike = { prose?: string; sceneNumber?: number; title?: string } | null | undefined
 
 /**
  * The written scenes nearest `sceneIndex`, either side, in story order. Either
@@ -163,11 +163,12 @@ export function nearestWrittenScenes(
   writtenScenes: ReadonlyArray<WrittenLike>,
   sceneIndex: number,
   max = NEARBY_OPENINGS
-): Array<{ index: number; sceneNumber: number; prose: string }> {
+): Array<{ index: number; sceneNumber: number; title: string; prose: string }> {
   return (writtenScenes || [])
     .map((scene, index) => ({
       index,
       sceneNumber: scene?.sceneNumber ?? index + 1,
+      title: String(scene?.title || '').trim(),
       prose: String(scene?.prose || '')
     }))
     .filter((s) => s.index !== sceneIndex && s.prose.trim())
@@ -191,11 +192,28 @@ export function nearbyOpeningReuse(
   sceneIndex: number,
   names: string[] = [],
   max = NEARBY_OPENINGS
-): Array<{ sceneNumber: number; shared: string[] }> {
+): Array<{ sceneNumber: number; title: string; shared: string[] }> {
   const near = nearestWrittenScenes(writtenScenes, sceneIndex, max)
   return reusedImages(
     openingOf(prose),
     near.map((s) => openingOf(s.prose)),
     names
-  ).map((r) => ({ sceneNumber: near[r.earlier].sceneNumber, shared: r.shared }))
+  ).map((r) => ({
+    sceneNumber: near[r.earlier].sceneNumber,
+    title: near[r.earlier].title,
+    shared: r.shared
+  }))
+}
+
+/**
+ * How a report names the earlier scene (#105). By title: a number is the run's
+ * numbering, and in a continued book "scene 1" read as the book's first scene
+ * when it meant the run's. The number is the fallback for an untitled scene.
+ */
+export function describeOpeningReuse(
+  reuse: Array<{ sceneNumber: number; title: string; shared: string[] }>
+): string {
+  return reuse
+    .map((r) => `${r.title ? `"${r.title}"` : `scene ${r.sceneNumber}`} (${r.shared.join(', ')})`)
+    .join('; ')
 }

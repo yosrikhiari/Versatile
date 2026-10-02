@@ -32,7 +32,7 @@ import { RECENT_SCENE_LOG_LIMIT, SCENE_MAX_ATTEMPTS } from './limits'
 import { buildStoryStateContext } from '../context/sceneContext'
 import { spineContextFromProse } from '../context/spine'
 import { dropCopiedSentences } from '../../../services/generation/copyGuard'
-import { nearbyOpeningReuse } from '../../../services/generation/openingReuse'
+import { nearbyOpeningReuse, describeOpeningReuse } from '../../../services/generation/openingReuse'
 
 /**
  * Everything the scene gate reaches for in the orchestrator's scope.
@@ -636,9 +636,7 @@ export function createSceneGate(ctx: SceneGateContext) {
         )
         const reuse = nearbyOpeningReuse(guarded.prose, writtenScenes.value, sceneIndex, names)
         if (reuse.length) {
-          const where = reuse
-            .map((r) => `scene ${r.sceneNumber} (${r.shared.join(', ')})`)
-            .join('; ')
+          const where = describeOpeningReuse(reuse)
           runHealth.record('opening_reuse', {
             stage: 'writer',
             sceneIndex,
