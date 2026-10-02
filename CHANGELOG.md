@@ -25,6 +25,11 @@ was verified.
   replaces the onboarding wizard, which was the only way to pick a type or a
   blueprint and left the URL on the previous project. Blueprint em dashes
   were stored mis-decoded ("ΓÇö") and are fixed.
+- **A run survives opening another tool panel** (#103). The Generator panel
+  is hidden instead of unmounted when Chapters, the Story Bible, Flow or
+  Focus takes the dock; opening one used to stop a Chapter run and orphan an
+  Arc run. The Chapter tab also gets the "Fix continuity issues" switch
+  (b7f1b896).
 
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,

@@ -31,6 +31,19 @@ const projectStore = useProjectStore()
 
 const activePanelName = ref(null)
 const flowMode = ref(false)
+
+/**
+ * The Generator panel stays mounted once it has been opened (#103). The dock
+ * shows one panel at a time, and the panel owns its runs: unmounting it to
+ * show Chapters or the Story Bible stopped a Chapter run (its unmount calls
+ * `destroy()`) and orphaned an Arc run, which kept writing with no panel able
+ * to see or stop it. Hidden, it keeps the run, its options and its stream;
+ * leaving the editor still unmounts it and stops whatever is running.
+ */
+const generatorMounted = ref(false)
+watch(activePanelName, (name) => {
+  if (name === 'story-generator') generatorMounted.value = true
+})
 const sidebarOpen = ref(false)
 const mainContentRef = ref(null)
 
@@ -54,7 +67,7 @@ const coreLoopSeen = useLocalStorage(STORAGE_KEYS.CORE_LOOP_SEEN, {
   build: false
 })
 
-defineProps({
+const props = defineProps({
   focusMode: {
     type: Boolean,
     default: false
@@ -695,14 +708,16 @@ watch(
 
         <!-- tool panels (dock right of the canvas) -->
         <aside
-          v-if="activePanelName === 'story-generator' && !flowMode && !focusMode"
+          v-if="generatorMounted"
+          v-show="activePanelName === 'story-generator' && !flowMode && !props.focusMode"
           key="story-generator"
+          data-panel="story-generator"
           class="tool-panel w-full lg:w-[420px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-y-auto shrink-0 scrollbar-thin"
         >
           <slot name="story-generator"></slot>
         </aside>
         <aside
-          v-else-if="activePanelName === 'story-bible' && !flowMode && !focusMode"
+          v-if="activePanelName === 'story-bible' && !flowMode && !focusMode"
           key="story-bible"
           class="tool-panel w-full lg:w-[600px] lg:max-w-[calc(100vw-32rem)] bg-bg-secondary border-l border-border-subtle overflow-hidden shrink-0"
         >

@@ -287,7 +287,11 @@ function handleStoryNavigate(hit) {
 
 /** Which tab the generator opens on when a panel asks for it ('scene', 'chapter', 'arc'). */
 const generatorTab = ref(null)
-function openGeneratorOn(tab) {
+async function openGeneratorOn(tab) {
+  // The Generator stays mounted once opened (#103): clear first so asking for
+  // the same tab twice is still a change the panel sees.
+  generatorTab.value = null
+  await nextTick()
   generatorTab.value = tab || null
   appShell.value?.toggleStoryGenerator?.()
 }

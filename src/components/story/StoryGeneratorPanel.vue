@@ -79,6 +79,14 @@ const props = defineProps({
 })
 const INITIAL_TABS = { scene: MODE_SCENE, chapter: MODE_CHAPTER, arc: MODE_ARC }
 const tab = ref(INITIAL_TABS[props.initialTab] || MODE_BRAINSTORM)
+// The panel stays mounted once opened (#103), so a later "open on this tab"
+// arrives as a prop change, not as a fresh mount.
+watch(
+  () => props.initialTab,
+  (next) => {
+    if (INITIAL_TABS[next]) tab.value = INITIAL_TABS[next]
+  }
+)
 
 /** Research library state for the setup view; null hides the Sources section. */
 const researchState = computed(() =>
@@ -589,10 +597,13 @@ const activeTotalConsistencyIssues = computed(() => {
   return (report.characterIssues?.length || 0) + (report.locationIssues?.length || 0)
 })
 
-// A run left in flight outlives the panel otherwise: the writer keeps streaming
-// into a store nothing is rendering.
+// The panel is hidden, not unmounted, when another tool panel opens (#103), so
+// this runs only when the editor itself goes (another project, the workspace).
+// A run left in flight would otherwise outlive it, streaming into a store
+// nothing renders; the Arc pipeline was never stopped here at all.
 onBeforeUnmount(() => {
   chapterGenerator.destroy()
+  volumeGenerator.stop()
 })
 </script>
 
