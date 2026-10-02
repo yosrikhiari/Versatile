@@ -40,6 +40,20 @@ was verified.
 - **The scene planner no longer names a test character.** Its rules said
   "not every scene is Ines alone thinking", a name from the harbour test
   story, told to every book's planner; now "the point-of-view character".
+  (affda224)
+- **Repeated planner anchors are not the cause of reused openings** (#107,
+  §50, 73c89282; nothing shipped). Removing a scene's repeated sensory
+  anchor took the image out of its opening (12/24 -> 3/24) but opening reuse
+  did not fall (14/24 -> 16/24, p = 0.5): the writer falls back on its own
+  stock openings. The probe (`src/tests/live/anchorProbe.live.js`,
+  `tools/anchor-probe.py`) is kept so it can be re-run.
+- **Report** sections 5ae and 5af (a8567450).
+- **Dependencies:** `npm audit fix` (9bbfee03), lockfile-only patch bumps of
+  brace-expansion, fflate, dompurify and postcss-selector-parser; `npm audit`
+  reports 0 vulnerabilities and the seven open dependency reports are
+  closed.
+- **The `any` baseline is tightened** (b957c411): four files went down, and
+  three entries for files removed in 2e6ed6bd are gone.
 
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,
