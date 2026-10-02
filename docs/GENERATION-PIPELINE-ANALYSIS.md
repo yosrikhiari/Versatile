@@ -2773,3 +2773,40 @@ since they are a list the code can check before a word is written; and
 whether a flagged scene should be offered "Rewrite this scene" (§40) with
 the image named is a product call. Not claimed: that a run reuses less.
 Nothing here changes what the writer writes.
+
+## 50. The planner's repeated anchors do not cause the reused openings (2026-10-02, issue #107)
+
+§49 left one cause open: the planner repeats its own sensory anchors (14 of
+29 in the salt-road plan; "the scent of damp earth" is the anchor of six
+scenes), and the writer opens on its anchor in 16 of 30 scenes. The cheapest
+fix needs no model call: after each chapter is planned, clear any anchor that
+shares an image pair (`openingReuse.imagePairs`) with an earlier one. Before
+building it, the probe asked whether the anchor is a cause at all.
+
+**Probe** (`src/tests/live/anchorProbe.live.js`, `tools/anchor-probe.py`):
+the six salt-road scenes whose anchor repeats an earlier anchor, spread
+across the book (6, 16, 19, 23, 25, 28: three "damp earth", "acrid smell of
+sweat", "dried herbs", "burning wood"), written with the planned anchor and
+with it removed, everything else equal (brief, bible, chapter log, retrieved
+context). qwen3:8b, 4 repeats per arm, 48 generations, 0 errors, 26 min with
+the GPU to itself.
+
+                                          planned   dropped
+  opening carries the repeated image       12/24      3/24
+  opening reuses an earlier opening        14/24     16/24
+  scenes better / worse (reuse)               0 / 2
+  exact sign-flip p (6 pairs)                  0.5
+
+Dropping the anchor does what it directly targets: the repeated image leaves
+the opening (12 -> 3 of 24). It does not reduce reuse. The writer reaches for
+its own stock openings instead: "stepped over the threshold" 6 -> 8, "sound
+cutting through" 4 -> 4, "fingers brushing" 3 -> 3, and scene 25 still opened
+on "the scent of damp earth" with no anchor, from the earlier prose in its
+context. Two thirds of the reuse were the writer's habits in §49, and with
+the anchor gone the remaining third is filled the same way.
+
+**Decision: nothing shipped.** Clearing repeated anchors would cost scenes a
+planned detail and buy no measurable reduction in reused openings. The
+`opening_reuse` report (§49) stays the only mechanism. What would move it is
+the writer, not the plan, and §49 showed that telling the writer which
+openings are taken makes it copy them; that is where any further work starts.
