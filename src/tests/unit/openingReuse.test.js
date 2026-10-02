@@ -5,10 +5,10 @@ import {
   imagePairs,
   reusedImages,
   bookOpeningReuse,
-  buildRecentOpeningsContext,
-  RECENT_OPENINGS_MAX
+  nearestWrittenScenes,
+  nearbyOpeningReuse,
+  NEARBY_OPENINGS
 } from '@/services/generation/openingReuse'
-import { fitSceneContext } from '@/services/ai/contextBudget'
 import { createSceneGate } from '@/composables/generation/writing/sceneGate'
 
 // Issue #66 / UX-AUDIT #59: the writer opens scene after scene on the same
@@ -82,51 +82,46 @@ describe('bookOpeningReuse', () => {
   })
 })
 
-describe('buildRecentOpeningsContext', () => {
+describe('nearestWrittenScenes', () => {
   const scene = (n, prose) => ({ sceneNumber: n, prose })
 
-  it('lists the nearest written openings in story order, without the scene itself', () => {
-    const written = [scene(1, S6), null, scene(3, S7), scene(4, 'mine'), scene(5, S14)]
-    const block = buildRecentOpeningsContext(written, 3)
-    expect(block).toBe(`- Scene 1: "${S6}"\n- Scene 3: "${S7}"\n- Scene 5: "${S14}"`)
-  })
-
-  it('keeps the nearest ones when there are more than the cap, either side', () => {
+  it('takes the nearest written scenes either side, in story order, never the scene itself', () => {
     const written = Array.from({ length: 20 }, (_, i) => scene(i + 1, `${FRESH} ${i}`))
-    const block = buildRecentOpeningsContext(written, 10)
-    const shown = [...block.matchAll(/- Scene (\d+)/g)].map((m) => Number(m[1]))
-    expect(shown).toHaveLength(RECENT_OPENINGS_MAX)
-    expect(shown).toEqual([7, 8, 9, 10, 12, 13, 14, 15])
+    const near = nearestWrittenScenes(written, 9).map((s) => s.sceneNumber)
+    expect(near).toHaveLength(NEARBY_OPENINGS)
+    expect(near).toEqual([6, 7, 8, 9, 11, 12, 13, 14]) // four either side of scene 10
   })
 
-  it('is empty before anything is written', () => {
-    expect(buildRecentOpeningsContext([null, undefined], 0)).toBe('')
-  })
-})
-
-describe('fitSceneContext: the openings are the first thing to go', () => {
-  const prose = (n) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ')
-  it('drops the openings before the chapter log', () => {
-    const r = fitSceneContext({
-      // contextTokens 3000 floors the budget at 1000: one of the two must go.
-      storyContract: prose(50),
-      logSummary: prose(300),
-      recentOpenings: prose(300),
-      contextTokens: 3000
-    })
-    expect(r.logSummary).not.toBe('')
-    expect(r.recentOpenings).toBe('')
-  })
-
-  it('passes them through when there is room', () => {
-    expect(fitSceneContext({ recentOpenings: '- Scene 1: "x"' }).recentOpenings).toBe(
-      '- Scene 1: "x"'
-    )
+  it('skips holes and empty scenes', () => {
+    const near = nearestWrittenScenes([scene(1, S6), null, scene(3, ' '), scene(4, S7)], 1)
+    expect(near.map((s) => s.sceneNumber)).toEqual([1, 4])
   })
 })
 
-describe('draftAttempt shows the writer the nearby openings', () => {
-  function gate(written, prose = FRESH) {
+describe('nearbyOpeningReuse', () => {
+  const written = [{ sceneNumber: 1, prose: S6 }, { sceneNumber: 2, prose: S7 }, null]
+
+  it('names the nearby scene and the image an opening reuses', () => {
+    expect(nearbyOpeningReuse(S14, written, 2, NAMES)).toEqual([
+      { sceneNumber: 2, shared: ['damp earth'] }
+    ])
+  })
+
+  it('says nothing about a fresh opening', () => {
+    expect(nearbyOpeningReuse(FRESH, written, 2, NAMES)).toEqual([])
+  })
+
+  it('does not compare with scenes beyond the nearby window', () => {
+    const far = [
+      { sceneNumber: 1, prose: S7 },
+      ...Array.from({ length: 10 }, () => ({ prose: FRESH }))
+    ]
+    expect(nearbyOpeningReuse(S14, far, 11, NAMES)).toEqual([])
+  })
+})
+
+describe('draftAttempt reports a reused opening and changes nothing (#66)', () => {
+  function gate(written, prose) {
     const writeSceneStructured = vi.fn(async () => ({ prose, structured: {} }))
     const record = vi.fn()
     const g = createSceneGate({
@@ -144,7 +139,7 @@ describe('draftAttempt shows the writer the nearby openings', () => {
       scenePlan: ref([]),
       settings: {},
       spineContext: ref(''),
-      storyBibleStore: {},
+      storyBibleStore: { characters: [{ name: 'Nesrin' }] },
       throwIfAborted: () => {},
       workspaceType: { value: 'novel' },
       writeParams: ref({}),
@@ -173,33 +168,33 @@ describe('draftAttempt shows the writer the nearby openings', () => {
     { sceneNumber: 2, prose: S7 }
   ]
 
-  it('passes the openings of the written scenes to the writer', async () => {
-    const { g, writeSceneStructured } = gate(written)
-    await g.draftAttempt(args())
-    const { recentOpenings } = writeSceneStructured.mock.calls[0][0]
-    expect(recentOpenings).toContain(`- Scene 1: "${S6}"`)
-    expect(recentOpenings).toContain(`- Scene 2: "${S7}"`)
-  })
-
-  it('sends none for the second section of a long scene, which opens nothing', async () => {
-    const { g, writeSceneStructured } = gate(written)
-    await g.draftAttempt(args({ title: 'T', sceneNumber: 3, sectionIndex: 2, totalSections: 3 }))
-    expect(writeSceneStructured.mock.calls[0][0].recentOpenings).toBeUndefined()
-  })
-
-  it('sends none for the first scene of a book', async () => {
-    const { g, writeSceneStructured } = gate([])
-    await g.draftAttempt(args())
-    expect(writeSceneStructured.mock.calls[0][0].recentOpenings).toBeUndefined()
-  })
-
-  it('removes an opening the writer copied from the ones it was shown', async () => {
-    const { g, record } = gate(written, `${S7}\n\nThe bell rang twice across the empty square.`)
+  it('records opening_reuse with the scene and the image, and keeps the prose', async () => {
+    const { g, record } = gate(written, S14)
     const out = await g.draftAttempt(args())
-    expect(out.prose).toBe('The bell rang twice across the empty square.')
-    expect(record).toHaveBeenCalledWith(
-      'copied_context',
-      expect.objectContaining({ sceneIndex: 2 })
-    )
+    expect(out.prose).toBe(S14)
+    expect(record).toHaveBeenCalledWith('opening_reuse', {
+      stage: 'writer',
+      sceneIndex: 2,
+      detail: 'opens on an image a nearby scene already opened on: scene 2 (damp earth)'
+    })
+  })
+
+  it('records nothing for a fresh opening', async () => {
+    const { g, record } = gate(written, FRESH)
+    await g.draftAttempt(args())
+    expect(record).not.toHaveBeenCalled()
+  })
+
+  it('does not judge the second section of a long scene, which opens nothing', async () => {
+    const { g, record } = gate(written, S14)
+    await g.draftAttempt(args({ title: 'T', sceneNumber: 3, sectionIndex: 2, totalSections: 3 }))
+    expect(record).not.toHaveBeenCalled()
+  })
+
+  it('shows the writer none of the openings (they made reuse worse, §49)', async () => {
+    const { g, writeSceneStructured } = gate(written, FRESH)
+    await g.draftAttempt(args())
+    const prompt = JSON.stringify(writeSceneStructured.mock.calls[0][0])
+    expect(prompt).not.toContain('boots sinking')
   })
 })

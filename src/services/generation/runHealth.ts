@@ -65,6 +65,12 @@ export type DegradationKind =
    */
   | 'copied_context'
   /**
+   * The scene opens on an image a nearby scene already opened on ("damp
+   * earth", "fingers brushing"; #66). Reported, never repaired, never
+   * budgeted: telling the writer made it worse (§49).
+   */
+  | 'opening_reuse'
+  /**
    * A scene still failed critique after every retry and its best attempt was
    * kept for review. Its own kind so the streak means "consecutive scenes the
    * critic rejected" — the signal the quality floor reads.

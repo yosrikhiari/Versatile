@@ -2,6 +2,11 @@
 
     python tools/opening-probe.py
 
+The probe itself (src/tests/live/openingProbe.live.js) and the writer
+parameter its "openings" arm needs exist at commit e44c8883 only: the block
+made reuse worse and was reverted (GENERATION-PIPELINE-ANALYSIS §49).
+Check that commit out to re-run it.
+
 Reads reports/live/opening-probe/{none,openings}/summary.json. For each test
 scene: the share of its repeats whose opening reuses an image from an earlier
 scene, in each arm. The paired difference is tested with an exact sign-flip

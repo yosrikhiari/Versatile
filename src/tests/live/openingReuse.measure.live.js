@@ -11,7 +11,20 @@
 import { it } from 'vitest'
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
-import { bookOpeningReuse } from '../../services/generation/openingReuse'
+import { bookOpeningReuse, nearbyOpeningReuse } from '../../services/generation/openingReuse'
+
+/**
+ * What the shipped check (draftAttempt) would flag: each scene against the
+ * nearby scenes written before it, as a sequential run sees them.
+ */
+function shippedFlags(proses, names) {
+  let flagged = 0
+  proses.forEach((prose, i) => {
+    const written = proses.slice(0, i).map((p, k) => ({ sceneNumber: k + 1, prose: p }))
+    if (nearbyOpeningReuse(prose, written, i, names).length) flagged++
+  })
+  return { flagged, judged: Math.max(proses.length - 1, 0) }
+}
 
 const ROOT = join(__dirname, '../../..')
 const OUT = join(ROOT, 'reports/live/opening-reuse')
@@ -79,7 +92,13 @@ it('measures opening-image reuse in generated and published books', () => {
     scenes.sort((a, b) => Number(a.order) - Number(b.order))
     const proses = scenes.map((s) => String(s.prose || ''))
     const names = guessNames(proses.join('\n'))
-    rows.push({ kind: 'generated', book: source, names, ...bookOpeningReuse(proses, names) })
+    rows.push({
+      kind: 'generated',
+      book: source,
+      names,
+      shipped: shippedFlags(proses, names),
+      ...bookOpeningReuse(proses, names)
+    })
   }
 
   const rawDir = join(ROOT, 'reports/live/masterpieces/raw')
@@ -92,6 +111,7 @@ it('measures opening-image reuse in generated and published books', () => {
       kind: 'published',
       book: `${f} ${title?.trim()}`,
       names,
+      shipped: shippedFlags(proses, names),
       ...bookOpeningReuse(proses, names)
     })
   }

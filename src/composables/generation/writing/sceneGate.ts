@@ -32,7 +32,7 @@ import { RECENT_SCENE_LOG_LIMIT, SCENE_MAX_ATTEMPTS } from './limits'
 import { buildStoryStateContext } from '../context/sceneContext'
 import { spineContextFromProse } from '../context/spine'
 import { dropCopiedSentences } from '../../../services/generation/copyGuard'
-import { buildRecentOpeningsContext } from '../../../services/generation/openingReuse'
+import { nearbyOpeningReuse } from '../../../services/generation/openingReuse'
 
 /**
  * Everything the scene gate reaches for in the orchestrator's scope.
@@ -578,12 +578,6 @@ export function createSceneGate(ctx: SceneGateContext) {
       maxAttempts
     } = args
     throwIfAborted()
-    // Computed here, not by the callers, so the legacy and graph strategies
-    // both get it (#66). Only a scene's first section opens it.
-    const recentOpenings =
-      scene.sectionIndex == null || scene.sectionIndex === 1
-        ? buildRecentOpeningsContext(writtenScenes.value, sceneIndex)
-        : ''
     let fullProse = ''
     try {
       const result: DraftedScene = await writer.writeSceneStructured({
@@ -592,7 +586,6 @@ export function createSceneGate(ctx: SceneGateContext) {
         chapterLog,
         storyBible,
         storyState,
-        recentOpenings: recentOpenings || undefined,
         spineContext: args.spine ?? spineContext.value,
         anchorRole,
         anchorConstraints,
@@ -613,15 +606,7 @@ export function createSceneGate(ctx: SceneGateContext) {
       // (§47): 7 of 8 chapters of a live branch opened with or reused a
       // passage of the chapter before. Those sentences are removed here, for
       // every strategy, and counted.
-      // The openings it was shown are context too: a copied one is removed.
-      const guarded = dropCopiedSentences(
-        result.prose,
-        recentOpenings
-          ? `${embeddingContext}
-
-${recentOpenings}`
-          : embeddingContext
-      )
+      const guarded = dropCopiedSentences(result.prose, embeddingContext)
       if (guarded.dropped) {
         runHealth.record('copied_context', {
           stage: 'writer',
@@ -633,6 +618,29 @@ ${recentOpenings}`
           scenePhase,
           `\n⚠ Removed ${guarded.dropped} sentences (${guarded.words} words) copied from the preceding scenes.\n`
         )
+      }
+      // #66: an opening on an image a nearby scene already opened on. Only a
+      // scene's first section opens it. Reported, not repaired (§49).
+      if (scene.sectionIndex == null || scene.sectionIndex === 1) {
+        const names = (storyBibleStore?.characters || []).map(
+          (c: { name?: string }) => c?.name || ''
+        )
+        const reuse = nearbyOpeningReuse(guarded.prose, writtenScenes.value, sceneIndex, names)
+        if (reuse.length) {
+          const where = reuse
+            .map((r) => `scene ${r.sceneNumber} (${r.shared.join(', ')})`)
+            .join('; ')
+          runHealth.record('opening_reuse', {
+            stage: 'writer',
+            sceneIndex,
+            detail: `opens on an image a nearby scene already opened on: ${where}`
+          })
+          actLog.appendThought(
+            ctx.currentTaskId,
+            scenePhase,
+            `\n⚠ This scene opens on an image nearby scenes already used: ${where}.\n`
+          )
+        }
       }
       return { ok: true, prose: guarded.prose, structured: result.structured }
     } catch (err: unknown) {

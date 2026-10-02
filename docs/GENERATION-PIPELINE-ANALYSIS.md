@@ -2710,3 +2710,66 @@ Next: show the writer less to copy (the last paragraph of the preceding
 scene and summaries of the others, not three 1,200-character tails) and
 measure whether the guard then has anything left to remove; and a branch
 written with the critic running, since none so far has been.
+
+## 49. Scenes that open on the same image (2026-10-02, issue #66)
+
+UX-AUDIT #59: "cold wind biting into her skin like an old wound" opened
+three of ten scenes. Section 46's repetition check cannot see this: it
+looks for six-word phrases two scenes share, and a reused image is
+reworded every time. What survives the rewording is the pair of content
+words that carries the image.
+
+**The measure** (`services/generation/openingReuse.ts`, no model): a
+scene's opening is its first sentence, 20-40 words; its image pairs are
+adjacent content words with stopwords and character names dropped and a
+light stem ("boot sink", "damp earth", "finger brush"). Two openings reuse
+an image when they share a pair. Run over what is on disk
+(`openingReuse.measure.live.js`): generated books reuse an earlier
+opening's image in **30 of 70 openings (43 %)**, the 30-scene salt-road
+book in 15 of 29 ("damp earth" ×6, "finger brush" ×4, "coarse fabric" ×3).
+The chapter openings of six Gutenberg books do it in **14 of 114 (12 %)**,
+and those are mostly names and stock phrases ("time machine", "great
+deal", "long time"), not images.
+
+**Two sources.** The planner repeats its own sensory anchors: 14 of the
+29 salt-road anchors share an image with an earlier one ("the scent of
+damp earth" is the anchor of six scenes), and the writer opens on its
+anchor in 16 of 30 scenes. But only 5 of the 15 reusing openings take the
+image from their own anchor. The rest are the writer's habits: kneeling
+beside something, fingers brushing, boots sinking, coarse fabric.
+
+**Tried: tell the writer** (e44c8883). An OPENINGS ALREADY USED block
+beside the brief listed the 8 nearest written openings and said not to
+open on the same image, gesture or sentence shape, and to move a repeated
+anchor out of the first paragraph. Budgeted last, fed to the copy guard.
+Paired probe, the same design as the continuity probe (same brief, bible, chapter log and
+retrieved context; only the block differs), qwen3:8b, 6 scenes × 4
+repeats × 2 arms, 0 errors, 28 min:
+
+                                   no block   block
+  openings reusing an earlier one   16/24     21/24
+  ... reusing one of the 8 shown    11/24     15/24
+  scenes better / worse                0 / 3
+  exact sign-flip p (6 pairs)           0.25
+  longest run shared with a shown   2.7 words  4.4 (max 19)
+
+Not significant, and every scene that moved moved the wrong way. The
+writer lifted phrases out of the openings it was told to avoid: "sharp
+enough to cut through the morning haze and the scent of damp earth" (19
+words, scene 19's opening), "unspoken promise", "pressed her palm". The
+§47 lesson again: this model copies whatever it is shown, however it is
+labelled. The block is reverted.
+
+**Shipped: report it.** `draftAttempt` compares each draft's opening with
+the openings of the 8 nearest written scenes (either side: under
+anchor-first writing a middle scene is written after its neighbours) and
+records `opening_reuse` in runHealth, naming the scene and the image in
+the activity log. The prose is not touched and nothing is budgeted.
+Replayed over the same books as a sequential run sees them, it flags
+**28 of 70** generated openings and **12 of 114** published ones.
+
+Not done: the planner's repeated anchors are the cheaper half to attack,
+since they are a list the code can check before a word is written; and
+whether a flagged scene should be offered "Rewrite this scene" (§40) with
+the image named is a product call. Not claimed: that a run reuses less.
+Nothing here changes what the writer writes.

@@ -146,36 +146,56 @@ export function bookOpeningReuse(proses: string[], names: string[] = []) {
 }
 
 /**
- * Most openings shown to the writer: about 8 × 30 words, ~350 tokens. Nearby
- * scenes are the ones a reader holds in mind; the measure found reuse up to
- * 26 scenes apart, but the window is a prompt budget, not a claim about
- * memory.
+ * Nearby written scenes an opening is compared with. Nearby, because those are
+ * the openings a reader still holds; the measure found reuse up to 26 scenes
+ * apart, but a flag for scene 27 against scene 1 is not one a writer acts on.
  */
-export const RECENT_OPENINGS_MAX = 8
+export const NEARBY_OPENINGS = 8
+
+type WrittenLike = { prose?: string; sceneNumber?: number } | null | undefined
 
 /**
- * The openings of the written scenes nearest this one, in story order, for the
- * writer's brief: "these images are taken". Nearest by position, either side —
- * under anchor-first writing a chapter's closing scene is written before its
- * middle, and a middle scene must not open like either neighbour.
+ * The written scenes nearest `sceneIndex`, either side, in story order. Either
+ * side because under anchor-first writing a chapter's closing scene is written
+ * before its middle, and a middle scene must not open like either neighbour.
  */
-export function buildRecentOpeningsContext(
-  writtenScenes: ReadonlyArray<{ prose?: string; sceneNumber?: number } | null | undefined>,
+export function nearestWrittenScenes(
+  writtenScenes: ReadonlyArray<WrittenLike>,
   sceneIndex: number,
-  max = RECENT_OPENINGS_MAX
-): string {
-  const near = (writtenScenes || [])
-    .map((scene, index) => ({ scene, index }))
-    .filter(({ scene, index }) => index !== sceneIndex && String(scene?.prose || '').trim())
+  max = NEARBY_OPENINGS
+): Array<{ index: number; sceneNumber: number; prose: string }> {
+  return (writtenScenes || [])
+    .map((scene, index) => ({
+      index,
+      sceneNumber: scene?.sceneNumber ?? index + 1,
+      prose: String(scene?.prose || '')
+    }))
+    .filter((s) => s.index !== sceneIndex && s.prose.trim())
     .sort(
       (a, b) => Math.abs(a.index - sceneIndex) - Math.abs(b.index - sceneIndex) || a.index - b.index
     )
     .slice(0, max)
     .sort((a, b) => a.index - b.index)
-  return near
-    .map(
-      ({ scene, index }) =>
-        `- Scene ${scene?.sceneNumber ?? index + 1}: "${openingOf(scene?.prose || '')}"`
-    )
-    .join('\n')
+}
+
+/**
+ * The check that ships (#66): does this draft open on an image a nearby
+ * written scene already opened on? It reports and changes nothing. Telling
+ * the writer which openings were taken made reuse worse (16/24 -> 21/24,
+ * §49), because this model copies what it is shown, so the openings stay out
+ * of the prompt and the finding goes to the run's health ledger instead.
+ */
+export function nearbyOpeningReuse(
+  prose: string,
+  writtenScenes: ReadonlyArray<WrittenLike>,
+  sceneIndex: number,
+  names: string[] = [],
+  max = NEARBY_OPENINGS
+): Array<{ sceneNumber: number; shared: string[] }> {
+  const near = nearestWrittenScenes(writtenScenes, sceneIndex, max)
+  return reusedImages(
+    openingOf(prose),
+    near.map((s) => openingOf(s.prose)),
+    names
+  ).map((r) => ({ sceneNumber: near[r.earlier].sceneNumber, shared: r.shared }))
 }

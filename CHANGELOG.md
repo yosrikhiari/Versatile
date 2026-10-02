@@ -7,6 +7,19 @@ was verified.
 
 ## [Unreleased]
 
+### Live draft, continuity fixes, reused openings (2026-10-02)
+- **The live draft follows only while the writer has not moved** (#65,
+  1d942880). A writer who opens another scene, a chapter or the root
+  document during a run stays there.
+- **Continuity fixes are opt-in** (#64, 94276ed5). A "Fix continuity
+  issues" switch (one-click runs); off by default, the audit still lists
+  the issues.
+- **Scenes that open on a nearby scene's image are reported** (#66, §49,
+  `services/generation/openingReuse.ts`). Generated books do it in 43 % of
+  openings, published ones in 12 %. Showing the writer the openings to
+  avoid made it worse (16/24 -> 21/24 on a paired probe; e44c8883), so the
+  check only records `opening_reuse` in runHealth and leaves the prose.
+
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,
   2a1632f9). The writer is shown how the preceding scenes end and copied
