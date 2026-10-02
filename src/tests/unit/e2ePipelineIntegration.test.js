@@ -443,3 +443,39 @@ describe('writer prompt — established facts', () => {
     expect(prompt).not.toContain('ESTABLISHED FACTS')
   })
 })
+
+/**
+ * #66: the nearby openings reach the prompt, beside the brief whose sensory
+ * anchor may be the repeat itself, and say what to do when it is.
+ */
+describe('writer prompt — openings already used', () => {
+  it('sends the openings just before the brief, with the anchor rule', async () => {
+    mockAiGenerate.mockResolvedValue('Nesrin walked the salt road at dawn.')
+    mockAiGenerateJson.mockResolvedValue(mockMetadata)
+
+    const { useStoryWriter } = await import('@/composables/useStoryWriter')
+    await useStoryWriter().writeSceneStructured({
+      sceneBrief: baseBrief,
+      storyArc: defaultArc,
+      recentOpenings: '- Scene 1: "Nesrin knelt beside the well, knuckles in damp earth."'
+    })
+
+    const prompt = String(mockAiGenerate.mock.calls.at(-1)?.[0] || '')
+    const at = prompt.indexOf('OPENINGS ALREADY USED')
+    expect(at).toBeGreaterThan(-1)
+    expect(prompt).toContain('knuckles in damp earth')
+    expect(prompt).toContain('sensory anchor below repeats one of them')
+    expect(prompt.indexOf('SCENE BRIEF:')).toBeGreaterThan(at)
+  })
+
+  it('emits no section when no scene is written yet', async () => {
+    mockAiGenerate.mockResolvedValue('Nesrin walked the salt road at dawn.')
+    mockAiGenerateJson.mockResolvedValue(mockMetadata)
+
+    const { useStoryWriter } = await import('@/composables/useStoryWriter')
+    await useStoryWriter().writeSceneStructured({ sceneBrief: baseBrief, storyArc: defaultArc })
+
+    const prompt = String(mockAiGenerate.mock.calls.at(-1)?.[0] || '')
+    expect(prompt).not.toContain('OPENINGS ALREADY USED')
+  })
+})

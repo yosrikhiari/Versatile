@@ -184,7 +184,9 @@ const SCENE_PRIORITY: Record<string, number> = {
   // because a fact is a shorter and harder statement of the same history.
   storyState: 45,
   sceneContext: 40,
-  chapterLog: 30
+  chapterLog: 30,
+  // How nearby scenes open (#66): a style aid, the first thing to go.
+  recentOpenings: 20
 }
 
 const DEFAULT_CONTEXT_TOKENS = 16384
@@ -198,6 +200,7 @@ export function fitSceneContext({
   sceneContext = '',
   logSummary = '',
   storyState = '',
+  recentOpenings = '',
   outputTokens = 2240,
   contextTokens = DEFAULT_CONTEXT_TOKENS
 }: {
@@ -208,6 +211,7 @@ export function fitSceneContext({
   sceneContext?: string
   logSummary?: string
   storyState?: string
+  recentOpenings?: string
   outputTokens?: number
   contextTokens?: number
 } = {}): {
@@ -218,6 +222,7 @@ export function fitSceneContext({
   logSummary: string
   sceneContext: string
   storyState: string
+  recentOpenings: string
   note: string
   fits: boolean
 } {
@@ -247,7 +252,8 @@ export function fitSceneContext({
       { name: 'spine', text: spineContext, priority: SCENE_PRIORITY.spine, minTokens: 200 },
       { name: 'storyState', text: storyState, priority: SCENE_PRIORITY.storyState },
       { name: 'chapterLog', text: logSummary, priority: SCENE_PRIORITY.chapterLog },
-      { name: 'sceneContext', text: sceneContext, priority: SCENE_PRIORITY.sceneContext }
+      { name: 'sceneContext', text: sceneContext, priority: SCENE_PRIORITY.sceneContext },
+      { name: 'recentOpenings', text: recentOpenings, priority: SCENE_PRIORITY.recentOpenings }
     ],
     budget
   )
@@ -262,6 +268,7 @@ export function fitSceneContext({
     storyState: pick('storyState'),
     logSummary: pick('chapterLog'),
     sceneContext: pick('sceneContext'),
+    recentOpenings: pick('recentOpenings'),
     note: describeBudget(result),
     fits: result.fits
   }

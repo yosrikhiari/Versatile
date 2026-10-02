@@ -890,6 +890,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     chapterLog,
     storyBible,
     storyState,
+    recentOpenings,
     onChunk,
     onRawChunk,
     embeddingContext,
@@ -910,6 +911,8 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
     storyArc: StoryArc | null | undefined
     chapterLog?: string
     storyState?: string
+    /** How the nearest written scenes open, one line each (#66). */
+    recentOpenings?: string
     storyBible?: string
     onChunk?: ChunkHandler
     onRawChunk?: (chunk: string) => void
@@ -1031,6 +1034,7 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         sceneContext,
         logSummary,
         storyState,
+        recentOpenings,
         outputTokens
       })
       if (fitted.note) {
@@ -1108,6 +1112,14 @@ Write ONLY the prose for scene ${sceneId}. Start writing immediately.`
         ? `\nESTABLISHED FACTS (what earlier chapters actually established — these are true, and take precedence over the spine's plan where they differ):\n${fitted.storyState}\n`
         : ''
 
+      // The writer opens scene after scene on the same picture (UX-AUDIT #59:
+      // "damp earth" opens 6 of 30 salt-road scenes, "fingers brushing" 4).
+      // Placed beside the brief because the brief's sensory anchor is
+      // sometimes the repeat itself: the planner reuses anchors too.
+      const openingsSection = fitted.recentOpenings
+        ? `OPENINGS ALREADY USED (how nearby scenes begin). Do not open this scene on the same image, gesture or sentence shape as one of these, and do not quote them. If the sensory anchor below repeats one of them, bring it in later in the scene, not in the first paragraph:\n${fitted.recentOpenings}\n\n`
+        : ''
+
       const userPrompt = `${contractSection}${spineSection}${stateSection}${anchorSection}
 Write scene ${sceneId}: "${sceneTitle}"
 
@@ -1115,7 +1127,7 @@ CHAPTER LOG (what has happened before this scene):
 ${fitted.logSummary || '(This is the first scene — nothing has happened yet.)'}
 
 ${fitted.sceneContext ? `PREVIOUSLY ESTABLISHED (from existing story content):\n${fitted.sceneContext}\n` : ''}
-SCENE BRIEF:
+${openingsSection}SCENE BRIEF:
 ${briefSection}
 
 STORY ARC (for tonal reference):
