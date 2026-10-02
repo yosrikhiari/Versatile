@@ -287,7 +287,20 @@ export function gateProseQuality(
     }
   }
 
-  if (baselineWordCount > 0 && currentWordCount > 0 && baselineWordCount !== currentWordCount) {
+  // The ratio catches a retry drifting from the first attempt: losing half the
+  // scene, or padding it. It is not drift when the retry lands closer to the
+  // target than the first attempt did (#104): a first attempt that came back
+  // at 841 of 1,200 words made its on-target retry (1,187) "bloated" at 1.41,
+  // and the short draft was kept. Moving away from the target still counts.
+  const towardTarget =
+    targetWordCount > 0 &&
+    Math.abs(currentWordCount - targetWordCount) < Math.abs(baselineWordCount - targetWordCount)
+  if (
+    !towardTarget &&
+    baselineWordCount > 0 &&
+    currentWordCount > 0 &&
+    baselineWordCount !== currentWordCount
+  ) {
     const ratio = currentWordCount / baselineWordCount
     const { min, max } = DEFINITION_OF_MASTERPIECE.proseQuality.lengthRatio
     if (ratio < min) {

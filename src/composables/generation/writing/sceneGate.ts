@@ -412,7 +412,16 @@ export function createSceneGate(ctx: SceneGateContext) {
         baselineWordCount
       })
       const criticResult = judged.criticResult
-      if (!chosenEval || attemptScore(criticResult) > attemptScore(chosenEval)) {
+      // An attempt the gate accepts is the scene, whatever its score says --
+      // the rule the repair path below already follows. By score alone, an
+      // 841-word first attempt that failed for being short (8) beat its
+      // accepted, on-target retry (7.8) (#104). Accepted because the critic
+      // could not run is not a verdict, so it does not displace a judged draft.
+      if (
+        (judged.accept && !criticResult?.evalUnavailable) ||
+        !chosenEval ||
+        attemptScore(criticResult) > attemptScore(chosenEval)
+      ) {
         chosenProse = proseText
         chosenStructured = structured
         chosenEval = criticResult

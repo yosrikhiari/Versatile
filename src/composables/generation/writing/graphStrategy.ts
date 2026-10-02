@@ -548,7 +548,12 @@ export function createGraphStrategy(ctx: ParallelStrategyContext, sceneGate: Gra
         const consider = (d: DraftedScene, v: CriticVerdict) => {
           if (!best || attemptScore(v) > attemptScore(best.verdict)) best = { draft: d, verdict: v }
         }
-        consider(draft, judged.criticResult)
+        // An accepted draft is the scene, whatever its score (#104), as an
+        // accepted repair already is below -- unless it was accepted only
+        // because the critic could not run.
+        if (judged.accept && !judged.criticResult?.evalUnavailable)
+          best = { draft, verdict: judged.criticResult }
+        else consider(draft, judged.criticResult)
 
         // Repair in place before the Editor sees a failure (§25), on this lane:
         // cutting located filler and rewriting a contradicting sentence are

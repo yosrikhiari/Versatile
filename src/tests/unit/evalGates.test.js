@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../services/aiService', () => ({
   aiGenerate: (...args) => mockAiGenerate(...args)
@@ -304,6 +304,37 @@ describe('gateProseQuality — word target', () => {
     // start failing scenes for missing a number nobody set.
     const result = gateProseQuality(goodCritique, 0, 200)
     expect(result.flags.some((f) => f.includes('target'))).toBe(false)
+  })
+})
+
+describe('gateProseQuality — a retry moving toward the target is not drift (#104)', () => {
+  let gateProseQuality
+  beforeEach(async () => {
+    gateProseQuality = (await import('../../services/evalGates')).gateProseQuality
+  })
+  const ok = { score: 8, dimensionScores: { prose: 8, pacing: 8, continuity: 8 }, pass: true }
+  const ratioFlag = (r) => r.flags.find((f) => f.startsWith('Word count ratio'))
+
+  it('passes an on-target retry of a short first attempt (the watched run: 841 -> 1,187 of 1,200)', () => {
+    const r = gateProseQuality(ok, 841, 1187, 1200)
+    expect(ratioFlag(r)).toBeUndefined()
+    expect(r.pass).toBe(true)
+  })
+
+  it('passes an on-target retry of a long first attempt', () => {
+    expect(ratioFlag(gateProseQuality(ok, 1700, 1150, 1200))).toBeUndefined()
+  })
+
+  it('still calls a retry that moves away from the target bloated', () => {
+    expect(ratioFlag(gateProseQuality(ok, 841, 1800, 1200))).toMatch(/bloated/)
+  })
+
+  it('still calls a retry that loses half an on-target scene truncated', () => {
+    expect(ratioFlag(gateProseQuality(ok, 1150, 500, 1200))).toMatch(/truncated/)
+  })
+
+  it('keeps the ratio check when there is no target', () => {
+    expect(ratioFlag(gateProseQuality(ok, 1000, 1500))).toMatch(/bloated/)
   })
 })
 

@@ -271,6 +271,26 @@ describe('graph strategy — repair in place (§25)', () => {
   })
 })
 
+describe('graph strategy — an accepted retry is the scene (#104)', () => {
+  it('commits the accepted retry over an earlier failed draft that scored higher', async () => {
+    const { ctx, writtenScenes } = makeCtx()
+    const { gate } = makeGate({
+      verdicts: {
+        1: [
+          { score: 8, pass: false },
+          { score: 7.8, pass: true }
+        ]
+      }
+    })
+    const { runGraphGeneration } = createGraphStrategy(ctx, gate)
+    await runGraphGeneration(
+      { projectId: 'p1', storyArc: null, storyBibleDocs: '', storyContract: '', onChunk: null },
+      { mode: 'workflow', lookahead: 2 }
+    )
+    expect(writtenScenes.value[1].prose).toMatch(/^prose 1 attempt 1/)
+  })
+})
+
 describe('graph strategy — workflow mode', () => {
   it('writes every scene, critiques while drafting, revises a failed scene, syncs each chapter, and logs every step', async () => {
     const { ctx, manuscriptStore, writtenScenes } = makeCtx()

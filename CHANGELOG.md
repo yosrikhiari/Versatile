@@ -30,6 +30,10 @@ was verified.
   Focus takes the dock; opening one used to stop a Chapter run and orphan an
   Arc run. The Chapter tab also gets the "Fix continuity issues" switch
   (b7f1b896).
+- **A retry that fixes a short scene is kept** (#104). The length ratio no
+  longer calls a retry "bloated" for moving toward the target from a short
+  first attempt, and an attempt the gate accepts is committed over an
+  earlier failed one even when the critic scored the failed one higher.
 
 ### The writer stops copying its context; the critic judges continuation scenes (2026-09-29)
 - **Copied context is removed** (§47, `services/generation/copyGuard.ts`,
