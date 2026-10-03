@@ -14,6 +14,18 @@ was verified.
   row. The panel opens on Scene, or on the last mode used in the project, and
   an "open on this tab" request still wins. `BaseSegmented` with nothing
   checked is reachable by Tab again.
+- **Dependencies:** 14 minor Dependabot updates landed together (410cfc6f
+  for npm; the .NET bumps through ee3dc853), then pinia 4.0.3 and
+  @vueuse/core 15.0.0 (92cb18af). Pinia 4 is ESM-only and needs
+  `@vue/devtools-api` 8; VueUse 15 removed nothing the app uses.
+- **The router guard returns its redirect** instead of calling `next()`,
+  which vue-router 5 deprecates (the console warned on every navigation).
+- **Hand-written scenes get their digests.** The digest backfill queued
+  payloads built from store rows, whose `charactersPresent` arrays are Vue
+  proxies; IndexedDB cannot clone a proxy, so every changed scene failed with
+  DataCloneError and never got a digest (the sample had none). Queued
+  payloads are now made plain (`toPlain`), and `enqueueAnalysisTasks`
+  returns every id, as its type says, not only the last.
 
 ### Live draft, continuity fixes, reused openings (2026-10-02)
 - **The live draft follows only while the writer has not moved** (#65,

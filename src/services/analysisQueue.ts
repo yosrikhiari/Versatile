@@ -10,6 +10,7 @@
  * tracked for resumable progress reporting.
  */
 
+import { toPlain } from '../utils/toPlain'
 import { db as _db } from './db-core'
 
 const db = _db as any
@@ -65,7 +66,10 @@ export async function enqueueAnalysisTasks(
   const items = tasks.map((t) => ({
     projectId,
     taskType: t.taskType,
-    payload: t.payload,
+    // Callers build payloads from store rows, whose arrays are Vue proxies
+    // (a scene's `charactersPresent`); IndexedDB cannot clone a proxy, and
+    // the digest backfill failed with DataCloneError on every changed scene.
+    payload: toPlain(t.payload),
     status: 'pending' as const,
     progress: 0,
     createdAt: now,
@@ -73,7 +77,8 @@ export async function enqueueAnalysisTasks(
     retryCount: 0,
     maxRetries: t.maxRetries ?? 3
   }))
-  const ids = await db.analysisQueue.bulkAdd(items)
+  // `allKeys`: without it Dexie returns only the last key, not the promised list.
+  const ids = await db.analysisQueue.bulkAdd(items, { allKeys: true })
   return ids as number[]
 }
 
