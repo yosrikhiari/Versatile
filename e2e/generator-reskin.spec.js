@@ -24,24 +24,34 @@ async function openGenerator(page) {
 }
 
 test('the active mode is visibly and accessibly selected', async ({ page }) => {
-  // The panel pass replaced the accent-bordered pill with a segmented
-  // control: one accent, never as a fill or border on a control. Selection
-  // is the elevated surface plus `aria-selected`, which is what a screen
-  // reader announces and what this asserts.
+  // One row of write modes (UX-ENHANCEMENTS #08), opening on Scene. Selection
+  // is the elevated surface plus `aria-checked`, which is what a screen
+  // reader announces and what this asserts; one accent, never as a fill.
   await openGenerator(page)
-  const active = page.locator('aside.tool-panel [data-test="tab-brainstorm"]')
+  const modes = page.locator('aside.tool-panel').getByRole('radiogroup', { name: 'What to write' })
+  const active = modes.getByRole('radio', { name: 'Scene' })
   await expect(active).toBeVisible()
-  await expect(active).toHaveAttribute('aria-selected', 'true')
+  await expect(active).toHaveAttribute('aria-checked', 'true')
   await expect(active).toHaveClass(/bg-bg-elevated/)
 
-  // `tab-scene` is always rendered; the Chapter tab is behind a setting.
-  const inactive = page.locator('aside.tool-panel [data-test="tab-scene"]')
-  await expect(inactive).toHaveAttribute('aria-selected', 'false')
+  const inactive = modes.getByRole('radio', { name: 'Arc' })
+  await expect(inactive).toHaveAttribute('aria-checked', 'false')
   await expect(inactive).not.toHaveClass(/bg-bg-elevated/)
+  // Ideate and Blurb are not a second row of modes: they sit under More.
+  await expect(modes.getByRole('radio', { name: 'Ideate' })).toHaveCount(0)
 })
 
 test('spark shows a single flow with history reachable and no tab row', async ({ page }) => {
-  await openGenerator(page)
+  const generator = await openGenerator(page)
+  await generator.getByRole('button', { name: 'More' }).click()
+  await page.getByRole('menuitemradio', { name: /Ideate/ }).click()
+  await expect(generator.getByRole('button', { name: 'Ideate' })).toBeVisible()
+  // The prompt type is a row of filter chips, not a second segmented control.
+  const types = generator.getByRole('group', { name: 'Prompt type' })
+  await expect(types.getByRole('button', { name: 'Story seed' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
   // Old tab row is gone (buttons removed, not hidden).
   await expect(page.getByRole('button', { name: 'Develop idea' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Get prompts' })).toHaveCount(0)

@@ -18,7 +18,7 @@ import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import SectionContextSelector from '../shared/SectionContextSelector.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseSection from '../ui/BaseSection.vue'
-import BaseSegmented from '../ui/BaseSegmented.vue'
+import BaseChip from '../ui/BaseChip.vue'
 import BaseSwitch from '../ui/BaseSwitch.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseAlert from '../ui/BaseAlert.vue'
@@ -74,8 +74,8 @@ async function toggleContextPreview() {
 }
 
 const promptTypes = [
-  { value: 'seed', label: 'Story Seed' },
-  { value: 'scenario', label: 'Character Scenario' },
+  { value: 'seed', label: 'Story seed' },
+  { value: 'scenario', label: 'Character scenario' },
   { value: 'whatif', label: 'What If' },
   { value: 'obstacle', label: 'Obstacle' }
 ]
@@ -213,13 +213,19 @@ function clearHistory() {
           description="A seed, a scenario, a what-if or an obstacle — one paragraph from the model to write against."
         >
           <div class="space-y-3">
-            <BaseSegmented
-              v-model="sparkStore.selectedPromptType"
-              :options="promptTypes"
-              size="sm"
-              block
-              aria-label="Prompt type"
-            />
+            <!-- A filter on this one action, not a second level of mode
+                 (UX-ENHANCEMENTS #08): chips, not a segmented control. -->
+            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Prompt type">
+              <BaseChip
+                v-for="t in promptTypes"
+                :key="t.value"
+                variant="filter"
+                :active="sparkStore.selectedPromptType === t.value"
+                @click="sparkStore.selectedPromptType = t.value"
+              >
+                {{ t.label }}
+              </BaseChip>
+            </div>
 
             <div class="flex items-center justify-between gap-3">
               <BaseSwitch

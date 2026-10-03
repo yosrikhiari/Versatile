@@ -7,6 +7,14 @@ was verified.
 
 ## [Unreleased]
 
+### One row of modes in the Generator (2026-10-03)
+- **The Generator has one row of modes** (UX-ENHANCEMENTS #08). Scene /
+  Chapter / Arc in one segmented control; Ideate and Blurb under "More"; the
+  prompt type is a row of filter chips inside Ideate, not a second segmented
+  row. The panel opens on Scene, or on the last mode used in the project, and
+  an "open on this tab" request still wins. `BaseSegmented` with nothing
+  checked is reachable by Tab again.
+
 ### Live draft, continuity fixes, reused openings (2026-10-02)
 - **The live draft follows only while the writer has not moved** (#65,
   1d942880). A writer who opens another scene, a chapter or the root

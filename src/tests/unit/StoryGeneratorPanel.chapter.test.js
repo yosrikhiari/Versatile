@@ -151,10 +151,26 @@ async function flush(wrapper) {
   await wrapper.vm.$nextTick()
 }
 
-async function mountPanel() {
-  const wrapper = mount(StoryGeneratorPanel, { global: { stubs } })
+async function mountPanel(props = {}) {
+  const wrapper = mount(StoryGeneratorPanel, { props, global: { stubs }, attachTo: document.body })
   await flush(wrapper)
   return wrapper
+}
+
+/** The write modes are one radiogroup (UX-ENHANCEMENTS #08). */
+function modeLabels(wrapper) {
+  return wrapper.findAll('[data-test="generator-modes"] [role="radio"]').map((b) => b.text())
+}
+function checkedMode(wrapper) {
+  const on = wrapper.find('[data-test="generator-modes"] [role="radio"][aria-checked="true"]')
+  return on.exists() ? on.text() : null
+}
+/** Ideate and Blurb live under More, in a popover teleported to the body. */
+async function chooseMore(wrapper, mode) {
+  await wrapper.find('[data-test="generator-more"]').trigger('click')
+  await wrapper.vm.$nextTick()
+  document.querySelector(`[data-test="generator-more-${mode}"]`).click()
+  await wrapper.vm.$nextTick()
 }
 
 async function switchTo(wrapper, label) {
@@ -172,6 +188,8 @@ describe('StoryGeneratorPanel — chapter tab', () => {
     // the project's category and description.
     const projectStore = useProjectStore()
     projectStore.currentProjectId = 'p1'
+    localStorage.clear()
+    document.body.innerHTML = ''
     projectStore.currentCategory = 'Fiction'
     projectStore.currentDescription = 'A hero walks into a storm and does not walk out the same.'
     vi.clearAllMocks()
@@ -286,8 +304,7 @@ describe('StoryGeneratorPanel — chapter tab', () => {
   it('hides the Chapter tab when the feature flag is off', async () => {
     useSettingsStore().enableChapterGeneration = false
     const wrapper = await mountPanel()
-    expect(wrapper.find('[data-test="tab-chapter"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="tab-arc"]').exists()).toBe(true)
+    expect(modeLabels(wrapper)).toEqual(['Scene', 'Arc'])
     expect(wrapper.find('[data-test="chapter-pipeline"]').exists()).toBe(false)
   })
 
@@ -299,12 +316,80 @@ describe('StoryGeneratorPanel — chapter tab', () => {
     useSettingsStore().enableChapterGeneration = false
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-test="chapter-pipeline"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="tab-chapter"]').exists()).toBe(false)
+    expect(modeLabels(wrapper)).not.toContain('Chapter')
+    expect(checkedMode(wrapper)).toBe('Scene')
   })
 
   it('stops the chapter run when the panel unmounts', async () => {
     const wrapper = await mountPanel()
     wrapper.unmount()
     expect(chapterGen.destroy).toHaveBeenCalled()
+  })
+})
+
+// UX-ENHANCEMENTS #08 / UX-AUDIT "next pass": the panel opened on Ideate with
+// five tabs and then a "Prompt type" row, two levels of mode before anything
+// happened, and forgot the mode when it closed.
+describe('StoryGeneratorPanel — one mode row (#08)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    useProjectStore().currentProjectId = 'p1'
+    localStorage.clear()
+    document.body.innerHTML = ''
+    vi.clearAllMocks()
+    volumeGen.phase.value = 'idle'
+    chapterGen.phase.value = 'idle'
+    chapterGen.getResumableRun.mockResolvedValue(null)
+  })
+
+  it('opens on Scene, with only the write modes in the row', async () => {
+    const wrapper = await mountPanel()
+    expect(modeLabels(wrapper)).toEqual(['Scene', 'Chapter', 'Arc'])
+    expect(checkedMode(wrapper)).toBe('Scene')
+    expect(wrapper.find('[data-test="generator-more"]').text()).toBe('More')
+  })
+
+  it('reaches Ideate and Blurb through More, which then names the mode', async () => {
+    const wrapper = await mountPanel()
+    await chooseMore(wrapper, 'brainstorm')
+    expect(wrapper.findComponent({ name: 'SparkPanel' }).exists()).toBe(true)
+    expect(checkedMode(wrapper)).toBeNull()
+    expect(wrapper.find('[data-test="generator-more"]').text()).toBe('Ideate')
+    // The popover closed on choosing.
+    expect(document.querySelector('[data-test="generator-more-blurb"]')).toBeNull()
+
+    await chooseMore(wrapper, 'blurb')
+    expect(wrapper.find('[data-test="generator-more"]').text()).toBe('Blurb')
+    expect(wrapper.findComponent({ name: 'SparkPanel' }).exists()).toBe(false)
+  })
+
+  it('reopens on the last mode used in this project, and only this one', async () => {
+    const first = await mountPanel()
+    await switchTo(first, 'Arc')
+    first.unmount()
+
+    const again = await mountPanel()
+    expect(checkedMode(again)).toBe('Arc')
+    again.unmount()
+
+    useProjectStore().currentProjectId = 'p2'
+    const other = await mountPanel()
+    expect(checkedMode(other)).toBe('Scene')
+    // Switching back to p1 inside the same panel takes p1's mode.
+    useProjectStore().currentProjectId = 'p1'
+    await other.vm.$nextTick()
+    expect(checkedMode(other)).toBe('Arc')
+  })
+
+  it('a requested tab wins over the remembered one', async () => {
+    localStorage.setItem('pref_generatorMode', JSON.stringify({ p1: 'brainstorm' }))
+    const wrapper = await mountPanel({ initialTab: 'chapter' })
+    expect(checkedMode(wrapper)).toBe('Chapter')
+  })
+
+  it('survives unreadable storage', async () => {
+    localStorage.setItem('pref_generatorMode', '{not json')
+    const wrapper = await mountPanel()
+    expect(checkedMode(wrapper)).toBe('Scene')
   })
 })

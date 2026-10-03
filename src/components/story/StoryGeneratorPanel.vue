@@ -15,6 +15,9 @@ import SparkPanel from '../spark/SparkPanel.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseSection from '../ui/BaseSection.vue'
+import BaseSegmented from '../ui/BaseSegmented.vue'
+import BasePopover from '../ui/BasePopover.vue'
+import { STORAGE_KEYS } from '../../config/storageKeys'
 import GenerationRunView from './GenerationRunView.vue'
 import GenerationSetupView from './GenerationSetupView.vue'
 import PreviousGenerationsList from './PreviousGenerationsList.vue'
@@ -63,28 +66,75 @@ const settingsStore = useSettingsStore()
 // only the way in disappears.
 const chapterTabEnabled = computed(() => settingsStore.enableChapterGeneration !== false)
 
-const tabs = computed(() =>
+/**
+ * One row of modes for what to write (UX-ENHANCEMENTS #08). Ideate and Blurb
+ * are not ways of writing the book, and are used far less, so they sit behind
+ * More instead of making a second level of mode on the first screen.
+ */
+const writeModes = computed(() =>
   [
-    { id: MODE_BRAINSTORM, label: 'Ideate' },
-    { id: MODE_SCENE, label: 'Scene' },
-    chapterTabEnabled.value ? { id: MODE_CHAPTER, label: 'Chapter' } : null,
-    { id: MODE_ARC, label: 'Arc' },
-    { id: MODE_BLURB, label: 'Blurb' }
+    { value: MODE_SCENE, label: 'Scene' },
+    chapterTabEnabled.value ? { value: MODE_CHAPTER, label: 'Chapter' } : null,
+    { value: MODE_ARC, label: 'Arc' }
   ].filter(Boolean)
 )
+const moreModes = [
+  { value: MODE_BRAINSTORM, label: 'Ideate', hint: 'Prompts and blueprints to write against' },
+  { value: MODE_BLURB, label: 'Blurb', hint: 'Back-cover copy for the book' }
+]
+const moreMode = computed(() => moreModes.find((m) => m.value === tab.value) || null)
 
 const props = defineProps({
-  /** 'scene' | 'chapter' | 'arc' — the tab to open on; null keeps Ideate. */
+  /** 'scene' | 'chapter' | 'arc' — the tab to open on; null keeps the last one used. */
   initialTab: { type: String, default: null }
 })
 const INITIAL_TABS = { scene: MODE_SCENE, chapter: MODE_CHAPTER, arc: MODE_ARC }
-const tab = ref(INITIAL_TABS[props.initialTab] || MODE_BRAINSTORM)
+const ALL_MODES = [MODE_SCENE, MODE_CHAPTER, MODE_ARC, MODE_BRAINSTORM, MODE_BLURB]
+
+/** The mode last used in each project, kept per viewer in the browser. */
+function readRememberedModes() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.GENERATOR_MODE)
+    const parsed = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+function rememberedMode(projectId) {
+  const mode = projectId != null ? readRememberedModes()[projectId] : null
+  if (!ALL_MODES.includes(mode)) return null
+  return mode === MODE_CHAPTER && !chapterTabEnabled.value ? MODE_SCENE : mode
+}
+function rememberMode(projectId, mode) {
+  if (projectId == null) return
+  try {
+    const all = readRememberedModes()
+    all[projectId] = mode
+    localStorage.setItem(STORAGE_KEYS.GENERATOR_MODE, JSON.stringify(all))
+  } catch {
+    // Storage blocked: the panel still works, it only forgets.
+  }
+}
+
+// Scene first: a brief and a button, not a choice of modes.
+const tab = ref(
+  INITIAL_TABS[props.initialTab] || rememberedMode(projectStore.currentProjectId) || MODE_SCENE
+)
+watch(tab, (next) => rememberMode(projectStore.currentProjectId, next))
 // The panel stays mounted once opened (#103), so a later "open on this tab"
-// arrives as a prop change, not as a fresh mount.
+// arrives as a prop change, not as a fresh mount, and a project switch inside
+// the editor takes that project's last mode.
 watch(
   () => props.initialTab,
   (next) => {
     if (INITIAL_TABS[next]) tab.value = INITIAL_TABS[next]
+  }
+)
+watch(
+  () => projectStore.currentProjectId,
+  (id) => {
+    tab.value = rememberedMode(id) || MODE_SCENE
   }
 )
 
@@ -121,7 +171,7 @@ const tabHint = computed(() => TAB_HINTS[tab.value] || '')
 // If the flag is turned off while the chapter tab is open, fall back rather
 // than leaving the panel on a tab that renders nothing.
 watch(chapterTabEnabled, (enabled) => {
-  if (!enabled && tab.value === MODE_CHAPTER) tab.value = MODE_BRAINSTORM
+  if (!enabled && tab.value === MODE_CHAPTER) tab.value = MODE_SCENE
 })
 
 const mode = computed(() =>
@@ -614,28 +664,48 @@ onBeforeUnmount(() => {
         <h2 class="type-display text-[11px] text-text-primary">Story tools</h2>
         <span class="font-ui text-xs text-text-hint">{{ tabHint }}</span>
       </div>
-      <div
-        class="flex w-full gap-0.5 p-0.5 rounded-lg border border-border-subtle bg-bg-primary"
-        role="tablist"
-        aria-label="Story tools"
-      >
-        <button
-          v-for="m in tabs"
-          :key="m.id"
-          role="tab"
-          type="button"
-          :data-test="`tab-${m.id}`"
-          :aria-selected="tab === m.id ? 'true' : 'false'"
-          class="flex-1 py-1.5 text-xs rounded-md font-ui font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          :class="
-            tab === m.id
-              ? 'bg-bg-elevated text-text-primary'
-              : 'text-text-hint hover:bg-surface-hover hover:text-text-secondary'
-          "
-          @click="tab = m.id"
-        >
-          {{ m.label }}
-        </button>
+      <div class="flex items-center gap-2">
+        <BaseSegmented
+          v-model="tab"
+          :options="writeModes"
+          block
+          aria-label="What to write"
+          class="flex-1 min-w-0"
+          data-test="generator-modes"
+        />
+        <BasePopover placement="bottom" align="end" :width="240" label="More story tools">
+          <template #trigger="{ open, toggle }">
+            <BaseButton
+              :variant="moreMode ? 'secondary' : 'ghost'"
+              size="sm"
+              icon="chevron-down"
+              icon-position="right"
+              :aria-expanded="open ? 'true' : 'false'"
+              aria-haspopup="menu"
+              data-test="generator-more"
+              @click="toggle"
+            >
+              {{ moreMode ? moreMode.label : 'More' }}
+            </BaseButton>
+          </template>
+          <template #default="{ close }">
+            <div role="menu" aria-label="More story tools" class="py-1">
+              <button
+                v-for="m in moreModes"
+                :key="m.value"
+                type="button"
+                role="menuitemradio"
+                :aria-checked="tab === m.value ? 'true' : 'false'"
+                :data-test="`generator-more-${m.value}`"
+                class="w-full text-left px-3 py-2 rounded-sm hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                @click="((tab = m.value), close())"
+              >
+                <span class="block font-ui text-xs text-text-primary">{{ m.label }}</span>
+                <span class="block font-ui text-2xs text-text-hint">{{ m.hint }}</span>
+              </button>
+            </div>
+          </template>
+        </BasePopover>
       </div>
     </div>
 

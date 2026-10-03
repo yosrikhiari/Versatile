@@ -27,7 +27,7 @@ test('the Generator keeps its state while another panel is open', async ({ page 
 
   await nav.getByRole('button', { name: 'Generator' }).click()
   await expect(generator).toBeVisible()
-  await generator.getByRole('tab', { name: 'Arc' }).click()
+  await generator.getByRole('radio', { name: 'Arc' }).click()
   const oneClick = generator.getByRole('switch').first()
   await oneClick.click()
   await expect(oneClick).toHaveAttribute('aria-checked', 'true')
@@ -41,7 +41,10 @@ test('the Generator keeps its state while another panel is open', async ({ page 
 
   await nav.getByRole('button', { name: 'Generator' }).click()
   await expect(generator).toBeVisible()
-  await expect(generator.getByRole('tab', { name: 'Arc' })).toHaveAttribute('aria-selected', 'true')
+  await expect(generator.getByRole('radio', { name: 'Arc' })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  )
   await expect(generator.getByRole('switch').first()).toHaveAttribute('aria-checked', 'true')
   await expect(generator.getByPlaceholder(/tense reunion/)).toHaveValue(
     'A harbour clerk and the boat that never left.'

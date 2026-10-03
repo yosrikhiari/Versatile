@@ -47,7 +47,9 @@ export const STORAGE_KEYS = {
   SESSION_GOAL: 'pref_sessionGoal',
   ACTIVE_LENSES: 'pref_activeLenses',
   SPARK_PROMPT_TYPE: 'pref_selectedPromptType',
-  SPARK_RELATE_PROJECT: 'pref_relateToProject'
+  SPARK_RELATE_PROJECT: 'pref_relateToProject',
+  /** `{ [projectId]: mode }`: the Generator reopens on the last mode used in each project. */
+  GENERATOR_MODE: 'pref_generatorMode'
 }
 
 /**

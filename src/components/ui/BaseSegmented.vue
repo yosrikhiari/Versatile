@@ -41,6 +41,16 @@ const iconSize = computed(() => (props.size === 'sm' ? 12 : 14))
 
 const isSelected = (option) => option.value === props.modelValue
 
+/**
+ * The segment Tab lands on: the checked one, or with none checked (the value
+ * lives elsewhere, e.g. a mode under a More menu) the first enabled one, as
+ * the WAI-ARIA radiogroup pattern asks. Otherwise every segment is
+ * tabindex -1 and the group cannot be reached from the keyboard.
+ */
+const tabStop = computed(
+  () => props.options.find(isSelected) || props.options.find((o) => !o.disabled)
+)
+
 function select(option) {
   if (props.disabled || option.disabled || isSelected(option)) return
   emit('update:modelValue', option.value)
@@ -88,7 +98,7 @@ function onKeydown(event) {
       type="button"
       role="radio"
       :aria-checked="isSelected(option) ? 'true' : 'false'"
-      :tabindex="isSelected(option) ? 0 : -1"
+      :tabindex="option === tabStop ? 0 : -1"
       :disabled="disabled || option.disabled"
       :class="[
         'inline-flex items-center justify-center rounded-md font-ui font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40',
