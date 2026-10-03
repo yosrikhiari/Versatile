@@ -39,16 +39,14 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+// Returns the redirect instead of calling `next()`, which vue-router 5
+// deprecates (VUE_ROUTER_R0025); `true` lets the navigation through.
+router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return next('/login')
-  }
+  if (to.meta.requiresAuth && !auth.isAuthenticated) return '/login'
   // A signed-in writer has no use for the login page.
-  if (to.name === 'login' && auth.isAuthenticated) {
-    return next('/workspace')
-  }
-  next()
+  if (to.name === 'login' && auth.isAuthenticated) return '/workspace'
+  return true
 })
 
 export default router
