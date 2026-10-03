@@ -65,7 +65,7 @@ function formatDate(iso) {
 </script>
 
 <template>
-  <div class="min-h-[100dvh] bg-manuscript text-text-primary overflow-y-auto">
+  <div class="min-h-dvh bg-manuscript text-text-primary overflow-y-auto">
     <header
       class="h-14 border-b border-border-subtle flex items-center justify-between px-6 lg:px-8"
     >

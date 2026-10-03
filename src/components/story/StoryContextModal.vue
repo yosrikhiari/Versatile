@@ -142,7 +142,7 @@ watch(
           </p>
         </div>
         <button
-          class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded shrink-0"
+          class="text-text-secondary hover:text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent rounded shrink-0"
           @click="emit('close')"
         >
           <BaseIcon name="x" :size="20" />
@@ -158,7 +158,7 @@ watch(
           v-else
           v-model="content"
           spellcheck="false"
-          class="w-full h-[52vh] resize-none rounded-lg border border-border-subtle bg-bg-secondary p-3 text-[13px] leading-relaxed text-text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+          class="w-full h-[52vh] resize-none rounded-lg border border-border-subtle bg-bg-secondary p-3 text-[13px] leading-relaxed text-text-primary font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
           placeholder="No context yet — click Rebuild from story to generate it."
         />
       </div>
@@ -175,7 +175,7 @@ watch(
             network.</span
           >
           <button
-            class="py-1 px-2.5 text-text-secondary hover:text-text-primary border border-border-subtle rounded-md focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+            class="py-1 px-2.5 text-text-secondary hover:text-text-primary border border-border-subtle rounded-md focus:outline-hidden focus:ring-1 focus:ring-accent disabled:opacity-50"
             :disabled="checking"
             @click="checkOrphans"
           >
@@ -192,13 +192,13 @@ watch(
             permanently?</span
           >
           <button
-            class="py-1 px-2.5 text-text-secondary hover:text-text-primary rounded-md focus:outline-none focus:ring-1 focus:ring-accent"
+            class="py-1 px-2.5 text-text-secondary hover:text-text-primary rounded-md focus:outline-hidden focus:ring-1 focus:ring-accent"
             @click="cancelClean"
           >
             Cancel
           </button>
           <button
-            class="py-1 px-2.5 bg-danger text-bg-primary rounded-md font-medium hover:bg-danger focus:outline-none focus:ring-1 focus:ring-danger disabled:opacity-50"
+            class="py-1 px-2.5 bg-danger text-bg-primary rounded-md font-medium hover:bg-danger focus:outline-hidden focus:ring-1 focus:ring-danger disabled:opacity-50"
             :disabled="cleaning"
             @click="confirmClean"
           >
@@ -215,14 +215,14 @@ watch(
         </span>
         <div class="flex items-center gap-2">
           <button
-            class="py-1.5 px-3 text-xs text-text-secondary hover:text-text-primary border border-border-subtle rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+            class="py-1.5 px-3 text-xs text-text-secondary hover:text-text-primary border border-border-subtle rounded-md font-ui focus:outline-hidden focus:ring-1 focus:ring-accent disabled:opacity-50"
             :disabled="rebuilding || loading"
             @click="handleRebuild"
           >
             {{ rebuilding ? 'Rebuilding…' : 'Rebuild from story' }}
           </button>
           <button
-            class="py-1.5 px-4 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+            class="py-1.5 px-4 text-xs btn-primary rounded-md font-ui focus:outline-hidden focus:ring-1 focus:ring-accent disabled:opacity-50"
             :disabled="!dirty || saving || loading"
             @click="handleSave"
           >

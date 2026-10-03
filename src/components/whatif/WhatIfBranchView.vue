@@ -193,7 +193,7 @@ const text = (html) => stripHtmlBlock(html || '')
           rows="2"
           :disabled="status !== 'planned' && status !== 'forked'"
           aria-label="The change, as a fact"
-          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent resize-y"
+          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary font-ui focus:outline-hidden focus:ring-1 focus:ring-accent resize-y"
           @change="persist"
         />
       </BaseSection>
@@ -295,7 +295,7 @@ const text = (html) => stripHtmlBlock(html || '')
               rows="2"
               :disabled="status !== 'planned'"
               :aria-label="`What scene ${s.sceneNumber} must now show`"
-              class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded-md text-text-secondary font-ui focus:outline-none focus:ring-1 focus:ring-accent resize-y"
+              class="w-full px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded-md text-text-secondary font-ui focus:outline-hidden focus:ring-1 focus:ring-accent resize-y"
               @change="persist"
             />
             <p

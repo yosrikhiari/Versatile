@@ -697,7 +697,7 @@ onBeforeUnmount(() => {
                 role="menuitemradio"
                 :aria-checked="tab === m.value ? 'true' : 'false'"
                 :data-test="`generator-more-${m.value}`"
-                class="w-full text-left px-3 py-2 rounded-sm hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                class="w-full text-left px-3 py-2 rounded-sm hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                 @click="((tab = m.value), close())"
               >
                 <span class="block font-ui text-xs text-text-primary">{{ m.label }}</span>
@@ -727,7 +727,7 @@ onBeforeUnmount(() => {
               <button
                 v-for="opt in blurbToneOptions"
                 :key="opt.id"
-                class="px-3 py-1.5 text-xs rounded-lg border font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
+                class="px-3 py-1.5 text-xs rounded-lg border font-ui transition-colors focus:outline-hidden focus:ring-1 focus:ring-accent"
                 :class="
                   blurbTone === opt.id
                     ? 'border-accent text-accent'
@@ -752,7 +752,7 @@ onBeforeUnmount(() => {
               <button
                 v-for="opt in blurbLengthOptions"
                 :key="opt.id"
-                class="flex-1 py-1.5 text-xs rounded-lg border font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
+                class="flex-1 py-1.5 text-xs rounded-lg border font-ui transition-colors focus:outline-hidden focus:ring-1 focus:ring-accent"
                 :class="
                   blurbLength === opt.id
                     ? 'border-accent text-accent'
@@ -773,7 +773,7 @@ onBeforeUnmount(() => {
           <!-- Generate button -->
           <button
             :disabled="blurbGenerating"
-            class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
             @click="handleGenerateBlurb"
           >
             <span class="flex items-center justify-center gap-2">
@@ -804,7 +804,7 @@ onBeforeUnmount(() => {
             <div class="flex items-center justify-between">
               <span class="text-xs text-text-primary font-semibold font-ui">Generated Blurb</span>
               <button
-                class="flex items-center gap-1 text-2xs text-text-hint hover:text-accent font-ui transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
+                class="flex items-center gap-1 text-2xs text-text-hint hover:text-accent font-ui transition-colors focus:outline-hidden focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5"
                 @click="handleCopyBlurb(blurbResult)"
               >
                 <BaseIcon name="copy" :size="12" />
@@ -846,14 +846,14 @@ onBeforeUnmount(() => {
                     </span>
                     <div class="flex items-center gap-2">
                       <button
-                        class="text-text-hint hover:text-accent transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                        class="text-text-hint hover:text-accent transition-colors focus:outline-hidden focus:ring-1 focus:ring-accent rounded"
                         title="Copy"
                         @click="handleCopyBlurb(item.blurb)"
                       >
                         <BaseIcon name="copy" :size="12" />
                       </button>
                       <button
-                        class="text-text-hint hover:text-danger transition-colors focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                        class="text-text-hint hover:text-danger transition-colors focus:outline-hidden focus:ring-1 focus:ring-accent rounded"
                         title="Delete"
                         @click="handleDeleteBlurb(item.id)"
                       >
@@ -1092,7 +1092,7 @@ onBeforeUnmount(() => {
               scene(s) re-evaluated.
               <button
                 type="button"
-                class="ml-1 text-text-hint hover:text-text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                class="ml-1 text-text-hint hover:text-text-primary underline-offset-2 hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
                 @click="driftTriggeredEval.clearTriggers()"
               >
                 Clear

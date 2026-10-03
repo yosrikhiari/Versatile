@@ -159,7 +159,7 @@ function goToWorkspace() {
             Versatile
           </button>
           <button
-            class="ml-auto hidden md:grid place-items-center w-8 h-8 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
+            class="ml-auto hidden md:grid place-items-center w-8 h-8 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
             title="Collapse sidebar"
             :aria-expanded="!effectiveCollapsed"
             @click="toggleCollapse"
@@ -167,7 +167,7 @@ function goToWorkspace() {
             <BaseIcon name="panel-left-close" :size="18" />
           </button>
           <button
-            class="ml-auto md:hidden grid place-items-center w-9 h-9 rounded-md text-text-hint hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
+            class="ml-auto md:hidden grid place-items-center w-9 h-9 rounded-md text-text-hint hover:text-text-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
             title="Close menu"
             @click="emit('close')"
           >
@@ -176,7 +176,7 @@ function goToWorkspace() {
         </template>
         <button
           v-else
-          class="grid place-items-center w-9 h-9 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
+          class="grid place-items-center w-9 h-9 rounded-md text-text-hint hover:text-text-primary hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent transition-colors duration-150"
           title="Expand sidebar"
           :aria-expanded="!effectiveCollapsed"
           @click="toggleCollapse"
@@ -197,7 +197,7 @@ function goToWorkspace() {
             <button
               v-if="!effectiveCollapsed"
               type="button"
-              class="label-micro w-full flex items-center justify-between px-2 pt-2.5 pb-1 text-text-hint rounded transition-colors duration-150 hover:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+              class="label-micro w-full flex items-center justify-between px-2 pt-2.5 pb-1 text-text-hint rounded transition-colors duration-150 hover:text-text-secondary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
               :aria-expanded="!isGroupCollapsed(group.label)"
               @click="toggleGroup(group.label)"
             >
@@ -216,7 +216,7 @@ function goToWorkspace() {
               v-for="item in group.items"
               v-show="effectiveCollapsed || !isGroupCollapsed(group.label)"
               :key="item.panel"
-              class="nav-stagger group/item relative w-full flex items-center rounded-md min-h-[34px] text-[0.8125rem] transition-[color,background-color,transform] duration-150 active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+              class="nav-stagger group/item relative w-full flex items-center rounded-md min-h-[34px] text-[0.8125rem] transition-[color,background-color,transform] duration-150 active:scale-[0.96] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
               :class="[
                 effectiveCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5',
                 isActive(item.panel)
@@ -262,7 +262,7 @@ function goToWorkspace() {
         <button
           v-for="item in systemItems"
           :key="item.panel"
-          class="group/item relative w-full flex items-center rounded-md min-h-[34px] text-[0.8125rem] transition-[color,background-color,transform] duration-150 active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+          class="group/item relative w-full flex items-center rounded-md min-h-[34px] text-[0.8125rem] transition-[color,background-color,transform] duration-150 active:scale-[0.96] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
           :class="[
             effectiveCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2.5',
             isActive(item.panel)

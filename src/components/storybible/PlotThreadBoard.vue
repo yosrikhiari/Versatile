@@ -390,7 +390,7 @@ function scanForEntities() {
 
                 <select
                   v-model="contextSelector"
-                  class="flex-1 px-2 py-1 text-xs bg-bg-secondary border border-border-subtle rounded text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  class="flex-1 px-2 py-1 text-xs bg-bg-secondary border border-border-subtle rounded text-text-secondary focus:outline-hidden focus:ring-1 focus:ring-accent/50"
                 >
                   <option value="current">Current chapter</option>
                   <option value="last:3">Last 3 chapters</option>
@@ -426,7 +426,7 @@ function scanForEntities() {
                 <input
                   v-model="editingThread.title"
                   type="text"
-                  class="w-full px-2 py-1 text-sm border border-border-subtle rounded bg-bg-secondary text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  class="w-full px-2 py-1 text-sm border border-border-subtle rounded bg-bg-secondary text-text-primary focus:outline-hidden focus:ring-1 focus:ring-accent"
                 />
               </div>
 
@@ -458,7 +458,7 @@ function scanForEntities() {
                 <textarea
                   v-model="editingThread.notes"
                   rows="2"
-                  class="w-full px-2 py-1 text-sm border border-border-subtle rounded bg-bg-secondary text-text-primary resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+                  class="w-full px-2 py-1 text-sm border border-border-subtle rounded bg-bg-secondary text-text-primary resize-none focus:outline-hidden focus:ring-1 focus:ring-accent"
                   placeholder="Add notes..."
                 ></textarea>
               </div>

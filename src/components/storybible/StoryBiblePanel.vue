@@ -571,7 +571,7 @@ defineExpose({ refresh })
         <div class="flex border-b border-border-subtle px-4">
           <button
             :class="[
-              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-hidden focus:ring-2 focus:ring-accent rounded',
               activeTab === 'characters'
                 ? 'text-accent border-b-2 border-accent'
                 : 'text-text-hint hover:text-text-secondary'
@@ -584,7 +584,7 @@ defineExpose({ refresh })
           </button>
           <button
             :class="[
-              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-hidden focus:ring-2 focus:ring-accent rounded',
               activeTab === 'plotThreads'
                 ? 'text-accent border-b-2 border-accent'
                 : 'text-text-hint hover:text-text-secondary'
@@ -597,7 +597,7 @@ defineExpose({ refresh })
           </button>
           <button
             :class="[
-              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-hidden focus:ring-2 focus:ring-accent rounded',
               activeTab === 'locations'
                 ? 'text-accent border-b-2 border-accent'
                 : 'text-text-hint hover:text-text-secondary'
@@ -610,7 +610,7 @@ defineExpose({ refresh })
           </button>
           <button
             :class="[
-              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-hidden focus:ring-2 focus:ring-accent rounded',
               activeTab === 'documents'
                 ? 'text-accent border-b-2 border-accent'
                 : 'text-text-hint hover:text-text-secondary'
@@ -622,7 +622,7 @@ defineExpose({ refresh })
           </button>
           <button
             :class="[
-              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-none focus:ring-2 focus:ring-accent rounded',
+              'flex-1 py-2 text-xs font-medium transition-colors font-ui focus:outline-hidden focus:ring-2 focus:ring-accent rounded',
               activeTab === 'query'
                 ? 'text-accent border-b-2 border-accent'
                 : 'text-text-hint hover:text-text-secondary'
@@ -699,7 +699,7 @@ defineExpose({ refresh })
                     :src="character.portrait"
                     :alt="character.name"
                     draggable="false"
-                    class="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    class="w-8 h-8 rounded-full object-cover shrink-0"
                   />
                   <BaseIcon v-else name="user" :size="18" class="text-text-hint" />
                   <input
@@ -715,7 +715,7 @@ defineExpose({ refresh })
                   <span v-if="roleEditingId === character.id" class="inline-flex items-center">
                     <input
                       v-model="roleEditValue"
-                      class="w-28 text-xs px-2 py-0.5 bg-bg-primary text-text-primary border border-border-subtle rounded outline-none focus:ring-1 focus:ring-accent/50"
+                      class="w-28 text-xs px-2 py-0.5 bg-bg-primary text-text-primary border border-border-subtle rounded outline-hidden focus:ring-1 focus:ring-accent/50"
                       placeholder="Role"
                       autofocus
                       @keydown.enter="saveRoleEdit(character.id)"

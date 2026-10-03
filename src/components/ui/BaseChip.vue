@@ -136,7 +136,7 @@ const baseClasses =
     <slot />
     <button
       v-if="variant === 'removable'"
-      class="ml-0.5 rounded-full hover:bg-surface-hover p-0.5 transition-colors focus:outline-none"
+      class="ml-0.5 rounded-full hover:bg-surface-hover p-0.5 transition-colors focus:outline-hidden"
       :disabled="disabled"
       aria-label="Remove"
       @click.stop="emit('remove')"

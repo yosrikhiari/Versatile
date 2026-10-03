@@ -55,7 +55,7 @@ function onChange() {
       <span
         aria-hidden="true"
         :class="[
-          'pointer-events-none flex h-4 w-4 items-center justify-center rounded border transition-colors duration-150 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent',
+          'pointer-events-none flex h-4 w-4 items-center justify-center rounded border transition-colors duration-150 peer-focus-visible:outline-solid peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent',
           checked || indeterminate
             ? 'border-accent bg-accent text-bg-primary'
             : 'border-border-strong bg-bg-primary'

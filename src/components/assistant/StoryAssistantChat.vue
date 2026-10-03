@@ -126,7 +126,7 @@ watch(
           placeholder="Ask about the manuscript…"
           aria-label="Ask your story"
           :disabled="assistant.isAnswering"
-          class="flex-1 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-text-hint"
+          class="flex-1 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui text-sm focus:outline-hidden focus:ring-2 focus:ring-accent placeholder:text-text-hint"
         />
         <BaseButton
           type="submit"

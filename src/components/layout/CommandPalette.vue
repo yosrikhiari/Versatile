@@ -166,7 +166,7 @@ watch(
 <template>
   <Teleport to="body">
     <Transition name="anim-fade">
-      <div v-if="open" class="fixed inset-0 z-[90] bg-black/50 px-4 pt-[12vh]" @click.self="close">
+      <div v-if="open" class="fixed inset-0 z-90 bg-black/50 px-4 pt-[12vh]" @click.self="close">
         <div
           role="dialog"
           aria-modal="true"
@@ -182,7 +182,7 @@ watch(
               type="text"
               placeholder="Search panels and actions…"
               aria-label="Search panels and actions"
-              class="min-w-0 flex-1 bg-transparent font-ui text-sm text-text-primary outline-none placeholder:text-text-hint"
+              class="min-w-0 flex-1 bg-transparent font-ui text-sm text-text-primary outline-hidden placeholder:text-text-hint"
             />
             <kbd
               class="shrink-0 rounded border border-border-subtle px-1.5 py-0.5 font-ui text-xs text-text-hint"

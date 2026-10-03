@@ -171,7 +171,7 @@ watch(
           <div class="text-11px text-text-hint px-3 py-1">{{ msg.directorNote }}</div>
         </div>
         <div :class="['flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start']">
-          <div v-if="msg.role !== 'user'" class="flex-shrink-0 self-end">
+          <div v-if="msg.role !== 'user'" class="shrink-0 self-end">
             <img
               v-if="getMessagePortrait(msg)"
               :src="getMessagePortrait(msg)"
@@ -188,7 +188,7 @@ watch(
 
           <div
             :class="[
-              'max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words',
+              'max-w-[75%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word',
               msg.role === 'user'
                 ? 'bg-surface-hover text-text-primary rounded-br-md'
                 : 'bg-bg-tertiary border border-border-subtle text-text-primary rounded-bl-md'
@@ -237,7 +237,7 @@ watch(
       <div class="flex items-center gap-2">
         <textarea
           v-model="inputText"
-          class="flex-1 bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-hint resize-none outline-none focus:ring-1 focus:ring-accent min-h-[38px] max-h-[120px]"
+          class="flex-1 bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-hint resize-none outline-hidden focus:ring-1 focus:ring-accent min-h-[38px] max-h-[120px]"
           placeholder="Type a message..."
           rows="1"
           :disabled="chatStore.isStreaming"
@@ -245,7 +245,7 @@ watch(
         />
         <button
           v-if="!chatStore.isStreaming"
-          class="p-2 bg-bg-tertiary text-accent rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+          class="p-2 bg-bg-tertiary text-accent rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
           :disabled="!inputText.trim()"
           title="Send"
           @click="handleSend"
@@ -254,7 +254,7 @@ watch(
         </button>
         <button
           v-else
-          class="p-2 bg-bg-tertiary text-danger rounded-lg hover:bg-surface-hover transition-colors flex-shrink-0"
+          class="p-2 bg-bg-tertiary text-danger rounded-lg hover:bg-surface-hover transition-colors shrink-0"
           title="Stop generating"
           @click="handleAbort"
         >

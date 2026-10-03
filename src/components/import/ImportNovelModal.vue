@@ -215,7 +215,7 @@ async function doImport() {
             <input
               :value="c.title"
               :aria-label="`Title of chapter ${i + 1}`"
-              class="min-w-0 flex-1 bg-transparent font-ui text-sm text-text-primary rounded px-1 py-0.5 hover:bg-bg-secondary focus:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              class="min-w-0 flex-1 bg-transparent font-ui text-sm text-text-primary rounded px-1 py-0.5 hover:bg-bg-secondary focus:bg-bg-secondary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
               @change="rename(i, $event.target.value)"
             />
             <span class="shrink-0 font-mono text-xs text-text-hint tabular-nums">

@@ -40,9 +40,9 @@ function toggleMode() {
 <template>
   <!-- Manuscript Mono · login as the first page of a manuscript: bare canvas, hairline rules, ruled fields. -->
   <div
-    class="min-h-[100dvh] w-full bg-manuscript text-text-primary flex items-center justify-center overflow-y-auto px-6 py-12"
+    class="min-h-dvh w-full bg-manuscript text-text-primary flex items-center justify-center overflow-y-auto px-6 py-12"
   >
-    <div class="w-full max-w-[21rem] animate-fade-in">
+    <div class="w-full max-w-84 animate-fade-in">
       <!-- top rule -->
       <div class="h-px w-full bg-border-subtle mb-10"></div>
 

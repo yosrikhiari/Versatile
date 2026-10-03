@@ -7,6 +7,34 @@ was verified.
 
 ## [Unreleased]
 
+### Tailwind 4; the braces advisory is gone (2026-10-03)
+- **Tailwind CSS 3.4 -> 4.3** (`@tailwindcss/postcss`; autoprefixer is built
+  in now). `npm audit` reports 0 vulnerabilities: the high-severity `braces`
+  advisory has no fixed release and reached the app only through Tailwind 3
+  and plop, which is removed (its generators were stale).
+- **Nothing moves on screen.** Every element's computed style and box on
+  twelve screens (login, workspace, editor light and dark, Generator modes and
+  More menu, Chapters, Story Bible, Consistency, New project) was recorded under
+  both versions and diffed: no element moves or resizes by more than 1.5 px.
+  What it took: Tailwind 3's default border colour and button cursor restored
+  in `src/style.css`; `space-y-*` kept on Tailwind 3's rule (Tailwind 4 moved
+  the gap and let a child's margin replace it: 3-4 px on three screens);
+  `@reference` in the five component styles that use `@apply`; the config's
+  `safelist` moved to `@source inline()`.
+- **The upgrade tool rewrote plain strings as if they were classes**, and
+  those edits were reverted: the Spark store's `'outline'` type became
+  `'outline-solid'`, a status shape `'ring'` became `'ring-3'`, the heuristic
+  analyser's word lists and some UI copy ("returned no outline-solid") changed.
+- **Classes that never worked now do**: Tailwind 3 silently dropped
+  `border-border-subtle/20`, `/50`, `/60`, `divide-border-subtle/50` (Research,
+  Revise, Activity, entity panels) and `max-w-30`; Tailwind 4 renders them as
+  written. `z-1` on the editor wrapper was removed instead, since honouring it
+  would change how the editor stacks.
+- Still different, by design: colours are written as `oklab`/`oklch` (same
+  values), `divide-y` draws its line on the other side of the gap (same
+  place), and two header buttons ease out over 150 ms instead of easing in and
+  out.
+
 ### One row of modes in the Generator (2026-10-03)
 - **The Generator has one row of modes** (UX-ENHANCEMENTS #08). Scene /
   Chapter / Arc in one segmented control; Ideate and Blurb under "More"; the

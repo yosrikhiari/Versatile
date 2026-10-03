@@ -49,7 +49,7 @@ const editor = useEditor({
   ],
   editorProps: {
     attributes: {
-      class: 'editor-content focus:outline-none'
+      class: 'editor-content focus:outline-hidden'
     }
   },
   onUpdate: () => {
@@ -290,7 +290,7 @@ defineExpose({
   <div class="h-full flex flex-col bg-manuscript relative overflow-hidden">
     <button
       v-if="flow.isRunning.value"
-      class="absolute top-4 right-4 z-10 text-xs text-text-hint hover:text-text-secondary font-ui transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
+      class="absolute top-4 right-4 z-10 text-xs text-text-hint hover:text-text-secondary font-ui transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg px-2.5 py-1.5 btn-ghost"
       @click="handleExitFlow"
     >
       Exit Flow
@@ -300,7 +300,7 @@ defineExpose({
       v-if="contentSizeWarning !== 'ok'"
       :variant="contentSizeWarning === 'critical' ? 'danger' : 'warning'"
       flush
-      class="flex-shrink-0"
+      class="shrink-0"
     >
       This section is <strong>{{ contentSizeK }}K</strong> characters.
       {{
@@ -370,7 +370,7 @@ defineExpose({
       </div>
       <div
         v-else
-        class="editor-wrapper max-w-[760px] mx-auto px-8 py-16 relative z-1"
+        class="editor-wrapper max-w-[760px] mx-auto px-8 py-16 relative"
         @keydown="handleKeydown"
         @click="handleClick"
       >

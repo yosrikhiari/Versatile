@@ -6,7 +6,7 @@ import ActivityDrawer from './components/shared/ActivityDrawer.vue'
 </script>
 
 <template>
-  <div class="h-[100dvh] bg-manuscript">
+  <div class="h-dvh bg-manuscript">
     <!--
       No route-level <Transition>, deliberately.
 

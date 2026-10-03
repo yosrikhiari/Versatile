@@ -37,7 +37,7 @@ const progressPercent = computed(() => {
       </span>
 
       <button
-        class="text-text-hint hover:text-accent text-sm ml-2 focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150"
+        class="text-text-hint hover:text-accent text-sm ml-2 focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150"
         title="Daily goal settings"
         @click="emit('open-settings')"
       >

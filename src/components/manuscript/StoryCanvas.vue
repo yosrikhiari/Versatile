@@ -414,7 +414,7 @@ onMounted(() => {
           v-for="pin in pins"
           :key="`${pin.kind}:${pin.id}`"
           type="button"
-          class="map-pin absolute -translate-x-1/2 -translate-y-full flex flex-col items-center cursor-grab focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+          class="map-pin absolute -translate-x-1/2 -translate-y-full flex flex-col items-center cursor-grab focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
           :style="pinStyle(pin)"
           :title="`${pin.name} — drag to move, double-click to unpin`"
           :data-test="`pin-${pin.kind}-${pin.id}`"
@@ -542,7 +542,7 @@ onMounted(() => {
           v-model="newElementTitle"
           type="text"
           placeholder="Element title..."
-          class="w-full px-3 py-2 border border-border-subtle rounded-lg mb-4 bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-2 border border-border-subtle rounded-lg mb-4 bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
           @keyup.enter="addNewElement"
         />
         <div class="flex gap-2 mb-4">
@@ -581,6 +581,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+@reference '../../style.css';
 .map-pin-icon {
   color: var(--pin-color, var(--vers-accent));
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));

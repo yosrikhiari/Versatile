@@ -256,7 +256,7 @@ onUnmounted(() => {
 
     <div
       v-if="showLabelInput"
-      class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4"
       @click.self="showLabelInput = false"
     >
       <div
@@ -267,7 +267,7 @@ onUnmounted(() => {
           v-model="newLabel"
           type="text"
           placeholder="e.g. Before adding climax..."
-          class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm mb-4 font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm mb-4 font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
           autofocus
           @keyup.enter="saveWithLabel"
         />

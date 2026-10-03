@@ -240,7 +240,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
       <div class="flex items-center justify-between mb-2">
         <span class="text-xs font-medium text-text-secondary font-ui">Entities</span>
         <button
-          class="p-1 text-text-hint hover:text-text-primary rounded focus:outline-none focus:ring-2 focus:ring-accent"
+          class="p-1 text-text-hint hover:text-text-primary rounded focus:outline-hidden focus:ring-2 focus:ring-accent"
           title="Hide sidebar"
           @click="emit('toggle-sidebar')"
         >
@@ -257,7 +257,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
           v-model="searchQuery"
           type="text"
           placeholder="Search..."
-          class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent font-ui"
+          class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded-lg text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent font-ui"
         />
       </div>
       <div class="text-2xs text-text-hint mt-1.5 font-ui">
@@ -337,7 +337,7 @@ const inNetworkCount = computed(() => props.existingNodeIds.length)
               <div class="flex items-center gap-1 shrink-0">
                 <button
                   v-if="!isInNetwork(section.type, entity.id)"
-                  class="p-1 text-text-hint hover:text-accent rounded focus:outline-none focus:ring-1 focus:ring-accent"
+                  class="p-1 text-text-hint hover:text-accent rounded focus:outline-hidden focus:ring-1 focus:ring-accent"
                   title="Add to network"
                   @click.stop="handleQuickAdd(section.type, entity)"
                 >

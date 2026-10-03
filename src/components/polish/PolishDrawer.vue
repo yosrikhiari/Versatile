@@ -148,7 +148,7 @@ defineExpose({
       </BaseButton>
       <button
         type="button"
-        class="rounded p-1 text-text-hint transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        class="rounded p-1 text-text-hint transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
         :aria-expanded="expanded"
         :aria-label="expanded ? 'Shrink drawer' : 'Expand drawer'"
         @click="expanded = !expanded"

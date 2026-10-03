@@ -353,7 +353,7 @@ function handleOverlayClick(event) {
             >
               <!-- Where the AI for this project runs. Status, not a control. -->
               <button
-                class="w-full flex items-center gap-2 px-3 py-2 text-left border border-border-subtle rounded-lg hover:bg-surface-hover transition-colors focus:outline-none focus:ring-1 focus:ring-accent"
+                class="w-full flex items-center gap-2 px-3 py-2 text-left border border-border-subtle rounded-lg hover:bg-surface-hover transition-colors focus:outline-hidden focus:ring-1 focus:ring-accent"
                 @click="openAiSettings"
               >
                 <BaseIcon
@@ -377,7 +377,7 @@ function handleOverlayClick(event) {
                 <input
                   v-model="localName"
                   type="text"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
                   placeholder="My novel"
                 />
               </div>
@@ -387,7 +387,7 @@ function handleOverlayClick(event) {
                 <textarea
                   v-model="localGenre"
                   rows="2"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
                   placeholder="e.g. Fantasy, Adventure, Mystery..."
                 ></textarea>
                 <p class="mt-1 text-xs text-text-hint">Separate multiple genres with commas.</p>
@@ -409,7 +409,7 @@ function handleOverlayClick(event) {
                   type="number"
                   min="1"
                   step="50"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
                 />
                 <p class="mt-1 text-xs text-text-hint">
                   Drives the progress bar in the toolbar and your writing streak.
@@ -456,7 +456,7 @@ function handleOverlayClick(event) {
                 <textarea
                   v-model="localSynopsis"
                   rows="5"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
                   placeholder="A brief summary of your story..."
                 ></textarea>
                 <p class="mt-1.5 text-xs text-text-hint">
@@ -480,7 +480,7 @@ function handleOverlayClick(event) {
                 <textarea
                   v-model="localPromptOverrides[role]"
                   rows="6"
-                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm font-mono text-text-primary focus:outline-none focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm font-mono text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent resize-none placeholder:text-text-hint"
                   placeholder="Leave empty to use the workspace default prompt for this role."
                 ></textarea>
               </div>

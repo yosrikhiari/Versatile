@@ -72,7 +72,7 @@ onUnmounted(() => {
 
 <template>
   <Transition name="toast-slide">
-    <div v-if="log.toastsVisible.value && currentToastTask" class="fixed bottom-24 right-6 z-[100]">
+    <div v-if="log.toastsVisible.value && currentToastTask" class="fixed bottom-24 right-6 z-100">
       <!-- Container is a div, not a button: the dismiss control is itself a
            button, and the HTML parser hoists a nested button out of its parent
            rather than nesting it, which broke both the layout and the click
@@ -85,7 +85,7 @@ onUnmounted(() => {
           @click="openDrawer"
         >
           <!-- Spinner for running tasks -->
-          <span class="relative flex-shrink-0">
+          <span class="relative shrink-0">
             <BaseIcon
               :name="getTaskIcon(currentToastTask)"
               :size="16"
@@ -106,14 +106,14 @@ onUnmounted(() => {
           <!-- Badge for multi-tasks -->
           <span
             v-if="badgeCount > 0"
-            class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-surface-hover text-accent text-2xs font-bold"
+            class="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-surface-hover text-accent text-2xs font-bold"
             >{{ badgeCount }}</span
           >
         </button>
 
         <!-- Dismiss -->
         <button
-          class="flex-shrink-0 opacity-0 group-hover:opacity-50 hover:opacity-100 transition-opacity ml-1"
+          class="shrink-0 opacity-0 group-hover:opacity-50 hover:opacity-100 transition-opacity ml-1"
           aria-label="Dismiss activity toast"
           @click.stop="dismiss"
         >

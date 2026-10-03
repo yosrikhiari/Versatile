@@ -1,9 +1,114 @@
 /* Google Fonts are loaded via <link rel="preconnect"> + non-blocking <link> in index.html
    (see M-5.2). Kept out of CSS to avoid a render-blocking @import. */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* The colours, fonts, radii and motion still live in tailwind.config.js. */
+@config '../tailwind.config.js';
+
+/* Tailwind 4 ignores the config's `safelist`; this is its replacement. */
+@source inline('animate-spin');
+
+/* Tailwind 4 dropped two Tailwind 3 defaults this design was drawn with;
+   they are restored here exactly, so the upgrade changes nothing on screen. */
+@layer base {
+  /* A bare `border` was light grey (Tailwind 3's gray-200), not currentColor. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: rgb(229 231 235);
+  }
+
+  /* Buttons showed the pointer cursor; Tailwind 4's preflight sets default. */
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  :disabled {
+    cursor: default;
+  }
+}
+
+/* `space-y-*` as Tailwind 3 drew it. Tailwind 4 moved the gap to the bottom of
+   each earlier child at zero specificity, so a child's own margin class (mb-2)
+   or an inline button now changes the gap by a few pixels (measured: 3-4 px on
+   the Generator, the New project dialog and the Story Bible). Restored for the
+   values this app uses; to retire it, turn these containers into flex + gap. */
+@layer utilities {
+  :where(.space-y-0 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-0 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0px;
+    margin-bottom: 0;
+  }
+  :where(.space-y-0\.5 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-0\.5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.125rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-1 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-1 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-1\.5 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-1\.5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.375rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-2 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-2\.5 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-2\.5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.625rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-3 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-4 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-5 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.25rem;
+    margin-bottom: 0;
+  }
+  :where(.space-y-6 > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+  }
+}
 
 @layer base {
   :root {

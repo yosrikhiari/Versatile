@@ -89,7 +89,7 @@ async function insert() {
           role="tab"
           :aria-selected="selectedId === t.id ? 'true' : 'false'"
           :data-test="`template-${t.id}`"
-          class="px-2.5 py-1 rounded-md font-ui text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="px-2.5 py-1 rounded-md font-ui text-xs transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           :class="
             selectedId === t.id
               ? 'bg-bg-elevated text-text-primary'
@@ -119,7 +119,7 @@ async function insert() {
                   : undefined
             "
             :data-test="`field-${f.key}`"
-            class="w-full px-3 py-1.5 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-text-hint"
+            class="w-full px-3 py-1.5 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui text-sm focus:outline-hidden focus:ring-2 focus:ring-accent placeholder:text-text-hint"
           />
         </label>
       </div>

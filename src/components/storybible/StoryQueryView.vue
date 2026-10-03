@@ -151,12 +151,12 @@ const groupEntries = computed(() => (store.results.groups ? [...store.results.gr
               type="text"
               placeholder="value"
               aria-label="Value"
-              class="flex-1 min-w-[6rem] bg-bg-secondary text-text-primary text-xs font-ui rounded px-2 py-1 placeholder:text-text-hint"
+              class="flex-1 min-w-24 bg-bg-secondary text-text-primary text-xs font-ui rounded px-2 py-1 placeholder:text-text-hint"
               @input="store.updateFilter(i, { value: $event.target.value })"
             />
             <button
               type="button"
-              class="p-1 rounded text-text-hint hover:text-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              class="p-1 rounded text-text-hint hover:text-danger focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
               aria-label="Remove filter"
               @click="store.removeFilter(i)"
             >
@@ -267,7 +267,7 @@ const groupEntries = computed(() => (store.results.groups ? [...store.results.gr
                   <input
                     v-if="isEditing(row, fd)"
                     v-model="draft"
-                    class="w-full bg-bg-elevated text-text-primary rounded px-1 py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    class="w-full bg-bg-elevated text-text-primary rounded px-1 py-0.5 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                     autofocus
                     @keydown.enter.prevent="commitEdit(row, fd)"
                     @keydown.esc.prevent="cancelEdit"
@@ -295,7 +295,7 @@ const groupEntries = computed(() => (store.results.groups ? [...store.results.gr
                 <input
                   v-if="isEditing(row, fd)"
                   v-model="draft"
-                  class="w-full bg-bg-elevated text-text-primary rounded px-1 py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  class="w-full bg-bg-elevated text-text-primary rounded px-1 py-0.5 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                   autofocus
                   @keydown.enter.prevent="commitEdit(row, fd)"
                   @keydown.esc.prevent="cancelEdit"

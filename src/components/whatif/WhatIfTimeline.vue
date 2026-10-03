@@ -61,7 +61,7 @@ function handleSelect(subsection) {
             role="option"
             :aria-selected="isSelected(sub)"
             tabindex="0"
-            class="flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            class="flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
             :class="
               isSelected(sub)
                 ? 'bg-surface-hover shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'

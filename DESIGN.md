@@ -240,7 +240,7 @@ Every tool panel is built from the primitives in `src/components/ui/`, so the pa
 - **One accent.** Success / warning / danger appear as an icon tint or a word, never as button fills.
 - **Copy:** modal and heading copy is sentence case.
 - **Layout:** a docked panel is capped at `calc(100vw - 32rem)` so the manuscript never collapses to a few words wide.
-- Tailwind 3.4 has no `/8`, `/12` or `/35` opacity steps — those classes emit no CSS. Use `/10`, `/30`.
+- Tailwind 4 compiles any opacity step, so `/8` or `/35` now render (under 3.4 they emitted nothing). Keep to the steps the design uses: `/10`, `/30`.
 
 ### Primitives catalogue (`src/components/ui/`)
 

@@ -186,7 +186,7 @@ watch(selectedDocType, loadDocument, { immediate: true })
         v-model="documentContent"
         :readonly="contentReadonly"
         spellcheck="false"
-        class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-none focus:ring-1 focus:ring-accent/50"
+        class="w-full p-3 bg-bg-tertiary rounded-lg text-xs text-text-primary font-mono leading-relaxed min-h-[300px] resize-y focus:outline-hidden focus:ring-1 focus:ring-accent/50"
         :class="{ 'opacity-70 cursor-default': contentReadonly }"
         placeholder="No content yet. Add some story elements first."
       ></textarea>

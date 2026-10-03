@@ -192,6 +192,7 @@ async function handleMerge() {
 </script>
 
 <style scoped>
+@reference '../../style.css';
 .voice-upload-modal {
   @apply fixed inset-0 z-50 flex items-center justify-center;
 }
@@ -223,7 +224,7 @@ async function handleMerge() {
 .textarea {
   @apply w-full px-3 py-2 border border-border-subtle rounded-lg
     bg-bg-tertiary text-text-primary
-    focus:outline-none focus:ring-2 focus:ring-accent
+    focus:outline-hidden focus:ring-2 focus:ring-accent
     resize-none font-mono text-sm;
 }
 

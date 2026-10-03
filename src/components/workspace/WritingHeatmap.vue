@@ -138,7 +138,7 @@ const monthMarks = computed(() => {
     <div class="mt-2.5 flex items-center justify-between gap-3">
       <!-- The hovered day reads out here rather than in a floating tooltip: the
            grid is dense and small, and a tooltip would cover its neighbours. -->
-      <p class="min-h-[1rem] font-ui text-xs text-text-secondary" aria-live="polite">
+      <p class="min-h-4 font-ui text-xs text-text-secondary" aria-live="polite">
         {{ hovered ? describe(hovered) : '' }}
       </p>
 

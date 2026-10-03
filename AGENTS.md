@@ -37,7 +37,7 @@ The rules, in order of how often they are broken:
 3. **One accent, scarce.** Accent for focus, selection, the one primary action, graph character nodes. Status colours are an icon tint or a word, never a button fill.
 4. **Every async surface has four states**: skeleton (`Skeleton` variants), live, empty (`EmptyState` with an action that leads somewhere), error. A dead-end empty state is a bug (see `docs/UX-AUDIT.md` #8).
 5. **Copy is sentence case**; the structure vocabulary comes from `structureTerms` on the project store (Chapters/Scenes for a novel), never hard-coded "Sections".
-6. **Tailwind 3.4 has no `/8`, `/12`, `/35` opacity steps**; those classes emit nothing. Use `/10`, `/30`.
+6. **Tailwind 4 compiles any value**: `/8`, `z-1`, `max-w-30` all produce CSS now (under 3.4 they silently did nothing). Keep to the opacity steps the design uses (`/10`, `/30`, ...). `space-y-*` keeps its Tailwind 3 spacing through compat rules in `src/style.css`; new layout should use `flex` + `gap`.
 7. **Two voices, no shadows.** Titles and labels are `.type-display` / `.label-micro` (Plex Mono caps); running copy is Geist. Depth is a hairline or an ink rule (`--vers-border-strong`); nothing at rest casts a shadow; nothing has a corner over 3 px except dots and avatars.
 8. **Motion** uses the `anim-*` presets and respects `prefers-reduced-motion`; focus uses the global `*:focus-visible` ring, never `outline: none`.
 9. **Document the change where it lives**: a new token in `docs/DESIGN-TOKENS.md`, a new primitive in the catalogue, a UX finding in `docs/UX-AUDIT.md`.

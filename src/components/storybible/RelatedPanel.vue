@@ -188,7 +188,7 @@ watch(
           <div class="flex items-baseline justify-between gap-2">
             <button
               type="button"
-              class="min-w-0 flex-1 truncate text-left font-ui text-sm text-text-primary hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+              class="min-w-0 flex-1 truncate text-left font-ui text-sm text-text-primary hover:text-accent focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
               @click="open(m)"
             >
               {{ m.title || m.refId }}

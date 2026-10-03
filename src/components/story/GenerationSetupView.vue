@@ -92,14 +92,14 @@ const emit = defineEmits([
         <div class="flex items-center gap-3">
           <button
             type="button"
-            class="font-ui text-xs text-text-hint hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            class="font-ui text-xs text-text-hint hover:text-text-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
             @click="emit('select-all-research')"
           >
             All
           </button>
           <button
             type="button"
-            class="font-ui text-xs text-text-hint hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            class="font-ui text-xs text-text-hint hover:text-text-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
             @click="emit('select-no-research')"
           >
             None
@@ -174,7 +174,7 @@ const emit = defineEmits([
         </p>
         <button
           type="button"
-          class="text-text-hint hover:text-text-primary rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="text-text-hint hover:text-text-primary rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           title="Remove Spark context"
           @click="emit('clear-spark')"
         >

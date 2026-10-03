@@ -161,7 +161,7 @@ onMounted(() => {
         v-model="searchQuery"
         type="text"
         placeholder="Search manuscript..."
-        class="flex-1 bg-transparent text-text-primary text-sm focus:outline-none placeholder:text-text-hint"
+        class="flex-1 bg-transparent text-text-primary text-sm focus:outline-hidden placeholder:text-text-hint"
       />
     </div>
 

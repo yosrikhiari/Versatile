@@ -97,7 +97,7 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
         v-model="searchQuery"
         type="text"
         placeholder="Search volumes..."
-        class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded focus:outline-none focus:ring-1 focus:ring-accent"
+        class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded focus:outline-hidden focus:ring-1 focus:ring-accent"
       />
     </div>
 
@@ -112,16 +112,13 @@ watch(() => props.entityId, loadAssignedVolumes, { immediate: true })
         }"
         @click="!loading && toggleVolume(volume.id)"
       >
-        <div
-          class="w-3 h-3 rounded-full flex-shrink-0"
-          :style="{ backgroundColor: volume.color }"
-        />
+        <div class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: volume.color }" />
         <span class="text-sm text-text-primary flex-1 truncate">{{ volume.title }}</span>
         <BaseIcon
           v-if="assignedVolumeIds.includes(volume.id)"
           name="check"
           :size="14"
-          class="text-accent flex-shrink-0"
+          class="text-accent shrink-0"
         />
       </div>
 

@@ -363,6 +363,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+@reference '../../style.css';
 .ghost {
   @apply opacity-30;
   transition: opacity 0.15s;

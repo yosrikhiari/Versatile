@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
         Your words are waiting. Don't edit — just write. You can fix it later.
       </p>
       <button
-        class="px-6 py-2 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+        class="px-6 py-2 btn-primary rounded-lg focus:outline-hidden focus:ring-2 focus:ring-accent"
         @click="dismiss"
       >
         Got it

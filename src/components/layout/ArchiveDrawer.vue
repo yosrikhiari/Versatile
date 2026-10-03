@@ -190,7 +190,7 @@ function handleSignalClick(opt) {
           <input
             v-model="searchQuery"
             placeholder="Search archive..."
-            class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent font-ui"
+            class="flex-1 px-2 py-1.5 text-xs bg-bg-tertiary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent font-ui"
             @keydown.enter="handleSearch"
           />
           <button class="px-2 py-1.5 text-xs btn-primary rounded font-ui" @click="handleSearch">

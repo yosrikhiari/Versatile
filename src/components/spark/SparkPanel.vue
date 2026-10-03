@@ -421,7 +421,7 @@ function clearHistory() {
         <div class="px-4 py-3 border-t border-border-subtle">
           <button
             type="button"
-            class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
             :aria-expanded="showContextPreview"
             @click="toggleContextPreview"
           >
@@ -487,7 +487,7 @@ function clearHistory() {
             type="password"
             placeholder="sk-…"
             autofocus
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-accent/50 bg-bg-secondary text-text-primary font-ui"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm mb-4 focus:outline-hidden focus:ring-2 focus:ring-accent/50 bg-bg-secondary text-text-primary font-ui"
             @keyup.enter="saveOpenAIKeyLocal"
           />
           <div class="flex justify-end gap-2">

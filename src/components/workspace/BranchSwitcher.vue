@@ -73,7 +73,7 @@ function handleOpenManager() {
 <template>
   <div v-if="!collapsed" class="relative">
     <button
-      class="flex items-center gap-2 w-full px-3 h-9 rounded-md text-sm text-text-primary hover:bg-surface-hover transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      class="flex items-center gap-2 w-full px-3 h-9 rounded-md text-sm text-text-primary hover:bg-surface-hover transition-colors duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       @click="toggle"
     >
       <BaseIcon name="git-branch" :size="16" class="text-accent shrink-0" />
@@ -113,7 +113,7 @@ function handleOpenManager() {
             <template v-if="renaming === branch.id">
               <input
                 v-model="renameValue"
-                class="flex-1 min-w-0 bg-surface-secondary rounded px-1.5 py-0.5 text-sm outline-none focus:ring-1 focus:ring-accent"
+                class="flex-1 min-w-0 bg-surface-secondary rounded px-1.5 py-0.5 text-sm outline-hidden focus:ring-1 focus:ring-accent"
                 autofocus
                 @keyup.enter="confirmRename(branch.id)"
                 @keyup.escape="cancelRename"

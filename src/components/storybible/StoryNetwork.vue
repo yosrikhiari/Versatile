@@ -1963,7 +1963,7 @@ function handleApplySuggestionsModalClose() {
                 placeholder="Find a node…"
                 aria-label="Find a node"
                 data-test="focus-query"
-                class="w-full px-2 py-1 border border-border-subtle rounded bg-bg-secondary text-text-primary font-ui text-xs focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-text-hint"
+                class="w-full px-2 py-1 border border-border-subtle rounded bg-bg-secondary text-text-primary font-ui text-xs focus:outline-hidden focus:ring-2 focus:ring-accent placeholder:text-text-hint"
               />
               <ul v-if="focusMatches.length" class="mt-1 divide-y divide-border-subtle">
                 <li v-for="n in focusMatches" :key="n.id">
@@ -2195,7 +2195,7 @@ function handleApplySuggestionsModalClose() {
                 />
                 <input
                   :value="data.label"
-                  class="bg-transparent text-xs font-semibold text-text-primary outline-none flex-1 min-w-0"
+                  class="bg-transparent text-xs font-semibold text-text-primary outline-hidden flex-1 min-w-0"
                   placeholder="Group name"
                   @change="renameGroup(id, $event.target.value)"
                   @click.stop
@@ -2232,13 +2232,13 @@ function handleApplySuggestionsModalClose() {
                 id="source"
                 type="source"
                 :position="Position.Right"
-                class="!bg-accent !w-3 !h-3 !border-2 !border-white"
+                class="bg-accent! w-3! h-3! border-2! border-white!"
               />
               <Handle
                 id="target"
                 type="target"
                 :position="Position.Left"
-                class="!bg-accent !w-3 !h-3 !border-2 !border-white"
+                class="bg-accent! w-3! h-3! border-2! border-white!"
               />
             </div>
           </template>
@@ -2251,12 +2251,12 @@ function handleApplySuggestionsModalClose() {
             :height="120"
             pannable
             zoomable
-            class="story-minimap !absolute !bottom-2 !right-2 !border !border-border-subtle !rounded-lg !shadow-warm-lg"
+            class="story-minimap absolute! bottom-2! right-2! border! border-border-subtle! rounded-lg! shadow-warm-lg!"
           />
           <Controls
             show-zoom
             show-fit-view
-            class="!absolute !bottom-2 !left-2 !border !border-border-subtle !rounded-lg"
+            class="absolute! bottom-2! left-2! border! border-border-subtle! rounded-lg!"
           />
         </VueFlow>
 

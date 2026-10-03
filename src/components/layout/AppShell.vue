@@ -477,7 +477,7 @@ watch(
     >
       <div class="flex items-center gap-2">
         <button
-          class="md:hidden grid place-items-center w-9 h-9 -ml-1 rounded-lg text-text-hint hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-colors duration-150"
+          class="md:hidden grid place-items-center w-9 h-9 -ml-1 rounded-lg text-text-hint hover:text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent transition-colors duration-150"
           title="Open menu"
           @click="sidebarOpen = true"
         >
@@ -495,7 +495,7 @@ watch(
 
         <div class="relative">
           <button
-            class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost max-w-[44vw] sm:max-w-[16rem]"
+            class="hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost max-w-[44vw] sm:max-w-[16rem]"
             title="Switch project"
             @click="toggleProjectDropdown"
           >
@@ -603,7 +603,7 @@ watch(
         <ContextStatusIndicator class="hidden sm:flex" />
         <GuardrailIndicator class="hidden sm:flex" />
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           :title="isThemeDark ? 'Switch to light mode' : 'Switch to dark mode'"
           @click="toggleTheme"
         >
@@ -622,7 +622,7 @@ watch(
           @open-settings="showProjectSettings = true"
         />
         <button
-          class="hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           title="Export project (Ctrl+S)"
           @click="emit('export')"
           @keydown.enter="emit('export')"
@@ -633,14 +633,14 @@ watch(
              an outline PDF (no prose) and an RTF of the root document only —
              for a book written in scenes, a title page. -->
         <button
-          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           title="Compile manuscript (Word, EPUB, PDF, RTF, Markdown)"
           @click="showCompile = true"
         >
           <BaseIcon name="book-open" :size="16" />
         </button>
         <button
-          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           title="Import project (Ctrl+I)"
           @click="emit('import')"
           @keydown.enter="emit('import')"
@@ -648,7 +648,7 @@ watch(
           <BaseIcon name="download" :size="16" />
         </button>
         <button
-          class="hidden sm:inline-flex hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
+          class="hidden sm:inline-flex hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
           :title="
             authStore.localUser
               ? `Signed in as ${authStore.localUser.displayName || authStore.localUser.username}`
@@ -681,7 +681,7 @@ watch(
           ref="mainContentRef"
           tabindex="-1"
           aria-label="Manuscript editor"
-          class="flex-1 min-w-0 flex flex-col overflow-hidden focus:outline-none"
+          class="flex-1 min-w-0 flex flex-col overflow-hidden focus:outline-hidden"
         >
           <div class="flex-1 overflow-hidden">
             <slot name="editor"></slot>
@@ -838,7 +838,7 @@ watch(
         <button
           v-if="activePanelName && !flowMode && !focusMode"
           type="button"
-          class="lg:hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-sm border border-border-subtle bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary shadow-warm-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="lg:hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-sm border border-border-subtle bg-bg-elevated px-3.5 py-2.5 text-sm text-text-primary shadow-warm-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           @click="closeAllPanels"
         >
           <BaseIcon name="x" :size="16" />

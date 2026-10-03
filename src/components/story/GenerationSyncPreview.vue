@@ -58,13 +58,13 @@ function handleConfirm() {
 
     <div v-if="localChanges.length > 0" class="flex gap-2">
       <button
-        class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+        class="flex-1 py-1.5 text-xs btn-primary rounded-md font-ui focus:outline-hidden focus:ring-1 focus:ring-accent"
         @click="keepAll"
       >
         Keep All
       </button>
       <button
-        class="flex-1 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded-md font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+        class="flex-1 py-1.5 text-xs bg-bg-tertiary text-text-secondary rounded-md font-medium hover:bg-surface-hover transition-colors font-ui focus:outline-hidden focus:ring-1 focus:ring-accent"
         @click="discardAll"
       >
         Discard All
@@ -197,7 +197,7 @@ function handleConfirm() {
 
     <button
       v-if="localChanges.length > 0"
-      class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+      class="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
       :disabled="loading"
       @click="handleConfirm"
     >

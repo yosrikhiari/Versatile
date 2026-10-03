@@ -448,7 +448,7 @@ function handleClearExtraction() {
               v-model="globalSearchQuery"
               type="text"
               placeholder="Search every document…"
-              class="w-full pl-8 pr-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
+              class="w-full pl-8 pr-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
               @input="onGlobalSearchInput"
             />
           </div>
@@ -475,7 +475,7 @@ function handleClearExtraction() {
             v-model="searchQuery"
             type="text"
             placeholder="Filter documents by name…"
-            class="w-full pl-8 pr-3 py-1.5 text-xs bg-transparent border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
+            class="w-full pl-8 pr-3 py-1.5 text-xs bg-transparent border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
           />
         </div>
       </div>
@@ -493,14 +493,14 @@ function handleClearExtraction() {
               v-model="urlToImport"
               type="url"
               placeholder="Paste a URL to import..."
-              class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
+              class="w-full pl-7 pr-3 py-1.5 text-xs bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint/50 outline-hidden focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
               autocomplete="url"
             />
           </div>
           <!-- prettier-ignore -->
           <button
             type="submit"
-            class="px-2.5 py-1.5 text-xs rounded-lg btn-primary active:scale-[0.97] disabled:opacity-50 shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50"
+            class="px-2.5 py-1.5 text-xs rounded-lg btn-primary active:scale-[0.97] disabled:opacity-50 shrink-0 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/50"
             :disabled="isImporting || !urlToImport.trim()"
           >
             Import
@@ -508,7 +508,7 @@ function handleClearExtraction() {
           <!-- prettier-ignore -->
           <button
             type="button"
-            class="p-1.5 rounded-lg bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+            class="p-1.5 rounded-lg bg-bg-secondary border border-border-subtle text-text-hint hover:text-text-primary hover:border-border-hover transition-colors shrink-0 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/40"
             :disabled="isImporting"
             @click="showUrlInput = false"
           >
@@ -545,13 +545,13 @@ function handleClearExtraction() {
           <p class="text-xs text-text-hint/50 mb-4">Proceed with import?</p>
           <div class="flex items-center gap-2 justify-end">
             <button
-              class="px-3 py-1.5 text-xs rounded-lg bg-bg-secondary border border-border-subtle text-text-secondary hover:bg-border-subtle hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+              class="px-3 py-1.5 text-xs rounded-lg bg-bg-secondary border border-border-subtle text-text-secondary hover:bg-border-subtle hover:text-text-primary transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/40"
               @click="cancelImport"
             >
               Cancel
             </button>
             <button
-              class="px-3 py-1.5 text-xs rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50"
+              class="px-3 py-1.5 text-xs rounded-lg btn-primary active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/50"
               :disabled="isImporting"
               @click="handleConfirmImport"
             >
@@ -645,7 +645,7 @@ function handleClearExtraction() {
           <div class="flex items-center gap-2 min-w-0">
             <!-- prettier-ignore -->
             <button
-              class="p-1 rounded-lg hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+              class="p-1 rounded-lg hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/40"
               title="Back to library"
               aria-label="Back to library"
               @click="clearSelectedDoc()"
@@ -663,7 +663,7 @@ function handleClearExtraction() {
             </div>
           </div>
           <button
-            class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+            class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/40"
             title="Re-index document"
             aria-label="Re-index document"
             :disabled="isReindexing"
@@ -673,7 +673,7 @@ function handleClearExtraction() {
             <BaseIcon v-else name="rotate-cw" size="12" />
           </button>
           <button
-            class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+            class="p-1 rounded hover:bg-surface-hover text-text-hint hover:text-accent transition-colors shrink-0 disabled:opacity-40 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-accent/40"
             title="Extract entities from document"
             aria-label="Extract entities from document"
             :disabled="isExtracting"
@@ -794,7 +794,7 @@ function handleClearExtraction() {
                 v-model="chunkSearchQuery"
                 type="text"
                 placeholder="Search within chunks..."
-                class="w-full pl-7 pr-2 py-1 text-2xs bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder-text-hint/50 outline-none focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
+                class="w-full pl-7 pr-2 py-1 text-2xs bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder-text-hint/50 outline-hidden focus:border-accent/60 focus-visible:ring-1 focus-visible:ring-accent/40 transition-colors"
               />
             </div>
           </div>
@@ -833,7 +833,7 @@ function handleClearExtraction() {
             role="button"
             tabindex="0"
             :class="[
-              'flex items-center gap-2 px-4 py-2 cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none',
+              'flex items-center gap-2 px-4 py-2 cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-hidden',
               selectedDoc?.id === doc.id
                 ? 'bg-surface-hover border-l-2 border-accent'
                 : 'border-l-2 border-transparent'

@@ -52,7 +52,7 @@ function onPortraitUpdated() {
     class="bg-bg-tertiary border border-border-subtle hover:border-accent-muted rounded-lg overflow-hidden transition-all duration-150"
   >
     <div
-      class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150"
+      class="flex items-center justify-between p-3 cursor-pointer hover:bg-surface-hover hover:translate-y-[-0.5px] active:scale-[0.99] transition-all duration-150"
       role="button"
       tabindex="0"
       :aria-expanded="expanded"
@@ -61,7 +61,7 @@ function onPortraitUpdated() {
       @keydown.space.prevent="expanded = !expanded"
     >
       <div class="flex items-center gap-2">
-        <div v-if="entityType === 'character'" class="flex-shrink-0">
+        <div v-if="entityType === 'character'" class="shrink-0">
           <img
             v-if="entity.portrait"
             :src="entity.portrait"

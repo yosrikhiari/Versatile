@@ -143,7 +143,7 @@ function selectAllNew() {
                   @click="toggleCharacter(char)"
                 >
                   <div
-                    class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
+                    class="w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors"
                     :class="
                       isCharacterSelected(char) ? 'bg-accent border-accent' : 'border-border-subtle'
                     "
@@ -160,11 +160,11 @@ function selectAllNew() {
                       <span class="text-sm text-text-primary truncate">{{ char.name }}</span>
                       <span
                         v-if="char.isNew"
-                        class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded flex-shrink-0"
+                        class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded shrink-0"
                       >
                         New
                       </span>
-                      <span v-else class="text-xs text-text-hint flex-shrink-0"> Existing </span>
+                      <span v-else class="text-xs text-text-hint shrink-0"> Existing </span>
                     </div>
                   </div>
                 </button>
@@ -197,7 +197,7 @@ function selectAllNew() {
                   @click="toggleLocation(loc)"
                 >
                   <div
-                    class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
+                    class="w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors"
                     :class="
                       isLocationSelected(loc) ? 'bg-accent border-accent' : 'border-border-subtle'
                     "
@@ -214,11 +214,11 @@ function selectAllNew() {
                       <span class="text-sm text-text-primary truncate">{{ loc.name }}</span>
                       <span
                         v-if="loc.isNew"
-                        class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded flex-shrink-0"
+                        class="text-xs px-1.5 py-0.5 bg-accent/20 text-accent rounded shrink-0"
                       >
                         New
                       </span>
-                      <span v-else class="text-xs text-text-hint flex-shrink-0"> Existing </span>
+                      <span v-else class="text-xs text-text-hint shrink-0"> Existing </span>
                     </div>
                   </div>
                 </button>

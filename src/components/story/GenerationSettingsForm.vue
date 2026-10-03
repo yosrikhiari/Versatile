@@ -131,7 +131,7 @@ const isLongRun = computed(() => runEstimate.value.ms >= LONG_RUN_WARNING_MS)
           rows="3"
           maxlength="2000"
           placeholder="e.g. A tense reunion between two estranged siblings at a harbour market…"
-          class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-y font-ui transition-colors duration-150"
+          class="w-full px-3 py-2.5 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent resize-y font-ui transition-colors duration-150"
         />
       </div>
     </div>

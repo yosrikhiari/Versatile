@@ -27,7 +27,7 @@ const emit = defineEmits(['close'])
           >
         </div>
         <button
-          class="text-text-secondary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent rounded"
+          class="text-text-secondary hover:text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent rounded"
           @click="emit('close')"
         >
           <BaseIcon name="x" :size="20" />

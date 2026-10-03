@@ -163,8 +163,10 @@ are in `DESIGN.md` → Components. Every primitive has a story (`npm run storybo
 `UI/*`); Chromatic snapshots them on every push, and `npm run policy` fails if a
 `Base*.vue` is added without one.
 
-Note: Tailwind 3.4's opacity modifier scale does not include `/8`, `/12` or `/35`;
-those classes compile to nothing. Use `/10` and `/30`.
+Note: Tailwind 4 compiles any opacity modifier (under 3.4, `/8`, `/12` and `/35`
+compiled to nothing). Keep to the steps the design uses, `/10` and `/30`. The
+tokens still reach Tailwind through `tailwind.config.js`, which `src/style.css`
+loads with `@config`.
 
 ## Adding or changing a token
 

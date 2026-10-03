@@ -468,7 +468,7 @@ function handleSnapshotRestored(content) {
         v-model="inlineTitle"
         type="text"
         :placeholder="`${terms.section} title — Enter adds, Esc closes`"
-        class="flex-1 h-8 px-3 rounded-sm border border-border-subtle bg-bg-elevated font-ui text-xs text-text-primary placeholder:text-text-hint focus:outline-none focus:border-accent"
+        class="flex-1 h-8 px-3 rounded-sm border border-border-subtle bg-bg-elevated font-ui text-xs text-text-primary placeholder:text-text-hint focus:outline-hidden focus:border-accent"
         @keydown.enter.prevent="commitInlineAdd"
         @keydown.esc.prevent="cancelInlineAdd"
       />
@@ -527,10 +527,10 @@ function handleSnapshotRestored(content) {
               <BaseIcon
                 :name="expandedVolumes.has(volume.id) ? 'chevron-down' : 'chevron-right'"
                 :size="14"
-                class="text-text-hint flex-shrink-0"
+                class="text-text-hint shrink-0"
               />
               <span
-                class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                class="w-2.5 h-2.5 rounded-full shrink-0"
                 :style="{ background: volume.color || 'var(--vers-default-fallback)' }"
               ></span>
               <span
@@ -626,7 +626,7 @@ function handleSnapshotRestored(content) {
         >
           <button
             type="button"
-            class="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            class="min-w-0 flex-1 text-left focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
             :title="`Open the text written outside any ${terms.sectionLc}`"
             @click="selectLooseDraft"
           >
@@ -700,10 +700,10 @@ function handleSnapshotRestored(content) {
                 <BaseIcon
                   name="grip-vertical"
                   :size="14"
-                  class="text-text-hint flex-shrink-0 cursor-grab"
+                  class="text-text-hint shrink-0 cursor-grab"
                 />
                 <span
-                  class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  class="w-2.5 h-2.5 rounded-full shrink-0"
                   :style="{
                     background: getVolumeForSection(section)?.color || 'var(--vers-default-other)'
                   }"
@@ -722,11 +722,11 @@ function handleSnapshotRestored(content) {
                   </div>
                   <div class="flex items-center gap-3 mt-0.5">
                     <span class="text-xs text-text-hint flex items-center gap-1">
-                      <BaseIcon name="align-left" :size="12" class="flex-shrink-0" />
+                      <BaseIcon name="align-left" :size="12" class="shrink-0" />
                       {{ getSectionWordCount(section.id) }} words
                     </span>
                     <span class="text-xs text-text-hint flex items-center gap-1">
-                      <BaseIcon name="list" :size="12" class="flex-shrink-0" />
+                      <BaseIcon name="list" :size="12" class="shrink-0" />
                       {{ subsectionsBySection[section.id]?.length || 0 }}
                       {{
                         (subsectionsBySection[section.id]?.length || 0) === 1
@@ -739,7 +739,7 @@ function handleSnapshotRestored(content) {
                 <BaseIcon
                   :name="activeSectionExpanded === section.id ? 'chevron-down' : 'chevron-right'"
                   :size="14"
-                  class="text-text-hint flex-shrink-0"
+                  class="text-text-hint shrink-0"
                 />
               </div>
 
@@ -753,7 +753,7 @@ function handleSnapshotRestored(content) {
                     v-model="inlineTitle"
                     type="text"
                     :placeholder="`${terms.subsection} title — Enter adds, Esc closes`"
-                    class="flex-1 h-8 px-3 rounded-sm border border-border-subtle bg-bg-elevated font-ui text-xs text-text-primary placeholder:text-text-hint focus:outline-none focus:border-accent"
+                    class="flex-1 h-8 px-3 rounded-sm border border-border-subtle bg-bg-elevated font-ui text-xs text-text-primary placeholder:text-text-hint focus:outline-hidden focus:border-accent"
                     @keydown.enter.prevent="commitInlineAdd"
                     @keydown.esc.prevent="cancelInlineAdd"
                   />
@@ -790,7 +790,7 @@ function handleSnapshotRestored(content) {
                     <!-- Destructive: pushed to the far edge and quiet until hovered,
                        so it does not read as one of the everyday actions. -->
                     <button
-                      class="ml-auto p-1 rounded-md text-text-hint hover:text-danger hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                      class="ml-auto p-1 rounded-md text-text-hint hover:text-danger hover:bg-surface-hover transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-danger"
                       :title="`Delete ${terms.sectionLc}`"
                       :aria-label="`Delete ${terms.sectionLc}`"
                       @click="deleteSection(section)"
@@ -814,7 +814,7 @@ function handleSnapshotRestored(content) {
                       <BaseIcon
                         name="grip-vertical"
                         :size="13"
-                        class="text-text-hint flex-shrink-0 cursor-grab"
+                        class="text-text-hint shrink-0 cursor-grab"
                       />
                       <!-- prettier-ignore -->
                       <span
@@ -904,7 +904,7 @@ function handleSnapshotRestored(content) {
             type="text"
             :placeholder="`${terms.section} title…`"
             autofocus
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
             @keydown.enter.prevent="saveSection"
           />
         </div>
@@ -914,7 +914,7 @@ function handleSnapshotRestored(content) {
             v-model="newSection.summary"
             rows="3"
             placeholder="Brief summary of what happens in this section..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-hidden focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
         <div class="mb-4">
@@ -968,7 +968,7 @@ function handleSnapshotRestored(content) {
             type="text"
             :placeholder="`${terms.subsection} title…`"
             autofocus
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
             @keydown.enter.prevent="saveSubsection"
           />
         </div>
@@ -978,7 +978,7 @@ function handleSnapshotRestored(content) {
             v-model="newSubsection.summary"
             rows="4"
             placeholder="Key moments, beats, or summary of this scene..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-hidden focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
         <div class="mb-3 grid grid-cols-2 gap-3">
@@ -989,7 +989,7 @@ function handleSnapshotRestored(content) {
               type="text"
               list="chapter-manager-characters"
               placeholder="Whose eyes"
-              class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
             />
           </div>
           <div>
@@ -999,7 +999,7 @@ function handleSnapshotRestored(content) {
               type="text"
               list="chapter-manager-locations"
               placeholder="Where it happens"
-              class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+              class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
             />
           </div>
         </div>
@@ -1054,7 +1054,7 @@ function handleSnapshotRestored(content) {
             type="text"
             placeholder="e.g. Volume 1: The Awakening"
             autofocus
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
             @keydown.enter.prevent="saveVolume"
           />
         </div>
@@ -1064,7 +1064,7 @@ function handleSnapshotRestored(content) {
             v-model="newVolume.description"
             rows="2"
             placeholder="What is this volume about?"
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-hidden focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
         <div class="mb-4">

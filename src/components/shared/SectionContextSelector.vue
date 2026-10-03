@@ -122,7 +122,7 @@ defineExpose({
         <select
           v-model="selectedSelector"
           aria-label="Which part of the manuscript the AI reads"
-          class="appearance-none bg-transparent pl-2 pr-6 py-1 rounded-md font-ui text-xs text-text-primary border border-transparent hover:border-border-subtle hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer max-w-[14rem] truncate transition-colors duration-150"
+          class="appearance-none bg-transparent pl-2 pr-6 py-1 rounded-md font-ui text-xs text-text-primary border border-transparent hover:border-border-subtle hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent cursor-pointer max-w-56 truncate transition-colors duration-150"
         >
           <option v-for="opt in options" :key="opt.value" :value="opt.value">
             {{ opt.label }}
@@ -142,7 +142,7 @@ defineExpose({
         type="text"
         placeholder="e.g. 3, 5, 8"
         aria-label="Section numbers, comma separated"
-        class="w-32 px-2 py-1 font-ui text-xs bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
+        class="w-32 px-2 py-1 font-ui text-xs bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent"
       />
       <span class="font-ui text-2xs text-text-hint">section numbers, comma separated</span>
     </div>

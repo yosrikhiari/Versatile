@@ -151,7 +151,7 @@ function handleOverlayClick(event) {
               <textarea
                 v-model="localPrompt"
                 placeholder="E.g., 'focus on conflict', 'highlight mentor relationships'..."
-                class="w-full h-20 px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary placeholder-text-hint/50 resize-none focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                class="w-full h-20 px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary placeholder-text-hint/50 resize-none focus:outline-hidden focus:ring-2 focus:ring-accent focus:border-transparent"
               ></textarea>
               <p class="mt-1.5 text-xs text-text-hint">
                 Guide the generator with specific themes or relationships.

@@ -76,11 +76,11 @@ function statusColor(status) {
           <input
             v-model="newBranchName"
             placeholder="New branch name..."
-            class="flex-1 h-8 px-2.5 text-xs rounded-md bg-bg-tertiary border border-border-subtle text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-2 focus:ring-accent"
+            class="flex-1 h-8 px-2.5 text-xs rounded-md bg-bg-tertiary border border-border-subtle text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-2 focus:ring-accent"
           />
           <button
             type="submit"
-            class="h-8 px-3 text-xs font-medium rounded-md bg-accent text-accent-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-40 transition-opacity"
+            class="h-8 px-3 text-xs font-medium rounded-md bg-accent text-accent-foreground hover:opacity-90 focus:outline-hidden focus:ring-2 focus:ring-accent disabled:opacity-40 transition-opacity"
             :disabled="!newBranchName.trim()"
           >
             Create
@@ -117,7 +117,7 @@ function statusColor(status) {
                 <input
                   ref="renameInput"
                   v-model="renameMap[branch.id]"
-                  class="flex-1 h-7 px-2 text-xs rounded bg-bg-tertiary border border-border-subtle text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  class="flex-1 h-7 px-2 text-xs rounded bg-bg-tertiary border border-border-subtle text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
                   @keydown.enter="confirmRename(branch)"
                   @keydown.escape="cancelRename"
                   @blur="confirmRename(branch)"
@@ -160,14 +160,14 @@ function statusColor(status) {
           <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               v-if="branch.id !== branchStore.activeBranchId"
-              class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-text-primary hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-text-primary hover:bg-surface-hover transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
               title="Switch to this branch"
               @click="handleSwitch(branch.id)"
             >
               <BaseIcon name="arrow-right" :size="14" />
             </button>
             <button
-              class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-text-primary hover:bg-surface-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-text-primary hover:bg-surface-hover transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
               title="Rename"
               @click="startRename(branch)"
             >
@@ -175,7 +175,7 @@ function statusColor(status) {
             </button>
             <button
               v-if="branch.name !== 'main'"
-              class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-status-danger hover:bg-status-danger/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              class="grid place-items-center w-7 h-7 rounded text-text-hint hover:text-status-danger hover:bg-status-danger/10 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
               title="Delete branch"
               @click="handleDelete(branch)"
             >

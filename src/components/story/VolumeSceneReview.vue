@@ -55,7 +55,7 @@ function handleRerequest() {
           v-model="reRequestEdits"
           autofocus
           placeholder="e.g. Keep the market, cut the flashback, end on the mules refusing to move."
-          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent resize-y"
+          class="w-full px-3 py-2 text-sm bg-bg-tertiary border border-border-subtle rounded-md text-text-primary placeholder:text-text-hint font-ui focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent resize-y"
           rows="3"
         />
         <div class="flex items-center justify-end gap-2">

@@ -115,7 +115,7 @@ function detailPairs(details) {
               }}</span>
             </div>
 
-            <p class="text-text-secondary break-words">{{ n.message }}</p>
+            <p class="text-text-secondary wrap-break-word">{{ n.message }}</p>
 
             <details v-if="detailPairs(n.details).length">
               <summary

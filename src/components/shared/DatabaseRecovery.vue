@@ -77,7 +77,7 @@
           </BaseButton>
 
           <label
-            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-bg-secondary focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center"
+            class="w-full py-2 px-4 bg-surface-hover text-text-primary rounded-lg font-medium hover:bg-bg-secondary focus:outline-hidden focus:ring-2 focus:ring-accent disabled:opacity-50 cursor-pointer block text-center"
           >
             Import Backup
             <input

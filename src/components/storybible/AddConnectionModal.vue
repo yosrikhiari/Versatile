@@ -311,7 +311,7 @@ function handleSave() {
                   <select
                     v-if="sourceType !== 'group'"
                     v-model="sourceId"
-                    class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
+                    class="flex-2 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceType"
                     @change="handleSourceChange"
                   >
@@ -327,7 +327,7 @@ function handleSave() {
                   <select
                     v-else
                     v-model="sourceId"
-                    class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
+                    class="flex-2 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceType"
                     @change="handleSourceChange"
                   >
@@ -356,7 +356,7 @@ function handleSave() {
                   <select
                     v-if="targetType !== 'group'"
                     v-model="targetId"
-                    class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
+                    class="flex-2 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceId"
                     @change="handleTargetChange"
                   >
@@ -372,7 +372,7 @@ function handleSave() {
                   <select
                     v-else
                     v-model="targetId"
-                    class="flex-[2] px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
+                    class="flex-2 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary text-sm font-ui"
                     :disabled="!sourceId"
                     @change="() => handleGroupTargetChange(targetId)"
                   >

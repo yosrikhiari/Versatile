@@ -12,7 +12,7 @@ const alpha = (name) => `rgb(var(${name}) / <alpha-value>)`
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
-  safelist: ['animate-spin'],
+  // Tailwind 4 reads no safelist here: see @source inline() in src/style.css.
   darkMode: 'class',
   theme: {
     extend: {

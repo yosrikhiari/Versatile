@@ -285,6 +285,7 @@ function formatDate(date) {
 </script>
 
 <style scoped>
+@reference '../../style.css';
 .voice-profile-display {
   @apply space-y-4;
 }
@@ -398,7 +399,7 @@ function formatDate(date) {
 }
 
 .dist-range {
-  @apply w-12 flex-shrink-0 font-medium text-text-secondary;
+  @apply w-12 shrink-0 font-medium text-text-secondary;
 }
 
 .bar-container {

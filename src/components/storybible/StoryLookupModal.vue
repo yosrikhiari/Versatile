@@ -84,7 +84,7 @@ watch(
           type="text"
           placeholder="What are you looking for?"
           aria-label="Story lookup"
-          class="flex-1 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-text-hint"
+          class="flex-1 px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui text-sm focus:outline-hidden focus:ring-2 focus:ring-accent placeholder:text-text-hint"
         />
         <BaseButton
           type="submit"
@@ -114,7 +114,7 @@ watch(
         <li v-for="m in results" :key="`${m.kind}:${m.refId}`">
           <button
             type="button"
-            class="w-full text-left py-2.5 px-1 rounded hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            class="w-full text-left py-2.5 px-1 rounded hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
             data-test="result"
             @click="select(m)"
           >

@@ -38,7 +38,7 @@ NOTES: ${b.writingNotes}`
     <div class="flex justify-between items-start">
       <h3 class="type-display text-text-primary">{{ blueprint.title }}</h3>
       <button
-        class="px-3 py-1 text-xs btn-primary rounded font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+        class="px-3 py-1 text-xs btn-primary rounded font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
         @click="formatForWriting"
       >
         Insert as Draft

@@ -156,7 +156,7 @@ defineExpose({ close })
         ref="panelEl"
         role="dialog"
         :aria-label="label"
-        class="fixed z-[80] overflow-hidden rounded-xl border border-border-strong bg-bg-elevated"
+        class="fixed z-80 overflow-hidden rounded-xl border border-border-strong bg-bg-elevated"
         :style="panelStyle"
       >
         <slot :close="close" />

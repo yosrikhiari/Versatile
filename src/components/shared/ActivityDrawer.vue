@@ -79,7 +79,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
 
 <template>
   <Transition name="drawer-slide">
-    <div v-if="log.drawerOpen.value" class="fixed inset-0 z-[90]">
+    <div v-if="log.drawerOpen.value" class="fixed inset-0 z-90">
       <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/50" @click="log.drawerOpen.value = false" />
 
@@ -134,7 +134,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                           : 'activity'
                     "
                     :size="16"
-                    class="flex-shrink-0 text-accent"
+                    class="shrink-0 text-accent"
                   />
                   <div class="min-w-0">
                     <div class="text-sm text-text-primary truncate">{{ task.name }}</div>
@@ -147,7 +147,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                     </div>
                   </div>
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="flex items-center gap-2 shrink-0">
                   <span class="text-xs text-text-secondary font-mono">{{
                     formatElapsed(task.startedAt)
                   }}</span>
@@ -186,7 +186,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                       />
                       <span class="text-xs text-text-primary truncate">{{ phase.name }}</span>
                     </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
+                    <div class="flex items-center gap-2 shrink-0">
                       <span
                         class="text-2xs px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider"
                         :class="statusBadgeClass(phase.status)"
@@ -280,7 +280,7 @@ const hasCompleted = computed(() => log.completedTasks.value.length > 0)
                   />
                   <span class="text-sm text-text-primary truncate">{{ task.name }}</span>
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="flex items-center gap-2 shrink-0">
                   <span class="text-xs text-text-secondary font-mono">{{
                     task.completedAt ? formatElapsed(task.startedAt) + ' total' : ''
                   }}</span>

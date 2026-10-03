@@ -61,7 +61,7 @@ function handleKeydown(e) {
     >
       <span>{{ tag }}</span>
       <button
-        class="text-accent hover:text-text-primary focus:outline-none focus:ring-1 focus:ring-accent rounded"
+        class="text-accent hover:text-text-primary focus:outline-hidden focus:ring-1 focus:ring-accent rounded"
         type="button"
         @click="removeTag(index)"
       >
@@ -72,7 +72,7 @@ function handleKeydown(e) {
       v-model="inputValue"
       type="text"
       :placeholder="tags.length === 0 ? placeholder : ''"
-      class="flex-1 min-w-[60px] bg-transparent text-sm text-text-primary placeholder:text-text-hint focus:outline-none font-ui"
+      class="flex-1 min-w-[60px] bg-transparent text-sm text-text-primary placeholder:text-text-hint focus:outline-hidden font-ui"
       @keydown="handleKeydown"
       @blur="addTag"
     />

@@ -183,7 +183,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               <input
                 v-model="character.name"
                 placeholder="Character name"
-                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -191,7 +191,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               <input
                 v-model="character.role"
                 placeholder="e.g. Protagonist, Antagonist, Mentor"
-                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -199,7 +199,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               <input
                 v-model="character.goal"
                 placeholder="What does this character want?"
-                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -207,7 +207,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
               <input
                 v-model="character.voice"
                 placeholder="How do they speak?"
-                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -216,7 +216,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
                 v-model="character.notes"
                 placeholder="Backstory, personality, quirks..."
                 rows="3"
-                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent resize-none"
               />
             </div>
             <div>
@@ -225,7 +225,7 @@ defineExpose({ setGenerated, setLoading, setError, getCharacterData })
                 v-model="character.sampleDialogue"
                 placeholder='A single line this character would say — e.g. "Get out of my sight."'
                 rows="2"
-                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent resize-none"
+                class="w-full px-3 py-1.5 text-sm bg-bg-secondary border border-border-subtle rounded text-text-primary placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent resize-none"
               />
             </div>
             <div>

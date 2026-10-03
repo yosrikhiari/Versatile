@@ -89,7 +89,7 @@ const isValid = computed(() => {
             v-model="username"
             type="text"
             placeholder="your username"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-hidden focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
             autocomplete="username"
           />
         </div>
@@ -100,7 +100,7 @@ const isValid = computed(() => {
             v-model="email"
             type="email"
             placeholder="you@example.com"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-hidden focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
             autocomplete="email"
           />
         </div>
@@ -111,7 +111,7 @@ const isValid = computed(() => {
             v-model="password"
             type="password"
             placeholder="your password"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-hidden focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
             autocomplete="current-password"
           />
         </div>
@@ -124,7 +124,7 @@ const isValid = computed(() => {
             v-model="displayName"
             type="text"
             placeholder="how others see you"
-            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
+            class="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-text-primary placeholder-text-hint focus:outline-hidden focus:ring-2 focus:ring-accent focus:border-accent text-sm transition-all duration-150"
           />
         </div>
 

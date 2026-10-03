@@ -308,7 +308,7 @@ function onCharacterChatClose() {
 </script>
 
 <template>
-  <div class="h-[100dvh] bg-manuscript relative">
+  <div class="h-dvh bg-manuscript relative">
     <BaseAlert v-if="!ollamaAvailable" variant="warning" flush>
       Ollama is not reachable at localhost:11434. AI features are disabled. Start your Ollama
       container to enable them.
@@ -497,13 +497,13 @@ function onCharacterChatClose() {
           </p>
           <div class="flex gap-3">
             <button
-              class="flex-1 py-2 btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-1 py-2 btn-primary rounded-lg focus:outline-hidden focus:ring-2 focus:ring-accent"
               @click="timer.startNewSession(20)"
             >
               Start new session
             </button>
             <button
-              class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-1 py-2 bg-bg-secondary text-text-secondary rounded-lg font-medium hover:bg-surface-hover focus:outline-hidden focus:ring-2 focus:ring-accent"
               @click="timer.dismissModal()"
             >
               Keep writing (no timer)
@@ -545,7 +545,7 @@ function onCharacterChatClose() {
           <div class="flex items-center justify-between mb-4">
             <h2 class="type-display text-sm text-text-primary">Keyboard Shortcuts</h2>
             <button
-              class="text-text-secondary hover:text-text-primary text-xl focus:outline-none focus:ring-2 focus:ring-accent rounded"
+              class="text-text-secondary hover:text-text-primary text-xl focus:outline-hidden focus:ring-2 focus:ring-accent rounded"
               @click="showShortcutsModal = false"
             >
               &times;

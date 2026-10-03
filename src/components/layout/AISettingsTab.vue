@@ -320,7 +320,7 @@ defineExpose({
         <select
           id="default-provider"
           :value="settingsStore.aiProvider"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           @change="settingsStore.setAIProvider($event.target.value)"
         >
           <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
@@ -339,7 +339,7 @@ defineExpose({
             <span class="text-2xs text-text-hint w-4 shrink-0">{{ i + 1 }}.</span>
             <select
               :value="fb"
-              class="flex-1 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-1 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-hidden focus:ring-2 focus:ring-accent"
               @change="updateFallbackAt(i, $event.target.value)"
             >
               <option v-for="p in PROVIDER_LIST" :key="p" :value="p">
@@ -358,7 +358,7 @@ defineExpose({
         <div class="mt-1.5 flex gap-1.5">
           <select
             v-model="newFallback"
-            class="flex-1 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+            class="flex-1 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-hidden focus:ring-2 focus:ring-accent"
           >
             <option value="" disabled>Select provider</option>
             <option v-for="p in availableFallbacks" :key="p" :value="p">
@@ -387,7 +387,7 @@ defineExpose({
             v-model="ollamaEndpoint"
             type="text"
             placeholder="http://localhost:11434"
-            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           />
           <button
             :disabled="testingConnection"
@@ -414,7 +414,7 @@ defineExpose({
         <select
           id="ollama-model"
           v-model="selectedModel"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
         >
           <option value="">Select a model</option>
           <option v-for="model in availableModels" :key="model" :value="model">
@@ -434,7 +434,7 @@ defineExpose({
         <select
           id="ollama-utility-model"
           v-model="selectedUtilityModel"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           @change="saveUtilityModel"
         >
           <option value="">Default ({{ DEFAULT_MODEL }})</option>
@@ -466,7 +466,7 @@ defineExpose({
           <select
             id="orchestrator"
             :value="settingsStore.orchestrator"
-            class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
             @change="settingsStore.setOrchestrator($event.target.value)"
           >
             <option value="legacy">Legacy (parallel strategy)</option>
@@ -481,7 +481,7 @@ defineExpose({
             id="orchestrator-mode"
             :value="settingsStore.orchestratorMode"
             :disabled="settingsStore.orchestrator !== 'langgraph'"
-            class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+            class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent disabled:opacity-50"
             @change="settingsStore.setOrchestratorMode($event.target.value)"
           >
             <option value="workflow">Workflow (fixed order, no model)</option>
@@ -514,7 +514,7 @@ defineExpose({
           v-else-if="placements[r.key]"
           v-model="placements[r.key].model"
           :aria-label="r.label + ' model'"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           @change="savePlacement(r.key)"
         >
           <option :value="null">Inherit</option>
@@ -524,7 +524,7 @@ defineExpose({
           v-if="placements[r.key]"
           v-model="placements[r.key].device"
           :aria-label="r.label + ' device'"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           @change="savePlacement(r.key)"
         >
           <option value="gpu">GPU</option>
@@ -585,7 +585,7 @@ defineExpose({
           type="url"
           aria-label="AgentOps URL"
           :placeholder="DEFAULT_AGENTOPS_URL"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           data-test="agentops-url"
           @change="saveAgentOps"
         />
@@ -609,7 +609,7 @@ defineExpose({
             v-model="apiKeys[p]"
             type="password"
             :placeholder="`${p} API key`"
-            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent font-mono text-xs"
+            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent font-mono text-xs"
           />
           <button
             :disabled="testingProvider === p || !apiKeys[p]"
@@ -625,7 +625,7 @@ defineExpose({
             v-model="cloudflareAccountId"
             type="text"
             placeholder="Cloudflare account ID (Dashboard > Workers & Pages > Overview)"
-            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent font-mono text-xs"
+            class="flex-1 px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent font-mono text-xs"
           />
         </div>
         <div
@@ -657,7 +657,7 @@ defineExpose({
             <select
               :id="'feature-provider-' + f"
               v-model="featureProviderSelections[f]"
-              class="flex-[2] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-2 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-hidden focus:ring-2 focus:ring-accent"
               @change="onFeatureProviderChange(f)"
             >
               <option value="default">Default</option>
@@ -668,7 +668,7 @@ defineExpose({
             <select
               :id="'feature-model-' + f"
               v-model="featureModelSelections[f]"
-              class="flex-[3] px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+              class="flex-3 px-2 py-1 border border-border-subtle bg-bg-secondary text-text-primary rounded text-xs focus:outline-hidden focus:ring-2 focus:ring-accent"
               :disabled="
                 !featureProviderSelections[f] || featureProviderSelections[f] === 'default'
               "
@@ -696,7 +696,7 @@ defineExpose({
         <select
           id="embedding-provider"
           :value="settingsStore.embeddingProvider"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           @change="settingsStore.setEmbeddingProvider($event.target.value)"
         >
           <option v-for="(label, key) in EMBEDDING_PROVIDER_LABELS" :key="key" :value="key">
@@ -709,7 +709,7 @@ defineExpose({
         <select
           id="embedding-model"
           :value="settingsStore.embeddingModel"
-          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          class="w-full px-3 py-1.5 border border-border-subtle bg-bg-secondary text-text-primary rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-accent"
           @change="settingsStore.setEmbeddingModel($event.target.value)"
         >
           <option value="nomic-embed-text">nomic-embed-text</option>

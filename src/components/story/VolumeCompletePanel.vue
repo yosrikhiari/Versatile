@@ -114,7 +114,7 @@ const totalWordsWritten = computed(() =>
             <button
               v-if="volumeTotalConsistencyIssues > 0"
               type="button"
-              class="inline-flex items-center gap-1.5 text-warning hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+              class="inline-flex items-center gap-1.5 text-warning hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
               @click="emit('open-consistency')"
             >
               <BaseIcon name="alert-triangle" :size="12" />
@@ -166,7 +166,7 @@ const totalWordsWritten = computed(() =>
       <div class="mt-3">
         <button
           type="button"
-          class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+          class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded"
           :aria-expanded="showDashboard"
           @click="showDashboard = !showDashboard"
         >
@@ -204,7 +204,7 @@ const totalWordsWritten = computed(() =>
           role="option"
           :aria-selected="i === selectedSceneIndex"
           tabindex="0"
-          class="flex items-center gap-3 px-2 py-2 cursor-pointer rounded-md transition-colors duration-150 hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="flex items-center gap-3 px-2 py-2 cursor-pointer rounded-md transition-colors duration-150 hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           :class="
             i === selectedSceneIndex
               ? 'bg-surface-hover shadow-[inset_2px_0_0_0_rgb(var(--vers-accent-primary-rgb))]'

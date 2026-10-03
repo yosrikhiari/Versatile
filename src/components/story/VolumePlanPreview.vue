@@ -27,7 +27,7 @@
         <li v-for="(scene, i) in scenes" :key="i">
           <button
             type="button"
-            class="w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-md transition-colors duration-150 hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            class="w-full flex items-center gap-3 px-2 py-2.5 text-left rounded-md transition-colors duration-150 hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
             :aria-expanded="open === i"
             @click="toggle(i)"
           >
@@ -238,7 +238,7 @@ function toggle(i) {
 }
 
 const inputClass =
-  'w-full bg-bg-tertiary border border-border-subtle rounded-md px-2.5 py-1.5 text-sm text-text-primary font-ui placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150'
+  'w-full bg-bg-tertiary border border-border-subtle rounded-md px-2.5 py-1.5 text-sm text-text-primary font-ui placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150'
 
 function formatWants(wants) {
   if (!wants || typeof wants !== 'object') return ''

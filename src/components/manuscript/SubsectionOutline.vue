@@ -133,7 +133,7 @@ onMounted(() => {
         type="text"
         :placeholder="`Search ${terms.subsectionsLc}…`"
         :aria-label="`Search ${terms.subsectionsLc}`"
-        class="w-full px-3 py-1.5 text-xs border border-border-subtle rounded-md bg-bg-tertiary text-text-primary font-ui placeholder:text-text-hint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
+        class="w-full px-3 py-1.5 text-xs border border-border-subtle rounded-md bg-bg-tertiary text-text-primary font-ui placeholder:text-text-hint focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent transition-colors duration-150"
       />
 
       <!--
@@ -359,7 +359,7 @@ onMounted(() => {
             v-model="newSubsection.title"
             type="text"
             placeholder="What happens in this subsection?"
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui focus:outline-hidden focus:ring-2 focus:ring-accent"
           />
         </div>
 
@@ -369,7 +369,7 @@ onMounted(() => {
             v-model="newSubsection.summary"
             rows="4"
             placeholder="Key beats and moments in this subsection..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-hidden focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
 
@@ -379,7 +379,7 @@ onMounted(() => {
             v-model="newSubsection.content"
             rows="8"
             placeholder="Write the subsection here..."
-            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-none focus:ring-2 focus:ring-accent"
+            class="w-full px-3 py-2 border border-border-subtle rounded-lg bg-bg-secondary text-text-primary font-ui resize-none focus:outline-hidden focus:ring-2 focus:ring-accent"
           ></textarea>
         </div>
 

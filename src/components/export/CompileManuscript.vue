@@ -112,7 +112,7 @@ const previewText = computed(() => {
               v-model="separator"
               type="text"
               aria-label="Scene separator"
-              class="w-24 px-2 py-1 border border-border-subtle rounded bg-bg-secondary text-text-primary font-ui text-xs focus:outline-none focus:ring-2 focus:ring-accent"
+              class="w-24 px-2 py-1 border border-border-subtle rounded bg-bg-secondary text-text-primary font-ui text-xs focus:outline-hidden focus:ring-2 focus:ring-accent"
             />
           </label>
         </div>

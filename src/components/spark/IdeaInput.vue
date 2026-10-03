@@ -54,7 +54,7 @@ function toggleTone(t) {
         :value="idea"
         maxlength="400"
         rows="4"
-        class="w-full px-3 py-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent text-text-primary font-ui placeholder:text-text-hint transition-colors duration-150"
+        class="w-full px-3 py-2.5 bg-bg-tertiary border border-border-subtle rounded-md text-sm resize-none focus:outline-hidden focus:ring-1 focus:ring-accent focus:border-accent text-text-primary font-ui placeholder:text-text-hint transition-colors duration-150"
         placeholder="A shadow crosses the moon…"
         @input="emit('update:idea', $event.target.value)"
       ></textarea>

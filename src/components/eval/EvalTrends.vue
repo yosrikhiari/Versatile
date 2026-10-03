@@ -5,7 +5,7 @@
       <div class="flex items-center gap-2">
         <select
           v-model="selectedDimension"
-          class="text-2xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-primary font-ui focus:outline-none focus:ring-1 focus:ring-accent"
+          class="text-2xs bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-text-primary font-ui focus:outline-hidden focus:ring-1 focus:ring-accent"
         >
           <option value="__overall">Overall</option>
           <option v-for="dim in availableDimensions" :key="dim.value" :value="dim.value">

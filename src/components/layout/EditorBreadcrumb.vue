@@ -91,7 +91,7 @@ function goTo(level) {
       <button
         v-else
         type="button"
-        class="max-w-[12rem] truncate rounded px-1 py-0.5 font-ui text-xs text-text-hint transition-colors duration-150 hover:text-text-primary"
+        class="max-w-48 truncate rounded px-1 py-0.5 font-ui text-xs text-text-hint transition-colors duration-150 hover:text-text-primary"
         @click="goTo(crumb.level)"
       >
         {{ crumb.label }}

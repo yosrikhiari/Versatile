@@ -36,7 +36,7 @@ const sortedSnippets = computed(() => {
         <span class="font-ui text-xs text-text-hint tabular-nums">{{ snippet.count }}</span>
         <button
           type="button"
-          class="rounded p-0.5 text-text-hint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          class="rounded p-0.5 text-text-hint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-text-primary focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           :aria-label="`Remove ${snippet.word}`"
           @click="emit('remove', snippet.id)"
         >

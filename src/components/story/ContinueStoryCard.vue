@@ -93,7 +93,7 @@ const willWrite = computed(() => unwritten.value + (redraftStubs.value ? short.v
         <!-- Extend: plan and write new chapters onto the end of the draft -->
         <button
           type="button"
-          class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded disabled:opacity-50"
+          class="flex items-center gap-1.5 label-micro text-text-hint hover:text-text-secondary transition-colors duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent rounded disabled:opacity-50"
           :aria-expanded="showExtend"
           :disabled="busy"
           @click="showExtend = !showExtend"
