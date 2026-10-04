@@ -111,3 +111,6 @@ vite-dev.log
 
 # Local erotic-story test fixture — never commit
 **/*erotic-story-test*
+
+# Python bytecode (tools/*)
+__pycache__/
