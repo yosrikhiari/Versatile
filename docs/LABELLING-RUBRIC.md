@@ -1,6 +1,7 @@
 # Scene labelling rubric — v1 (frozen 2026-09-25)
 
-The human-labelled test set for the quality gate (analysis §27–§28). Every gate
+The human-labelled test set for the quality gate (`docs/GENERATION-PIPELINE-ANALYSIS.md`
+§27 plans it; the analysis has no §28, results start at §29). Every gate
 number is to be reported against these labels, so **this rubric does not
 change once labelling starts**. Criteria drift as a labeller reads
 (arXiv 2404.12272); if a rule turns out wrong, finish the pass under v1, write

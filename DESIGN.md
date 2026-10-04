@@ -73,10 +73,10 @@ typography:
     lineHeight: 1.4
 rounded:
   xs: "2px"
-  sm: "4px"
-  md: "6px"
-  lg: "8px"
-  xl: "10px"
+  sm: "2px"
+  md: "2px"
+  lg: "3px"
+  xl: "3px"
   full: "9999px"
 spacing:
   xs: "4px"
@@ -214,7 +214,7 @@ The app occupies full viewport height with `overflow: hidden`. The shell is a fi
 - **Standard** (`--vers-border`, 14 %): inputs, chips, list edges.
 - **Ink rule** (`--vers-border-strong` = text-primary): modals, the continue card, the manuscript margin, anything that must read as a placed object.
 
-`shadow-warm-sm/md` compile to a 1 px standard rule and `shadow-warm-lg/xl` to a 1.5 px ink rule, so existing components keep working. `liquid-glass` is a standard rule that turns cobalt on hover. The only true shadow left is the transient drag lift.
+`shadow-warm-sm/md` compile to a 1 px standard rule and `shadow-warm-lg/xl` to a 1.5 px ink rule, so existing components keep working. `liquid-glass` is a standard rule that turns cobalt on hover. The only true shadows left are transient: the drag lift, and the hover lift of the legacy `.btn-primary` / `.btn-elevated` classes.
 
 ### Named Rules
 **The No-Shadow Rule.** Unchanged in spirit, stricter in letter: nothing at rest casts a shadow.
@@ -250,7 +250,7 @@ Every primitive, its API, and the Storybook story (`npm run storybook`, `UI/...`
 |---|---|---|---|
 | `BasePanelHeader` | `title`* · `icon` · `meta` · `collapsible` · `collapsed` · `closable` | `#actions` · `toggle-collapse` · `close` | the top row of every tool panel; meta yields before the title when tight |
 | `BaseSection` | `title`* · `description` · `meta` · `first` · `dense` | default · `#actions` | title / one-line description / content, hairline-separated; no cards inside a panel |
-| `BaseButton` | `variant` primary·secondary·ghost·danger·accent-ghost·elevated·outline · `size` sm·md·lg · `icon` · `iconPosition` · `disabled` · `loading` | default | one primary per view; ghost for toolbar/inline; elevated for secondary actions in panels |
+| `BaseButton` | `variant` primary·secondary·ghost·soft·danger·accent-ghost·elevated·outline · `size` sm·md·lg · `icon` · `iconPosition` left·right · `type` (default `button`) · `disabled` · `loading` · `customClass` | default | one primary per view; ghost for toolbar/inline; `soft` (accent tint) or `secondary` beside a primary; `elevated` is an accent fill with a hover lift and is currently unused |
 | `BaseChip` | `variant` default·filter·removable · `active` · `size` sm·md · `color` accent·success·danger·warning·info·neutral · `disabled` | default · `click` · `remove` | filters (`filter` + `active`), tags (`removable`), facts (`default`) |
 | `BaseTab` | `variant` underline·pill·segment · `active` · `disabled` · `size` sm·md | default | tab strips inside a panel |
 | `BaseSegmented` | `modelValue` · `options[{value,label,icon?,disabled?}]`* · `size` sm·md · `block` · `ariaLabel` · `disabled` | `update:modelValue` | one-of-N mode choice; arrow keys move between enabled options (`role="radio"`); with nothing checked (the value lives elsewhere, e.g. under a More menu) Tab lands on the first enabled option |
@@ -268,37 +268,40 @@ Every primitive, its API, and the Storybook story (`npm run storybook`, `UI/...`
 Shared, non-panel components with stories: `EmptyState` (icon · title · description · `actionLabel`), `Skeleton` (`variant` line·text·circle·card·list·panel), `Modal`, `NotificationHost` / `ActivityToast` (a toast with an `action` never auto-dismisses), `AppTooltip`, `BaseIcon`, `TagInput`, `VirtualScrollList`.
 
 ### Buttons
-- **Shape:** Gently rounded corners (8px / rounded-lg). Minimal internal padding.
-- **Primary:** Accent background (#6e8bb5) with canvas-dark text (#121214), weight 500. On hover: opacity 0.9 + subtle accent glow shadow. On active: opacity 0.8 + scale(0.98).
-- **Ghost:** Transparent background, primary text color. On hover: scale(1.02). On active: scale(0.98). For toolbar and inline controls.
-- **Elevated:** Elevated surface background (#26262b), primary text. On hover: lift 1px + accent border tint + shadow. For secondary actions in panels.
-- **Transitions:** All variants: 150ms duration, `ease-out` timing.
+Use `BaseButton` (see the catalogue). What it draws:
+- **Shape:** `rounded-lg`, which the collapsed scale makes 3 px. Sizes `sm` / `md` / `lg` are 11 / 12 / 14 px Geist 500.
+- **Primary:** cobalt fill (`bg-accent`) with paper-coloured text (`text-bg-primary`); hover moves to `--vers-accent-hover`; active `scale(0.98)`.
+- **Ghost:** no fill, muted text; hover adds a canvas well and secondary text. For toolbar and inline controls.
+- **Soft:** a 10 % cobalt tint with cobalt text, for a secondary action that still belongs to the accent.
+- **Disabled:** 40 % opacity, no pointer events.
+- **Transitions:** 150 ms. Focus is the global `*:focus-visible` ring, not a local one.
+- The `.btn-primary`, `.btn-ghost` and `.btn-elevated` classes in `style.css` are older and still used by a few feature components; prefer `BaseButton` for anything new.
 
-### Glass Surfaces
-- **Glass** (panel-level, `.glass`): Panel background with hairline bottom border. Used for headers, toolbars, and section dividers.
-- **Glass Panel** (surface-level, `.glass-panel`): Elevated background with full hairline border. For card-like containers and popovers.
-- **Glass Modal** (modal-level, `.glass-modal`): Same as glass-panel. Elevated background, full hairline border. For dialogs and overlays.
-- **Liquid Glass** (interactive elevated, `.liquid-glass`): Elevated background + hairline border + inset highlight + drop shadow. On hover, border shifts toward the accent. For interactive cards and dropdown triggers.
+### Surfaces (the `glass-*` classes)
+The names are historical: nothing is glass. All are solid and none blurs.
+- **`.glass`** (panel-level): panel background with a hairline bottom border. Headers, toolbars, section dividers.
+- **`.glass-panel`** (surface-level): elevated background with a full hairline border. Card-like containers and popovers.
+- **`.glass-modal`** (modal-level): same as `.glass-panel`; `Modal` adds `rounded-sm` and `shadow-warm-lg`, which is the 1.5 px ink rule.
+- **`.liquid-glass`** (interactive elevated): elevated background, standard (14 %) border, no shadow; the border turns cobalt on hover. Currently unused.
 
-> **Usage:** Glass classes are self-contained — they set the correct hairline border at 7% opacity. Do **not** append `border-b`, `border-t`, or other border utility classes to a glass element, as they override the intended opacity.
+> **Usage:** the classes set their own hairline (`--vers-border-subtle`, 8 %). Do **not** append `border-b`, `border-t` or other border utilities to a glass element; they override it.
 
 ### Inputs & Fields
-- **Shape:** Gently rounded corners (8px / rounded-lg).
-- **Style:** Elevated surface background (#26262b dark / #ffffff light), primary text.
-- **Focus:** The global `*:focus-visible` rule applies — 2px solid accent outline with 2px offset. No inner glow or border shift.
-- **Disabled / Error:** Uses muted text color. Error fields additionally use `--vers-status-danger` via component-level styling.
+Use `BaseField` / `BaseSelect`.
+- **Shape:** `rounded-lg` (3 px), 32 px tall for a single line.
+- **Style:** elevated surface, primary text, hairline border; the label above is `.label-micro`.
+- **Focus:** the border turns cobalt (`focus:border-accent`) and the global `*:focus-visible` ring (2 px cobalt, 2 px offset) applies on keyboard focus. No inner glow.
+- **Disabled / Error:** disabled is 40 % opacity; `error` turns the border `--vers-status-danger` and replaces the hint with the error text.
 
 ### Cards / Containers
-- **Corner Style:** Soft rounding (10px / rounded-xl).
-- **Background:** Panel background (#1a1a1d dark / #efede5 light).
-- **Elevation strategy:** Tonal — cards sit at the panel layer, separated from canvas by background alone. No shadow.
-- **Internal Padding:** 24px (spacing.lg).
-- **Border:** Hairline border-subtle on hover or selection; borderless at rest.
+- **Corner Style:** 2–3 px (`rounded-sm` … `rounded-xl` all collapse to that).
+- **Inside a panel:** no cards; use `BaseSection`.
+- **An object the user acts on** (a modal, a dropdown, a dialog card): elevated or panel surface with an ink rule (`shadow-warm-lg`, or 1.5–2 px of `--vers-border-strong`). No shadow.
 
 ### Navigation
-- **Style:** Fixed sidebar, full height, panel background. Vertical list of items with secondary text color.
-- **States:** Default — secondary text. Hover — hover background well (#222226). Active / selected — accent treatment (background tint or text shift to primary).
-- **Typography:** UI font (Geist), 14px, regular weight.
+- **Style:** fixed sidebar, full height, panel background, secondary text.
+- **States:** hover is a hover well (`--vers-bg-hover`); the active item gets cobalt text and a cobalt `>` in the margin, no fill (the collapsed rail keeps a tint).
+- **Typography:** Geist, 13 px, regular.
 
 ### Manuscript Editor (Signature Component)
 - **Typography:** IBM Plex Mono, clamp(16–18px), 1.75 line-height.
@@ -326,7 +329,7 @@ Shared, non-panel components with stories: `EmptyState` (icon · title · descri
 - **Don't** add chroma to neutrals: bone and charcoal are near-zero chroma; the only colour is the signal colour and the status set.
 - **Don't** round anything past 3 px except status dots and avatars. Chips are squared.
 - **Don't** add glass-blur, translucency, or frosted-glass effects. All surfaces are solid.
-- **Don't** use shadows to indicate elevation. Rules do that. The only shadow is the transient drag lift.
+- **Don't** use shadows to indicate elevation. Rules do that. The only shadows are transient (the drag lift, a legacy button's hover lift).
 - **Don't** put cobalt on a surface. Its power is that it only ever marks something live.
 - **Don't** add decorative elements that don't serve the writing workflow. If it doesn't help the author write, edit, or navigate, it doesn't belong.
 - **Don't** invent new motion presets, and don't reach for overshoot or bounce easing. Use the `anim-*` presets: exponential ease-out on enters (220ms), a faster standard curve on exits (150ms).

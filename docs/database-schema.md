@@ -2,7 +2,7 @@
 
 ## Entity Catalog
 
-All domain entities inherit from `BaseEntity` (Id, CreatedAt, UpdatedAt). Story-scoped entities inherit `UserOwnedEntity` (adds UserId, OrganizationId).
+All domain entities except `OrganizationMembership` (composite key) inherit from `BaseEntity` (Id, CreatedAt, UpdatedAt). Story-scoped entities inherit `UserOwnedEntity` (adds UserId, OrganizationId).
 
 ### Tenant-Anchored (UserOwnedEntity → BaseEntity)
 
@@ -78,9 +78,9 @@ All story-scoped entities carry `UserId` (required) + `OrganizationId` (optional
 | **VolumeEntity** | VolumeEntities | Cross-reference table linking entities to volumes |
 | **BibleEntry** | BibleEntries | Story-bible references |
 
-### Tenant-Exempt (BaseEntity only)
+### Tenant-Exempt (not `UserOwnedEntity`)
 
-These entities do NOT carry OrganizationId and bypass the tenant filter:
+These entities do not extend `UserOwnedEntity`, so the tenant filter does not apply to them (`User` and `Organization` extend `BaseEntity`; `OrganizationMembership` has a composite key; `AuditEntry` and `OutboxMessage` are plain classes in `Versatile.Infrastructure/Data`). Membership and audit rows still record an organization id:
 
 | Entity | Table | Description |
 |---|---|---|
@@ -175,24 +175,29 @@ IndexedDB (Dexie.js) ←→ SyncEngine ←→ Backend API (ASP.NET Core)
 
 ### Sync Entities
 
-Entities synced with the backend (defined in `sync-mapper.ts:SYNC_ENTITIES`):
+Entities synced with the backend (defined in `sync-mapper.ts:SYNC_ENTITIES`). Push order is the
+hard-coded `order` list in `SyncEngine.push()` (projects bootstrap first when the story has no
+`apiId` yet); pull walks `SYNC_ENTITIES` in declaration order.
 
-| Table | API Endpoint | Top-Level | Sync Priority |
+| Table | API Endpoint | Top-Level | Push order |
 |---|---|---|---|
-| projects (Stories) | `/story` | Yes (provides storyApiId) | 0 |
-| volumes | `/story/{id}/volume` | No | 1 |
-| characters | `/story/{id}/entity` | No (type=Character) | 2 |
-| locations | `/story/{id}/entity` | No (type=Location) | 3 |
-| plotThreads | `/story/{id}/plot-thread` | No | 4 |
-| sections | `/story/{id}/section` | No | 5 |
-| subsections | `/story/{id}/subsection` | No | 6 |
-| characterRelationships | `/story/{id}/character-relationship` | No | 7 |
-| volumeEntities | `/story/{id}/volume-entity` | No | 8 |
-| manuscripts | `/story/{id}/manuscript` | No | 9 |
-| researchDocuments | `/story/{id}/research` | No | 10 |
-| researchChunks | `/story/{id}/research-chunk` | No | 11 |
-| researchTags | `/story/{id}/research-tag` | No | 12 |
-| branches | `/story/{id}/branch` | No | 13 |
+| branches | `/story/{id}/branch` (**no backend route**: no `BranchController`) | No | 0 |
+| projects (Stories) | `/story` | Yes (provides storyApiId) | 1 |
+| volumes | `/story/{id}/volume` | No | 2 |
+| characters | `/story/{id}/entity` | No (type=Character) | 3 |
+| locations | `/story/{id}/entity` | No (type=Location) | 4 |
+| plotThreads | `/story/{id}/plot-thread` | No | 5 |
+| sections | `/story/{id}/section` | No | 6 |
+| subsections | `/story/{id}/subsection` | No | 7 |
+| characterRelationships | `/story/{id}/character-relationship` | No | 8 |
+| volumeEntities | `/story/{id}/volume-entity` | No | 9 |
+| manuscripts | `/story/{id}/manuscript` | No | 10 |
+| researchDocuments | `/story/{id}/research` (**mismatch**: the controller route is `research-document`) | No | 11 |
+| researchChunks | `/story/{id}/research-chunk` | No | 12 |
+| researchTags | `/story/{id}/research-tag` | No | 13 |
+
+Field-level gaps (unsent columns, the GraphEdge time-axis columns the backend lacks) are listed in
+`docs/sync-status.md`.
 
 ### ID Mapping
 
@@ -212,9 +217,18 @@ Strategies defined in `sync-conflicts.ts`:
 3. **Pull**: `SyncEngine.pull()` fetches all entities for the current story and upserts them into IndexedDB.
 4. **Sync Now**: `syncNow()` calls push then pull in sequence.
 
+### Client schema (IndexedDB)
+
+The browser database is Dexie, declared as a list of versions in `src/services/db-schema.ts`
+(`SCHEMA_VERSIONS`, v11 through **v55**, 53 tables) with data-moving upgrade handlers in
+`src/services/db-migrations.ts` (`MIGRATIONS`, keyed by version). Every version is logged in
+`docs/database-schema-changelog.md`.
+
 ## Row-Level Security
 
-Implemented via `AddRowLevelSecurity` migration. RLS policies enforce the `OrganizationId` tenant filter at the database level, providing a defense-in-depth layer beyond the application-level query filter. Reading an organisation you do not belong to returns 403 (membership is checked before existence — see `API.md`).
+Implemented via `AddRowLevelSecurity` migration. RLS policies enforce the `OrganizationId` tenant filter at the database level, providing a defense-in-depth layer beyond the application-level query filter. `TenantSessionInterceptor` sets `app.organization_id` on each opened connection.
+
+Caveats (checked 2026-10-04): the policies cover the tables that existed when the migration ran, so `Branches` (added later by `AddBranchesTable`) has none; no table uses `FORCE ROW LEVEL SECURITY`; and the compose stack connects as the `postgres` superuser, which bypasses RLS. In the default stack the EF query filter is therefore the layer that actually isolates tenants. A non-superuser, non-owner application role is needed for RLS to take effect. Reading an organisation you do not belong to returns 403 (membership is checked before existence — see `API.md`).
 
 ## Migration Workflow
 
@@ -242,9 +256,10 @@ dotnet ef database update -s ../Versatile.Api
 
 ## Not-Synced Entities
 
-These server-only entities are not synced to IndexedDB:
+These backend entities are not synced with IndexedDB (several have a Dexie table that stays local; `docs/sync-status.md` has the full classification):
 
 - Users, Organizations, OrganizationMemberships
+- Chapters, Scenes (superseded on the client by sections/subsections)
 - AuditLog
 - OutboxMessages
 - StoryElements, StoryDocuments, StoryStateSnapshots

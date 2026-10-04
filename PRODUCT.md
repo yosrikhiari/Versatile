@@ -25,9 +25,9 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Focus Mode strips UI chrome for distraction-free writing
 - Auto-save to local IndexedDB via Dexie (no manual save needed)
 - Optional sync to a .NET 10 + PostgreSQL server for multi-device access
-- Five AI providers available: Ollama (default/local, prose model + `qwen3:8b` utility model), OpenAI, Anthropic, Gemini, Groq
+- Six AI providers available: Ollama (default/local, prose and utility roles both `qwen3:8b`), OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI
 - Story planning tools: story bible (characters, locations, plot threads, relationships), chapter/scene/volume hierarchy, timeline view, story canvas, scene outline, visual graph network
-- Export to PDF and EPUB
+- Export to Word (docx), PDF and EPUB; Compile also writes Markdown and RTF
 
 ## Capabilities and Constraints
 
@@ -49,13 +49,13 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Timeline View: chronological plot thread visualization
 - Scene Outline: structured scene-by-scene breakdown
 - Volume Management: organize chapters into volumes
-- Export to PDF (jsPDF) and EPUB
+- Export to Word (docx), PDF (jsPDF) and EPUB (JSZip)
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts)
-- Offline-first persistence via Dexie IndexedDB (schema v51, 51 tables)
+- Offline-first persistence via Dexie IndexedDB (schema v55, 53 tables)
 - Cloud sync via .NET 10 + PostgreSQL (optional)
 - Light and dark themes (both equally maintained)
-- 279 test files (≈3,060 tests) — Vitest; Playwright E2E; xUnit backend
+- 326 test files (3,475 tests on 2026-10-04) — Vitest; Playwright E2E; xUnit backend
 - Geist Variable UI font, IBM Plex Mono manuscript font, various serif fonts for feature modes
 - One panel grammar across every tool panel (`BasePanelHeader` / `BaseSection`); panels dock right of a canvas-dominant shell
 - Whole-book generation verified against a real local model (10 chapters, 28K words, 62 min — `docs/examples/the-salt-road.md`)
@@ -76,9 +76,9 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 
 - README.md at project root — full feature catalog and architecture overview
 - AGENTS.md — tech stack, conventions, performance rules, testing patterns
-- ≈2,950 passing unit tests (Vitest), backend xUnit suites, Playwright E2E
+- 3,473 passing unit tests, 2 skipped (Vitest, 2026-10-04), backend xUnit suites, Playwright E2E
 - End-to-end tests (Playwright)
-- Storybook (24 stories) with accessibility addon (a11y), Chromatic visual regression
+- Storybook (37 story files) with accessibility addon (a11y), Chromatic visual regression
 - No published testimonials, case studies, or customer logos
 
 ## Product Principles

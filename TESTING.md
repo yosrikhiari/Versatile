@@ -6,18 +6,26 @@ How to run every check in this repo, and the conventions new tests must follow.
 
 ```bash
 npm test              # watch mode
-npm run test:run      # single run (CI shape) — 279 files, ≈3,060 tests, ~2 min
-npm run test:coverage # v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
+npm run test:run      # single run: 326 files (1 skipped), ≈3,470 tests
+npm run test:coverage # what CI runs: v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
 npm run typecheck     # tsc --noEmit, must be zero errors
 npm run lint          # eslint, zero errors (warnings are pre-existing)
+npm run lint:tokens   # banned class patterns (retired fonts, wrong accent pairings)
+npm run policy        # repo policies (tokens documented, stories, hex/shape/any ratchets, heading voice, agent files)
 ```
 
-- Suites live under `src/tests/`: `unit/` (the bulk, 243 files),
-  `integration/` (multi-component flows: context pipeline, editor
-  population, voice extraction, volume membership, the chapter-tab panel),
+With a model loaded in Ollama, the default worker pool can run out of
+memory; `npx vitest run --maxWorkers=3` is how the suite is run locally.
+
+- Suites live under `src/tests/` (`vitest.config.js` includes
+  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 302 files),
+  `integration/` (10 multi-component flows: context pipeline, editor
+  population, voice extraction, volume membership, the chapter-tab panel,
+  book analysis, novel import, What If branches, branch integrity),
   `audit/` (consistency, eval gates, revisor), `evaluation/` (retrieval
-  quality), plus a few top-level eval/critic specs. All run in jsdom with
-  fake-indexeddb.
+  quality), plus 9 top-level eval/critic specs. All run in jsdom with
+  fake-indexeddb. `live/` holds `*.live.js` real-model runs, which only
+  `vitest.live.config.js` picks up (see below).
 - **Fake timers are mandatory** for anything touching a timer (`vi.useFakeTimers()`):
   attach rejection assertions *before* advancing time (otherwise the rejection
   fires unhandled mid-advance), and always restore in `finally`/`afterEach`
@@ -52,7 +60,8 @@ dotnet test <TestProject> --collect:"XPlat Code Coverage;Format=opencover"
 - xUnit across `Versatile.Api.Tests`, `Application.Tests`,
   `Infrastructure.Tests`, `IntegrationTests` (all green; integration tests use
   in-memory providers, no live Postgres needed).
-- Coverage uses the referenced coverlet collector; CI uploads opencover to SonarCloud.
+- Coverage uses the referenced coverlet collector, locally only: CI no longer
+  collects it (SonarCloud was removed on 2026-09-15, `8d75dd2d`).
 
 ## E2E (Playwright, Chromium)
 
@@ -61,8 +70,11 @@ npm run test:e2e:install   # one-time browser install
 npm run test:e2e           # boots `npm run dev` automatically
 ```
 
-Specs in `e2e/`: `smoke`, `auth`, `responsive`, `panel-dock` (right-docked
-panels, canvas dominant), `generator-reskin` and `agents-panel` (the Agents
+Config: `playwright.config.js` (Chromium only; CI installs it with
+`npx playwright install --with-deps chromium`). Specs in `e2e/`: `smoke`,
+`auth`, `responsive`, `panel-dock` (right-docked panels, canvas dominant),
+`generator-survives-panels` (run options set in the Generator panel survive
+a trip to another panel), `generator-reskin` and `agents-panel` (the Agents
 panel: orchestrator switch reveals the empty state, the tracing switch
 toggles, a second GPU model shows the eviction error while editing and the
 CPU device clears it — skipped when Ollama serves only one model). Full user journeys are
@@ -79,8 +91,13 @@ are measured in minutes to hours. Output goes to `reports/` (gitignored).
 npx vite-node tools/generate-sample.mjs --model qwen3:8b --words 400
 
 # a whole book through the real pipeline, headless (default 10 × 3 × 2,400 words)
-LIVE_MODEL=qwen3:8b npx vitest run --config vitest.live.config.js
+LIVE_MODEL=qwen3:8b npx vitest run --config vitest.live.config.js src/tests/live/saltRoad.live.js
 ```
+
+Name the file: `src/tests/live/` also holds 15 measurement probes (critic,
+gate, continuity, repair, ...), none gated by an env var, and the config
+without a path runs all 16 one after another. Each probe's header gives its
+own command.
 
 The live config is standalone (not merged with `vitest.config.js`) because
 `mergeConfig` concatenates `include` and would pull the unit suite into every
@@ -89,7 +106,9 @@ run; it runs one file at a time because there is one GPU. Progress streams to
 exists (`plan.json`), the finished book as `book.md`, and the run's health
 ledger as `health.json`. `LIVE_TITLE`, `LIVE_CHAPTERS`, `LIVE_SCENES`,
 `LIVE_WORDS`, `OLLAMA_HOST` and `LIVE_MODEL` (prose model; the utility model
-stays `qwen3:8b`) override the defaults. A browser-driven run dies on any
+stays `qwen3:8b`) override the defaults; the file header lists the rest
+(`LIVE_PREMISE`, `LIVE_ORCHESTRATOR`, `LIVE_MODE`, `LIVE_PRESET`,
+`LIVE_TRACE`, `LIVE_FOCUSED`). A browser-driven run dies on any
 Vite full reload — this is why the harness exists.
 
 Then:
@@ -99,18 +118,27 @@ npm run audit:manuscript        # duplicate / degraded prose re-measured from th
 npm run eval:snapshot           # critic regression baseline (SNAPSHOT_MODEL=qwen3:8b … --validate-all)
 ```
 
+For a UI or CSS upgrade, `tools/style-snap/` records every element's computed
+style on the main screens and diffs two runs (`node tools/style-snap/snap.mjs
+<label>` with the dev server on :5175, then `node tools/style-snap/diff.mjs
+<a> <b>`; Playwright through the installed Edge, output in `reports/tw-snap/`).
+It verified the Tailwind 4 upgrade.
+
 ## CI
 
-`.github/workflows/ci.yml` runs `lint` (ESLint, typecheck, Prettier check),
-`test` (unit + coverage + production build on Node 22.x), `e2e`,
-`sonarcloud` and `backend` (restore/build/test the solution) on pushes to
-`master`, `develop`, `feature/*` and PRs to `master`/`develop`.
-`backend-ci.yml` additionally runs SonarCloud C# analysis with opencover and,
-on `master`, pushes the API image to GHCR. The Sonar uploads are advisory
-(`continue-on-error`): lint, tests and build are the gate. They have returned
-403 since the stored `SONAR_TOKEN` stopped being accepted — regenerate it at
-sonarcloud.io and update the repository secret to get reports back. `eval-regression.yml` and
-`chromatic.yml` are separate.
+`.github/workflows/ci.yml` runs `lint` (ESLint, typecheck, `lint:tokens` +
+`policy`, Prettier check), `test` (`test:coverage` + production build on
+Node 22.x), `e2e` (after `lint`) and `backend` (restore/build/test the
+solution) on pushes to `master`, `develop`, `feature/*` and PRs to
+`master`/`develop`. `backend-ci.yml` (pushes and PRs to `master` that touch
+`backend/**`) builds and
+tests the backend again, uploads the `.trx` results and, on a push to
+`master`, pushes the API image to GHCR. SonarCloud was removed from both on
+2026-09-15 (`8d75dd2d`): the token had been rejected for months and the scan
+gated nothing. `eval-regression.yml` (critic regression on PRs),
+`deps-audit.yml`, `stale.yml` and `branch-cleanup.yml` are separate.
+`chromatic.yml` exists locally but is gitignored until a
+`CHROMATIC_PROJECT_TOKEN` secret exists, so Chromatic does not run in CI.
 
 ## Multi-agent graph (2026-09-18)
 

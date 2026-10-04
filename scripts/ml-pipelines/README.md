@@ -16,8 +16,8 @@
 
 - **Runner pattern**: CLI scripts using `vite-node` (see `package.json` `eval:rag` example)
 - **Report output**: `reports/` directory — JSON for machine consumption, MD for human review
-- **Pure evaluation**: All gate functions (`src/services/evalGates.js`) are pure — no Vue dependency, usable from CLI
-- **Dimensions**: 10-point rubrics from `src/config/evalDimensions.js` with workspace-specific dimension sets
+- **Pure evaluation**: All gate functions (`src/services/evalGates.ts`) are pure — no Vue dependency, usable from CLI
+- **Dimensions**: 10-point rubrics from `src/config/evalDimensions.ts` with workspace-specific dimension sets
 - **Baselines**: JSON files in `baselines/` directory for comparison across runs
 
 ## Running

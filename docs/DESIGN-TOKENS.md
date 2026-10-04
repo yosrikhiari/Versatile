@@ -20,6 +20,7 @@ high-contrast users.
 ## Surfaces (backgrounds)
 
 | Token | Light | Dark | Usage |
+|---|---|---|---|
 | `--vers-bg-base` | `#f7f5f1` | `#141414` | The page: manuscript surface and app canvas |
 | `--vers-bg-panel` | `#eeede8` | `#0d0d0d` | Sidebar, header, docked panels (one step down from the page) |
 | `--vers-bg-canvas` | `#f7f5f1` | `#141414` | Writing column = the page |
@@ -29,6 +30,7 @@ high-contrast users.
 ## Borders
 
 | Token | Light | Dark | Usage |
+|---|---|---|---|
 | `--vers-border-subtle` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Hairline dividers |
 | `--vers-border` | `rgba(0,0,0,0.14)` | `rgba(255,255,255,0.14)` | Standard border: inputs, chips, list edges |
 | `--vers-border-strong` | `= text-primary` | `= text-primary` | **Ink rule**: modals, the continue card, the manuscript margin. Structure without shadows |
@@ -37,6 +39,7 @@ high-contrast users.
 ## Text
 
 | Token | Light | Dark | Contrast on bg-base (light / dark) | Usage |
+|---|---|---|---|---|
 | `--vers-text-primary` | `#121212` | `#e1e1e1` | 17.2 / 14.1 | Body & headings; also the ink rule |
 | `--vers-text-secondary` | `#484845` | `#9e9e9e` | 8.4 / 6.9 | Secondary copy |
 | `--vers-text-muted` | `#5c5b58` | `#838383` | 6.2 / 4.9 (AA) | Hints, labels |
@@ -50,15 +53,16 @@ high-contrast users.
 ## Accent
 
 | Token | Value | Usage |
+|---|---|---|
 | `--vers-accent-primary` | `#1251cc` light / `#83b0ff` dark | Cobalt, the one signal colour: caret, active line, links, primary action (6.3:1 / 8.4:1 on bg-base, so it works as text) |
 | `--vers-accent-primary-rgb` | `18, 81, 204` / `131, 176, 255` | For `rgba()` composition |
 | `--vers-accent-secondary` | `#0a41ad` / `#6b97e8` | Pressed / deep variant |
 | `--vers-accent-hover` | `#0a41ad` / `#99c4ff` | Hover of accent fills (darkens on light, lifts on dark) |
-| `--vers-glow-loading-rgb` | `= accent rgb` | Loading glow |
 
 ## Semantic status (eval / feedback)
 
 | Token | Light | Dark |
+|---|---|---|
 | `--vers-status-success` | `#21763c` | `#6fc082` |
 | `--vers-status-danger` | `#b32228` | `#f97770` |
 | `--vers-status-warning` | `#ae6800` | `#e9b452` |
@@ -81,8 +85,8 @@ channels, so translucency is written as `rgb(var(--vers-x-rgb) / 0.3)` instead o
 hard-coded colour. Twins exist for: `--vers-bg-base|panel|canvas|hover|elevated-rgb`,
 `--vers-text-primary-rgb`, `--vers-text-secondary-rgb`, `--vers-text-muted-rgb`,
 `--vers-text-faint-rgb`, `--vers-text-on-accent-rgb`,
-`--vers-accent-primary|secondary|hover-rgb`, `--vers-glow-loading-rgb`,
-`--vers-entity-character|location-rgb`, and
+`--vers-accent-primary|secondary|hover-rgb`,
+`--vers-entity-character|location-rgb`, `--vers-entity-plotThread-rgb`, and
 `--vers-status-open|in_progress|resolved|closed|success|danger|warning|info-rgb`.
 Add a twin whenever you add a colour that will be tinted; never write `rgba(110, 139, 181, ...)`
 by hand.
@@ -90,6 +94,11 @@ by hand.
 ## Heat scale (writing heatmap)
 
 Five steps for the workspace's writing heatmap (`WritingHeatmap.vue`), from "no words" to
+the busiest day. One hue, monotone lightness; `heat-0` stays neutral so "no data" never
+reads as the bottom of the scale.
+
+| Token | Light | Dark |
+|---|---|---|
 | `--vers-heat-0` | `rgba(0,0,0,0.05)` | `rgba(255,255,255,0.05)` |
 | `--vers-heat-1` | `#bcd2f9` | `#273857` |
 | `--vers-heat-2` | `#8eb1f1` | `#385790` |
@@ -101,38 +110,54 @@ Five steps for the workspace's writing heatmap (`WritingHeatmap.vue`), from "no 
 ## Tailwind aliases
 
 `tailwind.config.js` maps the tokens to utility-class colors. Prefer these in
-markup; drop to `var(--vers-*)` only for JS-assigned or non-color use.
+markup; drop to `var(--vers-*)` only for JS-assigned or non-color use. The left
+column is the colour key, so it is prefixed by the utility: `bg-bg-panel`,
+`text-text-hint`, `border-border-subtle`, `text-accent`, `bg-danger/10`. Every key
+except the two borders resolves through its `-rgb` twin.
 
-| Tailwind class | Token |
+| Colour key | Token |
 |----------------|-------|
 | `bg-primary` | `--vers-bg-base` |
 | `bg-secondary` | `--vers-bg-panel` |
 | `bg-tertiary` | `--vers-bg-canvas` |
+| `bg-elevated` | `--vers-bg-elevated` |
 | `surface-hover` | `--vers-bg-hover` |
 | `border-subtle` | `--vers-border-subtle` |
+| `border-strong` | `--vers-border` (the **standard** rule, not `--vers-border-strong`) |
 | `text-primary` | `--vers-text-primary` |
 | `text-secondary` | `--vers-text-secondary` |
 | `text-hint` | `--vers-text-muted` |
+| `text-faint` | `--vers-text-faint` |
 | `accent` | `--vers-accent-primary` |
-| `danger` / `success` / `warning` | `--vers-status-*` |
+| `accent-hover` | `--vers-accent-hover` |
+| `accent-muted` | `--vers-accent-secondary` |
+| `accent-foreground` | `--vers-text-on-accent` |
+| `danger` / `success` / `warning` / `info` | `--vers-status-*` |
+| `status-open` / `status-progress` / `status-resolved` / `status-closed` | `--vers-status-open` / `in_progress` / `resolved` / `closed` |
+| `entity-character` / `entity-location` / `entity-thread` | `--vers-entity-character` / `location` / `plotThread` |
+| `manuscript` | `--vers-bg-base` |
+| `manuscript-editor` | `--vers-bg-panel` |
+| `glow` | `--vers-accent-primary` |
 
 ## Typography (font families)
 
-Defined in `tailwind.config.js` (`fontFamily`). Loaded non-blocking via
+Defined in `tailwind.config.js` (`fontFamily`); `.font-manuscript`, `.type-display` and
+`.label-micro` are classes in `src/style.css`. Geist is bundled (`@fontsource-variable/geist`,
+imported in `src/main.ts`); IBM Plex Mono and the legacy serif faces load non-blocking via
 `<link>` in `index.html` (M-5.2). Two voices: **Plex Mono names, Geist explains.**
 
 | Class | Stack | Role |
 |-------|-------|------|
 | `font-ui` | Geist Variable | Running UI copy: descriptions, rows, buttons, hints |
-| `font-mono` / `font-display` / `font-manuscript` | IBM Plex Mono | The manuscript, every count/id/time, and the display voice |
+| `font-mono` / `font-display` / `.font-manuscript` | IBM Plex Mono | The manuscript, every count/id/time, and the display voice |
 | `.type-display` (style.css) | IBM Plex Mono 500, uppercase, .14 em | Panel and section titles, empty-state titles, the workspace heading, modal titles |
 | `.label-micro` (style.css) | IBM Plex Mono 500, 11 px, uppercase, .14 em | Field labels |
-| `font-body` | Crimson Pro | Legacy alias; unused by the system |
-| `font-storybible` | Merriweather | Story bible |
+| `font-body` | Crimson Pro | Legacy alias; one call-site left (`RevisionDeltaPanel.vue`) |
 
 **Retired** (0 usages in `src/`, forbidden by `npm run lint:tokens`, still defined in
 `tailwind.config.js` until removed): `font-spark`, `font-flow`, `font-polish`, `font-revise`.
-`font-display` now points at Plex Mono and is live again.
+`font-display` now points at Plex Mono and is live again. There is no `font-storybible`
+class; Merriweather is still requested by `index.html` but nothing uses it.
 
 ## Shape & depth
 
@@ -154,14 +179,15 @@ Named `<Transition>` presets: `anim-fade`, `anim-fade-up`, `anim-fade-down`,
 ## Components that consume the tokens
 
 Panels are assembled from `src/components/ui/` — `BasePanelHeader`, `BaseSection`,
-`BaseButton`, `BaseChip`, `BaseField`, `BasePopover`, `BaseSegmented`, `BaseStepper`,
-`BaseSwitch`, `BaseTab`, `BaseAlert`, `BaseSpinner`, `BaseStatusDot`, `BaseCheckbox`,
-`BaseRadio`. They are the only place a token should be turned into a panel-level
+`BaseButton`, `BaseChip`, `BaseField`, `BaseSelect`, `BasePopover`, `BaseSegmented`,
+`BaseStepper`, `BaseSwitch`, `BaseTab`, `BaseAlert`, `BaseSpinner`, `BaseStatusDot`,
+`BaseCheckbox`, `BaseRadio`. They are the only place a token should be turned into a panel-level
 pattern; a feature component composes them rather than restyling. The panel grammar
 and the **primitives catalogue** (every prop, slot and event, with the story that shows it)
 are in `DESIGN.md` → Components. Every primitive has a story (`npm run storybook`,
-`UI/*`); Chromatic snapshots them on every push, and `npm run policy` fails if a
-`Base*.vue` is added without one.
+`UI/*`), and `npm run policy` fails if a `Base*.vue` is added without one. Chromatic is
+wired (`npm run chromatic`), but its workflow is gitignored until a
+`CHROMATIC_PROJECT_TOKEN` secret exists, so nothing snapshots the stories in CI yet.
 
 Note: Tailwind 4 compiles any opacity modifier (under 3.4, `/8`, `/12` and `/35`
 compiled to nothing). Keep to the steps the design uses, `/10` and `/30`. The
@@ -170,7 +196,7 @@ loads with `@config`.
 
 ## Adding or changing a token
 
-1. Add the property to **both** `:root` and `[data-theme='light']` in `src/style.css`.
+1. Add the property to **both** `:root` (light) and `[data-theme='dark']` in `src/style.css`.
 2. If it is a text/background color, verify **≥ 4.5:1** contrast (see M-2.3) in both themes.
 3. Expose a Tailwind alias in `tailwind.config.js` if it will be used in markup.
 4. Add the `-rgb` twin if the colour will ever be tinted.

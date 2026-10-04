@@ -4,6 +4,18 @@
 > *behaves* today — per-scene cost, the write strategies, the gate contract, what the real
 > 10-chapter run found — is `docs/GENERATION-PIPELINE-ANALYSIS.md`; the current system map is
 > `ARCHITECTURE.md`. File paths and line numbers below predate the `generation/writing/` split.
+>
+> **Status (2026-10-04).** Still true: the 8 deterministic rule functions (7 rule types, Rule 7
+> split into scene and chapter seams), the S-096/S-097 fixes and every test file listed under
+> *Actual coverage*. Corrected below: the database counts (39 `DbSet`s and 6 EF migrations,
+> not "55+" and "15+"; `genRuns` is a Dexie table, not a PostgreSQL one) and where
+> `commitSync`/`discoverSync` live. The "Planned" stress suites (`src/tests/unit/stress/*`,
+> `e2e/100-chapter-consistency.spec.ts`, `e2e/edge-cases/*`) never existed in any commit
+> (`git log --all` is empty for every path); `e2e/` now holds 7 specs. The "100-Chapter Dataset
+> Authority" note is wrong about which dataset the code checks: the tests and
+> `scripts/validate-100-chapter.mjs` run on `validation/novel-100-data.json` ("The Fractured
+> Lattice", Elias Varn, 12 characters), described in `validation/PIPELINE_ANALYSIS.md`, not on
+> the Aldric arc. Test counts are as of 2026-08-16; the suite is 3,475 tests today. The provider count is 6 now (Cloudflare Workers AI was added after this was written).
 
 ## Overview
 Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL 16 backend, and 5 AI providers. The pipeline is **offline-first** with Dexie.js IndexedDB sync to PostgreSQL. The core workflow generates scenes, validates consistency, and maintains a story bible/network.
@@ -33,7 +45,7 @@ Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend,
 | **Edge Timeline** | `edgeTimeline.ts` | `planEdgeWrites` (supersession, reversal, ordering constraints) |
 | **Consistency Service** | `ConsistencyService.ts` | Incremental audit at chapter boundaries + terminal auto-fix (max 3 rounds) |
 | **Stores** | `src/stores/` | `projectStore`, `volumeStore`, `manuscriptStore`, `settingsStore` (Pinia) |
-| **DB Syncer** | `sync-transport.ts` | `commitSync`, `discoverSync`, `resolveAndCommitEdges` (Dexie → PostgreSQL) |
+| **DB Syncer** | `useChapterGenerationSync.ts`, `edgeSync.ts`, `sync-transport.ts` | `commitSync`, `discoverSync` (bible writes); `resolveAndCommitEdges` (graph edges); `SyncTransport.pushOne` (Dexie → PostgreSQL) |
 
 ## Data Flow: End-to-End Scene Lifecycle
 
@@ -85,10 +97,10 @@ Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend,
 - `commitSync` transactionally writes across `TARGET_TABLES`: characters, locations, plotThreads, graphNodeInstances, volumeEntities
 
 **PostgreSQL (EF Core):**
-- 55+ DbSet entities, tenant-filtered via `OrganizationId`
-- Key tables: `Stories`, `Chapters`, `Scenes`, `BibleEntries`, `Sections`, `Subsections`, `Volumes`, `PlotThreads`, `CharacterRelationships`, `GraphEdges`, `GenRuns`
-- Checkpoint system: `genRuns` table with `state` JSON, `version: 2`, `currentStage`, per-stage progress
-- Migrations: 15+ files tracking schema from initial create through 20260723
+- 39 DbSet entities, tenant-filtered via `OrganizationId`
+- Key tables: `Stories`, `Chapters`, `Scenes`, `BibleEntries`, `Sections`, `Subsections`, `Volumes`, `PlotThreads`, `CharacterRelationships`, `GraphEdges`
+- Checkpoint system (client side, Dexie, not PostgreSQL): `genRuns` table with `state` JSON, `version: 2`, `currentStage`, per-stage progress
+- Migrations: 6 EF migrations (15 files with designers and the snapshot), from initial create through 20260723
 
 **Sync-Transport:**
 - `commitSync` discovers new entities + network events from structured metadata
@@ -144,7 +156,7 @@ Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend,
 - **Vitest** with `vi.useFakeTimers()` for debounce tests
 - **Both suites green** (Vitest + Playwright E2E); failing test = regression
 - **`vi.resetModules()` drain issue:** new module registry does not stop old instance; stray timer firing in later test fails whichever test it lands on
-- Tests are pure (no LLM calls, no DOM); fixtures in `src/tests/unit/fixtures/`
+- Tests are pure (no LLM calls); fixtures mostly live inside each test; shared ones are `src/tests/fixtures/` (eval corpus and baselines) and `validation/novel-100-data.json` (there is no `src/tests/unit/fixtures/`)
 - Mock setup in `src/tests/setup.js`
 - Both Vitest and Playwright suites must be green
 
@@ -157,11 +169,11 @@ Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend,
 | `Scenes` | `Id`, `ChapterId`, `Title`, `Content`, `WordCount`, `Order` | → `Subsections` |
 | `BibleEntries` | `Id`, `StoryId`, `Title`, `Content`, `Category` | → Characters/Locations/PlotThreads (app logic) |
 | `GraphEdges` | `Id`, `StoryId`, `sourceId`, `sourceType`, `targetId`, `targetType`, `relationshipType`, `validFromChapter`, `validUntilChapter`, `runId` | Polymorphic edges |
-| `GenRuns` | `Id`, `projectId`, `state` (JSON), `updatedAt`, `version` | Checkpoint persistence, 15+ migrations |
+| `genRuns` (Dexie only) | `id`, `projectId`, `state` (JSON), `updatedAt` | Checkpoint persistence in IndexedDB (added in Dexie v30); no server table |
 
 **Tenant filtering:** `OrganizationId` query filter on all story-related entities.
 
-**Migrations:** 15+ files in `Infrastructure/Migrations/`.
+**Migrations:** 6 migrations (15 files) in `Infrastructure/Migrations/`.
 
 ## AI Provider Configuration
 
@@ -252,7 +264,7 @@ This section documents the pipeline analysis specifically through the lens of a 
 - `generateRelationships` AI structured call with schema, `buildRelationshipEdges` name→ID resolution, `planEdgeWrites` with temporal windows
 - **100-chapter stress**:
   - `planEdgeWrites` supersession logic: edges have validFromChapter/validUntilChapter. Across 100 chapters, a relationship established in Chapter 3 validFromChapter=1 may be superseded in Chapter 95 validFromChapter=95 — the supersession logic must correctly stamp the old edge as expired without orphaning entities.
-  - Edge ID stability: graph edges have persistent IDs. Across 100 chapters with 55+ DB tables and Dexie ↔ PostgreSQL dual-write, edge IDs must survive sync. The `SyncTransport.pushOne` idempotency key mapping (W8 fix) must hold across 100 chapters of retries.
+  - Edge ID stability: graph edges have persistent IDs. Across 100 chapters with 39 server tables and Dexie ↔ PostgreSQL dual-write, edge IDs must survive sync. The `SyncTransport.pushOne` idempotency key mapping (W8 fix) must hold across 100 chapters of retries.
   - `resolveAndCommitEdges` temporal deduping: with 100 chapters, the number of concurrent valid edges grows. The "one logical request" network weave (MAX_ATTEMPTS=2 for relationships) must not silently drop unorderable claims across the full span.
 
 **4. PERSISTENCE (CommitService) — Chapters 1–100**

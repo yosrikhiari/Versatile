@@ -31,12 +31,13 @@ back up from the "Unfinished chapter" card.
 
 | Setting | Meaning |
 |---|---|
-| **Chapter Word Target** | Total words for the chapter, split evenly across its scenes |
+| **Chapter word target** | Total words for the chapter, split evenly across its scenes |
 | **Scenes / chapter** | How many scenes the chapter is cut into (1–12) |
 | **Genre / Tone / Synopsis** | Same as arc mode; the synopsis comes from the project's category and description |
-| **One-click** | Write the whole chapter with no stops |
-| **Pause per scene for review** | Approve, reject or re-request each scene as it lands |
-| **Auto-evaluate scenes** | Run the critic inline and show its verdict |
+| **One click** | Write the whole chapter with no stops |
+| **Pause per scene** | Approve, reject or redirect each scene as it lands |
+| **Critique each scene** | Run the critic inline and show its verdict |
+| **Fix continuity issues** | One click only, off by default (since 2026-10-02): rewrite the scenes the final continuity audit flags. Off, the audit still runs and lists the issues |
 
 The estimate under the scene stepper is measured on *your* machine once a run has
 been timed there. Before that it is provisional.
@@ -56,14 +57,19 @@ checked as a whole:
 - more than a third of the scenes still failed critique after retries
 - the critic produced no usable verdict for any scene
 - more than 30% of the scenes are degraded
-- continuity issues the audit's own fix rounds could not resolve
+- continuity issues the end-of-run audit found and did not fix (with **Fix continuity
+  issues** off, that is every issue it found)
 
 **Advisory** — worth reading, never worth losing prose over:
 
 - the chapter is short (under 85% of target) or long (over 130%)
 - two scenes share more than a quarter of their sentences
 - a scene does not cast the POV character the plan declared
+- two adjacent scenes switch narrative tense
+- fewer than two thirds of a scene's planned payoff terms appear in its prose
+- some (not all) scenes got no usable verdict from the critic
 - the weakest critique dimension across the chapter is below 7
+- a chapter coherence score, when one was run, is below 7
 
 **A blocking finding never discards prose.** Everything written is committed and
 checkpointed either way; the report tells you precisely what the run could not
@@ -102,7 +108,7 @@ written plus anyone the new plan intends to cast.
 ## What the writer discovers
 
 Scenes report the characters, places and threads they used and any the bible did not
-know. In **One-click** mode those are committed to the Story Bible as each chapter
+know. In **One click** mode those are committed to the Story Bible as each chapter
 finishes (as *generated*, so you can approve or delete them later) and relationships
 are stamped with the chapter they happened in. Outside one-click mode the run pauses
 once, at the end, with everything it discovered — accept what belongs, then the run

@@ -2,8 +2,10 @@
 
 Plan v1, 2026-09-27. Status: approved to start (build order step 1 onward).
 
-> **Built.** Steps 1–4 are done and measured (analysis doc §37–§43). How it
-> works now, with diagrams: `ARCHITECTURE.md`, "Imported books and What If".
+> **Built.** Steps 1–5 are done, and steps 1–4 measured (analysis doc §37–§47);
+> step 6 is mostly done (see its entry). How it works now, with diagrams:
+> `ARCHITECTURE.md`, "Imported books and What If". Status checked against the code
+> on 2026-10-04.
 >
 > ![Fork, plan, write, merge](img/diagrams/whatif-branch-flow.svg)
 
@@ -129,6 +131,9 @@ Each gate is measured, not asserted. Numbers go in
    story profile (genre, tone, central conflict, premise) in place of `storyArc`. A
    small `getStoryArc(projectId)` returns the run's arc or the stored profile, so every
    reader stops depending on a generation run existing.
+   *Status 2026-10-04:* no `getStoryArc` was built. The read stores the profile on the
+   project (`storyProfile`), and `writeWhatIf` in `useVolumeStoryGenerator.ts` uses it in
+   place of the story arc; other readers were not changed.
 7. **A what-if is three steps the author can see: plan, write, merge.**
    - **Plan:** the model reads the change, the story as it stood at the divergence
      (summaries and facts of the earlier scenes only), and a one-line summary of each
@@ -152,6 +157,10 @@ Each gate is measured, not asserted. Numbers go in
 10. **What-if branches stay local for now.** Non-main branch rows are excluded from sync
    until the server has a branch endpoint and `branchId` on chapters and scenes. This is
    in the backlog, not silently broken.
+   *Status 2026-10-04: not built.* `sync-engine.ts` pushes the `branches` table, and
+   `sync-mapper.ts` pushes `sections` and `subsections` without `branchId` and with no
+   filter on the branch, so a non-main branch's rows are not kept local. Only matters
+   when server sync is on.
 11. **Alternatives mode stays and gets fixed**, not replaced: the right brief field,
     "before this scene" meaning before, a premise box, HTML with a snapshot on Replace.
 
@@ -263,10 +272,18 @@ are updated as steps land.
    its brief ("Rewrite this scene", §40), with undo.* Originally: Fork at the scene with source links, then plan,
    write/keep/repair, then compare and merge, with cancel and pause. The branch list
    is mounted in the panel; the stale store/job code is removed or wired up. Covers G6, G8.
-5. **Alternatives mode fixes** (decision 11).
+5. **Alternatives mode fixes** (decision 11). *Done 27 Sep with step 4 (2e6ed6bd):*
+   the brief is the scene's `description`, the log is the scenes before this one in
+   reading order, the premise box shows in Alternatives, and Replace asks, snapshots
+   first and stores HTML (`WhatIfPanel.vue`). Alternatives are still held only in
+   memory (backlog).
 6. **Live validation.** Import 2 Gutenberg books, analyse them, run 3 what-ifs; report
    G4 and G7 honestly. Update the docs (`README`, `ARCHITECTURE`, `CHANGELOG`,
-   `UX-AUDIT`, this plan) and the report.
+   `UX-AUDIT`, this plan) and the report. *Mostly done by 29 Sep:* Ethan Frome and The
+   Time Machine imported and read, and several live branches written and counted
+   (analysis doc §37–§47, report sections 5q onward); G7 is reported there scene by scene.
+   Not found in the docs: G4's hand-made check of the 10 most-mentioned characters per
+   book.
 
 ## 5. Decided vs open
 

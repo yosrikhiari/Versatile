@@ -4,6 +4,8 @@ Generated end to end by the Versatile pipeline on 2026-09-14, headless
 embeddings snowflake-arctic-embed2, local Ollama). 10 chapters × 3 scenes, 2,400 words per
 chapter requested; 28,457 words delivered in 62 minutes: 12 min planning, 45 min prose,
 5 min continuity audit. Every scene cleared the critic gate first time. No human edits.
+(Status 2026-10-04: that gate result does not count. The critic was not scoring on this run,
+it returned a default 7 for every scene; see docs/GENERATION-PIPELINE-ANALYSIS.md §8.)
 
 The premise, the outline and the health record are in reports/live/the-salt-road-run5-qwen/
 (gitignored). Known weaknesses, for the next pass: the unnamed "man" of the climax was

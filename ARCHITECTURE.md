@@ -3,15 +3,16 @@
 Versatile is a fiction-writing assistant: an offline-first Vue SPA for
 manuscript work plus a .NET 10 API for identity, persistence, collaboration
 and server-side AI. The full audit and remediation history lives in
-`planning/`; API conventions in `API.md`; suites in `TESTING.md`; how a
-generation run actually behaves in `docs/GENERATION-PIPELINE-ANALYSIS.md`.
+`planning/` (a local, gitignored workbook); API conventions in `API.md`;
+suites in `TESTING.md`; how a generation run actually behaves in
+`docs/GENERATION-PIPELINE-ANALYSIS.md`.
 
 ## System map
 
 ```
-browser (Vue 3 SPA, Dexie/IndexedDB v50) ──/api, /hubs──► .NET 10 API ──► PostgreSQL 16 (RLS)
+browser (Vue 3 SPA, Dexie/IndexedDB v55) ──/api, /hubs──► .NET 10 API ──► PostgreSQL 16 (RLS)
         │ direct provider calls ▲                                       Redis (cache, rate limits)
-        └───────────────────────────── 5 AI providers (openai, anthropic, gemini, groq, ollama)
+        └───────────────────────────── 6 AI providers (openai, anthropic, gemini, groq, cloudflare, ollama)
 ```
 
 ## Frontend (`src/`)
@@ -26,7 +27,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v50) ──/api, /hubs──► .NET 10 API 
   typing pushes to the store on a 300 ms debounce and the watcher skips
   the editor's own echo (`docs/PERF-AUDIT.md`).
 - **Offline-first**: Dexie 4 (`src/services/db-schema.ts` declares the
-  41 schema versions; 26 `db-*.ts` table modules) is the source of truth
+  45 schema versions, v11 to v55; 25 `db-*.ts` modules) is the source of truth
   in the browser. Writes are debounced and coalesced per entity; the three
   append-only history tables are deduped, throttled and capped; sync to the
   API replays in the background with bounded concurrency and self-heals
@@ -48,13 +49,13 @@ Clean Architecture, one solution (`Versatile.slnx`):
 - `Versatile.Api` — 38 controllers, SignalR hubs
   (`/hubs/collaboration`, `/hubs/generation`), rate limiting (100/min
   global, 20/min embedding), exception handling (generic 500s),
-  per-user response caching, Swagger (Development only), `/health`.
+  per-user response caching, Swagger (Development only), `/health`,
+  Serilog.
 - `Versatile.Application` — CQRS handlers, FluentValidation,
   `PagedRequest`/`PagedResponse` (page size capped at 100), organization
   scoping.
 - `Versatile.Domain` — entities; `Versatile.Infrastructure` — EF Core
-  (`Npgsql`), JWT (`TokenGenerator`: 24h access, 7d refresh), Redis,
-  Serilog.
+  (`Npgsql`), JWT (`TokenGenerator`: 24h access, 7d refresh), Redis.
 - **PostgreSQL with row-level security** enforces tenancy in the
   database, not just the app: cross-org reads return 403 (membership is
   checked before existence). Redis backs rate limits and cached endpoints
@@ -62,18 +63,21 @@ Clean Architecture, one solution (`Versatile.slnx`):
 - No background-job server: upstream removed Hangfire; long AI work
   streams over SignalR instead.
 - Four xUnit projects (`Api`, `Application`, `Infrastructure`,
-  `IntegrationTests`); CI scans C# with SonarCloud and publishes the API
-  image to GHCR on `master`.
+  `IntegrationTests`); CI builds and tests the solution and publishes the
+  API image to GHCR on `master` (SonarCloud was removed in 2026-09).
 
 ## AI and generation
 
-- **Five providers, two paths**: the browser calls providers directly
+- **Six providers, two paths**: the browser calls providers directly
   with the user's own keys (`src/services/providers/`), while the server
   proxies only what must stay secret (Mistral embeddings) — keys never
   leave the server there (`GET /api/ApiKeys/{provider}` returns a masked
-  hint). Ollama runs two models by default: an uncensored prose model and
-  `qwen3:8b` for every grammar-bound "utility" call (planning, metadata,
-  critic, spine) — `src/config/ollama.ts`.
+  hint). Ollama has two model settings, prose and utility, and both default
+  to `qwen3:8b` (the utility one serves every grammar-bound call: planning,
+  metadata, critic, spine); the uncensored `dolphin-mistral:7b` is an
+  opt-in prose model, since it failed the quality gate as a default
+  (`src/config/ollama.ts`). Cloudflare Workers AI is the sixth provider
+  (`providers/cloudflare.ts`, needs an account id).
 - **Budgets and cache**: per-provider budgets (`aiProviderBudget.ts`,
   `modelBudget.ts`, `costTrackingStore`), response cache
   (`aiResponseCache.ts`), token calibration and context budgeting
@@ -84,12 +88,14 @@ Clean Architecture, one solution (`Versatile.slnx`):
   and resume. The scene gate and the strategies live in
   `composables/generation/writing/`: `sceneGate.ts` (the gate rules, as
   `writeSceneWithGate` for the legacy paths and as the primitives
-  `draftAttempt` / `critiqueAttempt` / `markGateOutcome` for the graph;
+  `draftAttempt` / `critiqueAttempt` / `repairAttempt` / `markGateOutcome`
+  for the graph;
   `chapterLogBefore` so every critic call sees prior scenes),
   `batchStrategy.ts` (sequential, review-mode prefetch of scene *i+1*
   aware of scene *i*), `parallelStrategy.ts` (chapter anchors first, then
   middle scenes in bounded waves), and `graphStrategy.ts` — the
-  **LangGraph multi-agent graph** (ADR-0001, `docs/adr/`): Writer and
+  **LangGraph multi-agent graph** (ADR-0001,
+  `docs/adr/0001-langgraph-multi-agent-writing.md`): Writer and
   Critic as separate nodes on separate device lanes so the Critic judges
   scene *N* while the Writer drafts *N+1*; an **Editor** (`useStoryEditor`)
   deciding each superstep — a pure function in `workflow` mode, a model
@@ -99,8 +105,9 @@ Clean Architecture, one solution (`Versatile.slnx`):
   `legacy`). Chapter mode (`useChapterStoryGenerator`) and arc mode share
   `useGenerationRunController` + `GenerationRunView`.
 - **Role placement** (`src/config/roles.ts`): each agent role — director,
-  writer, critic, editor, utility — names a model and a device. `aiService`
-  resolves the model and the semaphore lane (`ollama:gpu` / `ollama:cpu`,
+  writer, critic, editor, utility, plus `embedding` (on the CPU by
+  default so the embedder never evicts the writer) — names a model and a
+  device. `aiService` resolves the model and the semaphore lane (`ollama:gpu` / `ollama:cpu`,
   `providerGate.ts`) from it and forwards `num_gpu` / `keep_alive` /
   `num_ctx` to Ollama. The one hard rule, measured on the 8 GB reference
   GPU: one distinct GPU model per run, because a second one evicts the
@@ -148,7 +155,10 @@ Clean Architecture, one solution (`Versatile.slnx`):
   unavailable local critic verdict can auto-request a second opinion.
 - **Retrieval**: IVF vector index (`vectorIndex.ts`) with k-means++
   clustering, searched off-thread (`vectorIndex.worker.ts`) and
-  brute-force fallback; research reindex swaps atomically.
+  brute-force fallback; research reindex swaps atomically. The story's own
+  content (bible entities and scenes) is indexed the same way
+  (`storyVectorIndex.ts`, `contentVectors`, schema v51) for Related and
+  Story Lookup.
 - **Reproducible locally**: `tools/generate-sample.mjs` runs a 2-scene
   sample against real Ollama models plus critic, gates and chapter
   acceptance; `vitest.live.config.js` + `src/tests/live/` run a whole

@@ -25,9 +25,9 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 
 - **Spark** — AI prompts and outlines from user-provided ideas
 - **Polish** — paragraph-level prose analysis (repetition, pacing, dialogue, show-don't-tell, etc.)
-- **Story Generator** — Ideate / Chapter / Arc / Blurb tabs over one pipeline: bible → network → plan → spine → prose → consistency → chapter gate
+- **Story Generator** — one row of modes (Scene / Chapter / Arc, with Ideate and Blurb under More) over one pipeline: bible → network → plan → spine → prose → consistency → chapter gate; it reopens on the last mode used in each project
 - **Director / Writer / Critic** — the three LLM roles, with streaming output, per-scene quality scoring, and warn-only gates that never discard prose
-- **Multi-agent orchestration on LangGraph** (opt-in, `Settings → AI → Generation orchestrator`) — the Writer and the Critic run as separate agents on separate device lanes (the Critic judges scene N on the CPU while the Writer drafts N+1 on the GPU, so the judge can be a different model with zero swaps on 8 GB), an Editor agent decides each step in `agentic` mode inside a fence of legal moves, every decision is logged, and the graph checkpoints per step so a killed tab resumes mid-chapter. Role placement (which model, which device) is a Settings table with a one-click preset. ADR-0001.
+- **Multi-agent orchestration on LangGraph** (opt-in, `Settings → AI → Generation orchestrator`) — the Writer and the Critic run as separate agents on separate device lanes (the Critic judges scene N on the CPU while the Writer drafts N+1 on the GPU, so the judge can be a different model with zero swaps on 8 GB), an Editor agent decides each step in `agentic` mode inside a fence of legal moves, every decision is logged, and the graph checkpoints per step so a killed tab resumes mid-chapter. Role placement (which model, which device) is a Settings table with a one-click preset. See [ADR-0001](docs/adr/0001-langgraph-multi-agent-writing.md).
 - **Digest layer** — per-scene digests rolled up into chapter and volume digests, an entity-state timeline, and deterministic contradiction rules that run before any LLM call
 - **Cloud escalation (opt-in, per project)** — route whole-manuscript audits or second-opinion critiques to a cloud provider with an explicit disclosure of what is sent
 - **Entity Generation** — AI-assisted character, location, and plot thread creation
@@ -50,7 +50,7 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 - **Rewrite this scene** writes a flagged scene again with the missing event as a rule in its brief, checks only that scene, and keeps the old text for **Undo** ([flow](docs/img/diagrams/whatif-rewrite-scene.svg)).
 - The planner decides each scene from its summary, then takes a **second look** at any scene it would keep, reading that scene's own sentences about the people the change is about ([why](docs/img/diagrams/whatif-planner-second-look.svg)).
 
-How each part was measured, including what did not work, is in [`docs/REPORT.md`](docs/REPORT.md) (the full report, with its 181 diagrams) and `docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§47. The design is in `ARCHITECTURE.md` and `docs/WHATIF-AND-IMPORT-PLAN.md`.
+How each part was measured, including what did not work, is in [`docs/REPORT.md`](docs/REPORT.md) (the full report, with its 191 diagrams; also as [`docs/REPORT.pdf`](docs/REPORT.pdf)) and `docs/GENERATION-PIPELINE-ANALYSIS.md` §37–§47. The design is in `ARCHITECTURE.md` and `docs/WHATIF-AND-IMPORT-PLAN.md`.
 
 ### Knowing your story (Obsidian-style)
 
@@ -70,7 +70,7 @@ How each part was measured, including what did not work, is in [`docs/REPORT.md`
 
 ### Export & Archive
 
-- **Compile** the manuscript in narrative order to **Markdown, Word (.docx), EPUB** or **PDF**
+- **Compile** the manuscript in narrative order to **Markdown, Word (.docx), EPUB, PDF** or **RTF**
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts) across the whole manuscript, not just the root document
 
@@ -82,7 +82,7 @@ src/
 │   └── ui/             — Base* primitives (panel header, section, button, chip, field …)
 ├── composables/        — ~150 composition modules
 │   ├── generation/     — the generation engine, split by concern:
-│   │   ├── writing/    — sceneGate, parallelStrategy, batchStrategy, liveDraft, limits
+│   │   ├── writing/    — sceneGate, parallelStrategy, batchStrategy, graphStrategy (LangGraph), bibleSync, liveDraft, limits
 │   │   ├── context/    — scene / entity / manuscript / relationship context, spine
 │   │   ├── commit/     — CommitService (persist + digest at commit time)
 │   │   ├── consistency/, delegator/, lifecycle/, pipeline/, schemas/, shaping/ …
@@ -95,20 +95,20 @@ src/
 │   ├── useBookAnalysis.ts          — read an imported book: bible, network, digests
 │   ├── useWhatIfBranch.ts          — What If: fork, plan, write, check, rewrite, merge
 │   └── ...
-├── services/           — ~135 modules
+├── services/           — ~140 modules
 │   ├── db-schema.ts / db-core.ts   — Dexie schema (v55), 25 db-* table modules
 │   ├── storyQuery.ts / storyVectorIndex.ts / compileManuscript.ts — query, semantic index, compile
 │   ├── aiService.ts    — unified AI provider interface
-│   ├── providers/      — OpenAI, Anthropic, Gemini, Groq, Ollama adapters
+│   ├── providers/      — Ollama, OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI adapters
 │   ├── ai/             — token calibration, model/context budgets, prompt store
 │   ├── generation/     — digests, rollups, deterministic contradictions, gates, run health
 │   ├── import/         — decoders (txt/md/docx/epub/html), chapter detection, project writer
-│   ├── whatIf/         — the What If planner prompts and the who-is-where check
+│   ├── whatIf/         — the What If planner prompts and the who-is-where, point-of-view, tense and repetition checks
 │   ├── vectorIndex*.ts — IVF index + worker
 │   └── sync-engine.ts  — offline-to-server sync (14 synced tables)
 ├── stores/             — 23 Pinia stores (setup syntax)
 ├── config/             — providers, models, prompts, eval rubrics, gate config, workspaces
-└── tests/              — unit (288 files), integration, audit, evaluation, live
+└── tests/              — unit (302 files), integration, audit, evaluation, live
 ```
 
 See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TESTING.md` for every suite, and `docs/GENERATION-PIPELINE-ANALYSIS.md` for how a run behaves.
@@ -118,13 +118,13 @@ See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TE
 ### Prerequisites
 
 - **Node.js** 22.22+ (jsdom 30 needs it; CI runs 22.x and the frontend image builds on `node:22-alpine`)
-- **Ollama** (recommended) for local AI inference — or API keys for OpenAI/Anthropic/Gemini/Groq
+- **Ollama** (recommended) for local AI inference — or API keys for OpenAI/Anthropic/Gemini/Groq/Cloudflare Workers AI
 
 ### Install & Run
 
 ```bash
-git clone <repo-url>
-cd versatile
+git clone https://github.com/yosrikhiari/Versatile.git
+cd Versatile
 npm install
 npm run dev
 ```
@@ -145,7 +145,7 @@ Run `npm install` again after every pull that touches `package.json`. With a sta
 
 ### Configuration
 
-- **AI Providers**: Configured via the Settings modal in-app — supports Ollama (default), OpenAI, Anthropic, Gemini, Groq
+- **AI Providers**: Configured via the Settings modal in-app — supports Ollama (default), OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI (with its account id)
 - **Per-feature models**: Each AI feature can use a different provider/model
 - **Cloud audit**: per-project opt-in (`cloudAuditOptIn`) plus a global `analysisTier` setting; off by default
 - **Portrait generation**: Optional Stable Diffusion integration (proxied to `http://127.0.0.1:7860`)
@@ -162,11 +162,13 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run build`            | Production build (pre-compressed `.br`/`.gz` assets)            |
 | `npm run preview`          | Preview production build                                        |
 | `npm test`                 | Run unit tests (watch mode)                                     |
-| `npm run test:run`         | Run unit tests once (≈3,360 tests)                              |
+| `npm run test:run`         | Run unit tests once (≈3,470 tests)                              |
 | `npm run test:coverage`    | Run tests with coverage report                                  |
 | `npm run test:e2e`         | Playwright smoke/auth/responsive/panel specs (boots dev server) |
 | `npm run typecheck`        | `tsc --noEmit`                                                  |
 | `npm run lint`             | ESLint (flat config)                                            |
+| `npm run lint:tokens`      | Flags banned token patterns in `.vue` files (e.g. `bg-accent text-white`) |
+| `npm run policy`           | Repo policies: tokens documented, stories, hex and `any` ratchets |
 | `npm run format`           | Prettier formatting                                             |
 | `npm run audit:manuscript` | Re-measure duplicate/degraded prose in a generated manuscript   |
 | `npm run eval:snapshot`    | Critic regression baseline against a local model                |
@@ -196,10 +198,10 @@ writes a 2-scene sample with critic scores and gate verdicts to `reports/`.
 - **Styling**: Tailwind CSS 4 over `--vers-*` tokens (`docs/DESIGN-TOKENS.md`); the visual system and the primitives catalogue are in `DESIGN.md`, every primitive has a Storybook story, and `npm run policy` enforces both. The UI/UX backlog with demos: `docs/UX-ENHANCEMENTS.html`
 - **Build**: Vite 8
 - **Testing**: Vitest 5 + jsdom + fake-indexeddb; Playwright; xUnit for the backend
-- **AI**: Ollama, OpenAI, Anthropic, Gemini, Groq; Langfuse tracing optional
+- **AI**: Ollama, OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI; Langfuse and AgentOps tracing optional
 - **Backend**: .NET 10, PostgreSQL 16 (row-level security), Redis, SignalR
 - **Graph**: Vue Flow (story network)
-- **Export**: jsPDF (PDF), html2canvas
+- **Export**: docx (Word), JSZip (EPUB), jsPDF (PDF), html2canvas
 
 ## Contributing
 

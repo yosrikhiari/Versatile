@@ -2,6 +2,16 @@
 
 > **Status 2026-09-15.** Planning scaffold for the August stress test; kept for the dataset
 > reconciliation note below. Current pipeline behaviour: `docs/GENERATION-PIPELINE-ANALYSIS.md`.
+>
+> **Status (2026-10-04): the reconciliation note below is wrong about the canonical dataset.**
+> No data file or test in the repo encodes the Aldric/artifact arc; it exists only as prose in
+> `CONSISTENCY_LEDGER.md` (chapters 81 to 100 only). The 100-chapter dataset the code actually
+> checks is a fourth narrative, "The Fractured Lattice" (Elias Varn, 12 characters, 10 locations,
+> threads T1 to T10): `validation/novel-100-data.json`, built by
+> `scripts/build-100-chapter-data.mjs` from the edge-case matrix in
+> `validation/NOVEL_100_CHAPTER_SPEC.md` §7 (this file has no §7), and checked by
+> `scripts/validate-100-chapter.mjs` and `src/tests/unit/chapterSeamContinuity.test.js`. For
+> that dataset, read the `validation/` copies of these four documents.
 
 > ## Dataset Authority & Reconciliation Note
 >

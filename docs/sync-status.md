@@ -13,9 +13,10 @@ Documents which entities cross the local↔server boundary and which are intenti
 
 ---
 
-## 🔄 Synced (14 entities + backend PolymorphicEntity)
+## 🔄 Synced (14 Dexie tables, 13 backend entities)
 
-Entities in `SYNC_ENTITIES` that flow local ⇄ server.
+Entities in `SYNC_ENTITIES` that flow local ⇄ server. `characters` and `locations` share the backend
+`Entity` table, told apart by `type`.
 
 | Dexie Table | Backend Entity | Notes |
 |-------------|----------------|-------|
@@ -29,10 +30,10 @@ Entities in `SYNC_ENTITIES` that flow local ⇄ server.
 | `volumes` | Volume | |
 | `volumeEntities` | VolumeEntity | |
 | `manuscripts` | Manuscript | |
-| `researchDocuments` | ResearchDocument | |
+| `researchDocuments` | ResearchDocument | **Endpoint mismatch:** the mapper calls `/story/{id}/research`, the controller route is `/story/{id}/research-document` |
 | `researchChunks` | ResearchChunk | |
 | `researchTags` | ResearchTag | |
-| `branches` | Branch | |
+| `branches` | Branch | **No endpoint:** the `Branch` DbSet exists but there is no `BranchController`, so `/story/{id}/branch` has no route. Pushed first, serially (self-referencing `sourceBranchId`) |
 
 ---
 
@@ -42,12 +43,12 @@ Have both backend representation and IndexedDB table but intentionally NOT synce
 
 | Dexie Table | Backend Entity | Reason |
 |-------------|----------------|--------|
-| `users` | User | Auth identity sourced from external IdP; not synced per-user across devices |
+| `users` | User | Browser-local login accounts (username + local password hash); the server account is a separate JWT login, so nothing is copied across |
 | `annotations` | Annotation | Inline edit suggestions / scratch notes; session-scoped |
 | `authorProfile` | AuthorProfile | Per-user local preferences; not cross-device |
 | `dailyGoals` | DailyGoal | Local session goals; no server equivalent needed |
 | `generatedStories` | GeneratedStory | AI generation history; cached locally only |
-| `graphEdges` | GraphEdge | Canvas/story-graph layout; carries a chapter validity window + `runId` since v47 |
+| `graphEdges` | GraphEdge | Canvas/story-graph layout; carries a chapter validity window + `runId` since v47. The backend `GraphEdge` has no `validFromChapter` / `validUntilChapter` / `runId` columns, so syncing this table would need a migration first |
 | `groupEdges` | GroupEdge | Group-to-group connections on canvas |
 | `revisionComments` | RevisionComment | Inline review comments; local draft state |
 | `sessionArchive` | SessionArchiveItem | Session history; capped and time-indexed (v48) |
@@ -63,7 +64,7 @@ Backend `DbSet`s with **no Dexie table any more** (server-side kept for backward
 
 ---
 
-## 📱 Client-only (21 tables)
+## 📱 Client-only (23 tables)
 
 Exist only in IndexedDB — no server equivalent.
 
@@ -85,11 +86,13 @@ Exist only in IndexedDB — no server equivalent.
 | `graphNodeParents` | Node → group membership (v36) |
 | `graphNodeInstances` | Node instances per project (v39) |
 | `sceneDigests` | One digest per scene, content-hash invalidated (v44) |
-| `chapterDigests` | Chapter rollup of scene digests (v45) |
-| `volumeDigests` | Volume rollup (v45) |
+| `chapterDigests` | Chapter rollup of scene digests (v45; per branch since v55) |
+| `volumeDigests` | Volume rollup (v45; per branch since v55) |
 | `entityStates` | Entity-state timeline for contradiction candidates (v45/v47) |
 | `analysisQueue` | Persistent idle-priority analysis work queue (v46) |
 | `contentVectors` | Embeddings of bible entities and scenes for Related / Lookup (v51) |
+| `graphCheckpoints` | LangGraph writing-orchestrator checkpoints, one row per run thread (v54) |
+| `agentDecisions` | Editor-agent decision log, one row per superstep (v54) |
 
 The digest and analysis tables are derived artifacts: rebuildable from prose, so never synced.
 
@@ -98,6 +101,13 @@ the server Entity's `metadata` JSON blob for characters and locations; plot thre
 server-side blob, so their custom fields and tags are local-only. Section/subsection `pov`,
 `location`, `charactersPresent` and `wordCount` are local-only until the backend gains the
 columns.
+
+**Further gaps in the mapper (checked 2026-10-04):** `branchId` on sections and subsections is
+never sent (the backend `Section`/`Subsection` have no `BranchId`), so what-if chapters arrive on
+another device as main-line chapters. Section `volumeId` is not sent and a pull writes it back
+as `null` (the `idBridge.needsTranslation` lists are declared but nothing in `sync-transport.ts`
+reads them). Subsection `order` is read on pull but not sent on push, although the backend
+`Subsection` has an `Order` column. Subsection `contentStatus` is local-only.
 
 ---
 
@@ -109,7 +119,7 @@ Exist only in the backend database — no IndexedDB counterpart.
 |----------------|-------|--------|
 | Organization | `DbSet<Organization>` | Multi-tenant identity; server-managed |
 | OrganizationMembership | `DbSet<OrganizationMembership>` | Org membership join table; server-managed |
-| Flow | `DbSet<Flow>` | Story-flow graph metadata; frontend uses graphEdges/nodePositions directly |
+| Flow | `DbSet<Flow>` | Story-flow graph metadata; frontend uses graphEdges/graphNodePositions directly |
 | BibleEntry | `DbSet<BibleEntry>` | Story-bible entries; no Dexie counterpart |
 | OutboxMessage | `DbSet<OutboxMessage>` | Infrastructure: outbox pattern for event-driven processing |
 | AuditEntry | `DbSet<AuditEntry>` (AuditLog) | Server audit trail only |
@@ -124,6 +134,12 @@ local-only and server-only lists (the `Research`/ResearchNotes set this doc used
 (`InitialCreate`, `AddOrganizationIdIndexes`) and answers `/health` with `database` and `ai_provider`
 healthy; the backend suite is 985 tests green. A two-client sync run (register on the server through the
 editor's sign-in, edit on two browsers) has not been exercised in this audit — it needs a server account.
+
+**Re-checked 2026-10-04:** the table lists above still match `SYNC_ENTITIES` (14 tables), the 53
+Dexie tables declared through schema v55 and the backend `DbSet`s. Not re-verified live: the API
+wraps every 2xx body in `ApiResponse<T>` (`{ data, message }`) and paged lists in
+`PagedResponse<T>` (`items`), while `sync-transport.ts` reads the raw body (`apiItem.id`,
+`Array.isArray(items)`), so a real push/pull round trip should be exercised before relying on it.
 
 ## Workflow
 

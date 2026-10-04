@@ -1,12 +1,12 @@
 # AGENTS.md
 
-Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL 16 backend, 5 AI providers.
+Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL 16 backend, 6 AI providers.
 
 ## Tech Stack
 
 - **Frontend**: Vue 3 (Composition API), TypeScript, Pinia stores, TipTap 3 editor, Vite 8, Vitest 5
 - **Backend**: .NET 10, PostgreSQL 16 (RLS), Redis, Entity Framework Core, SignalR
-- **AI**: 5 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq); Ollama runs a prose model and a separate `qwen3:8b` utility model; per-role placement (`src/config/roles.ts`: director / writer / critic / editor, GPU or CPU) feeds the LangGraph writing orchestrator (`writing/graphStrategy.ts`, ADR-0001) — one GPU model per run, Critic/Editor on a CPU model by preset
+- **AI**: 6 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI; `src/config/ai.ts`); Ollama has a prose role and a utility role, both `qwen3:8b` by default (`src/config/ollama.ts`; `dolphin-mistral:7b` is an opt-in prose model); per-role placement (`src/config/roles.ts`: director / writer / critic / editor, plus utility and embedding, GPU or CPU; embedding defaults to CPU) feeds the LangGraph writing orchestrator (`writing/graphStrategy.ts`, ADR-0001) — one GPU model per run, Critic/Editor on a CPU model by preset
 - **Storage**: IndexedDB via Dexie 4 (offline-first, schema v55), PostgreSQL (server)
 - **Build/CI**: npm/vite for frontend, dotnet for backend
 
@@ -27,12 +27,12 @@ Anything that renders goes through the design system. Read these before touching
 
 - **`DESIGN.md`**: the visual system, **Typescript v4** (bone paper, ink rules not shadows, one cobalt signal colour, Plex Mono tracked caps for titles and labels, 2–3 px corners; chosen from `docs/DESIGN-DIRECTIONS.html`), the **panel grammar**, and the **primitives catalogue**: every `Base*` component in `src/components/ui/` with its props, slots, events and what it is for.
 - **`docs/DESIGN-TOKENS.md`**: every `--vers-*` token in `src/style.css` with dark/light values, the `-rgb` composition twins, the Tailwind aliases, the fonts, and how to add a token.
-- **Storybook** (`npm run storybook`, `UI/*`): every primitive has a story; Chromatic snapshots them on each push.
+- **Storybook** (`npm run storybook`, `UI/*`): every primitive has a story. Chromatic is wired (`npm run chromatic`) but its workflow stays gitignored until a `CHROMATIC_PROJECT_TOKEN` secret exists, so nothing snapshots stories in CI yet.
 - **`docs/UX-ENHANCEMENTS.html`**: the agreed backlog of UI/UX improvements, each with a live demo. If you are asked to improve a screen, start there and cite the example number.
 
 The rules, in order of how often they are broken:
 
-1. **Compose the primitives; never restyle them.** A panel is `BasePanelHeader` + `BaseSection`s; controls are `BaseButton`, `BaseChip`, `BaseField`, `BaseSegmented`, `BaseSwitch`, `BaseCheckbox`, `BaseRadio`, `BaseStepper`, `BasePopover`, `BaseAlert`, `BaseStatusDot`, `BaseSpinner`. No ad-hoc cards, eyebrows or buttons. If a primitive is missing, add it to `src/components/ui/` **with a story** and a row in the catalogue.
+1. **Compose the primitives; never restyle them.** A panel is `BasePanelHeader` + `BaseSection`s; controls are `BaseButton`, `BaseChip`, `BaseField`, `BaseSegmented`, `BaseSelect`, `BaseSwitch`, `BaseCheckbox`, `BaseRadio`, `BaseStepper`, `BaseTab`, `BasePopover`, `BaseAlert`, `BaseStatusDot`, `BaseSpinner`. No ad-hoc cards, eyebrows or buttons. If a primitive is missing, add it to `src/components/ui/` **with a story** and a row in the catalogue.
 2. **Colours are tokens.** `--vers-*` via the Tailwind aliases (`bg-bg-panel`, `text-text-hint`, `border-border-subtle`, `text-accent`, `text-danger`...) or `var(--vers-*)` for JS-assigned colour. No hex literal in a component: `npm run policy` ratchets the count per file and it may only go down. Translucency is `rgb(var(--vers-x-rgb) / 0.3)`, never a second hex.
 3. **One accent, scarce.** Accent for focus, selection, the one primary action, graph character nodes. Status colours are an icon tint or a word, never a button fill.
 4. **Every async surface has four states**: skeleton (`Skeleton` variants), live, empty (`EmptyState` with an action that leads somewhere), error. A dead-end empty state is a bug (see `docs/UX-AUDIT.md` #8).
@@ -42,13 +42,13 @@ The rules, in order of how often they are broken:
 8. **Motion** uses the `anim-*` presets and respects `prefers-reduced-motion`; focus uses the global `*:focus-visible` ring, never `outline: none`.
 9. **Document the change where it lives**: a new token in `docs/DESIGN-TOKENS.md`, a new primitive in the catalogue, a UX finding in `docs/UX-AUDIT.md`.
 
-Run `npm run policy` before you finish: it checks that every token is documented, every primitive has a story, hex literals did not grow, `any` did not grow per file (ratchet against `scripts/policy-any-baseline.json`; the generation seam's shapes are in `src/composables/generation/types.ts` — `SceneBrief`, `StoryArc`, `WrittenScene`, `GatedScene`), and the agent files still point here. `AGENT.md` is the longer setup guide (scripts, project structure, data model, pipeline, pitfalls); this file is the contract.
+Run `npm run policy` before you finish: it checks that every token is documented, every primitive has a story, hex literals did not grow, headings use `.type-display` not Geist bold, pills / resting shadows / hard radii did not grow (`scripts/policy-shape-baseline.json`), `any` did not grow per file (ratchet against `scripts/policy-any-baseline.json`; the generation seam's shapes are in `src/composables/generation/types.ts` — `SceneBrief`, `StoryArc`, `WrittenScene`, `GatedScene`), and the agent files still point here. This file is the contract. For orientation read `ARCHITECTURE.md` (structure, data model, pipeline) and `TESTING.md`; `AGENT.md` is a longer local setup guide that is gitignored, so a clone does not have it.
 
 ## Performance Rules
 
 - Word count → debounce (300ms) via `wordCountTimer`
 - IndexedDB writes → debounce (500ms) via per-field timers
-- Lookups in render loops (`getEdgeOpacity`, `getStroke`) → use pre-computed `Map` objects, not `Array.find()`
+- Lookups in render loops (`getEdgeOpacity`, `getEdgeStroke`) → use pre-computed `Map` objects, not `Array.find()`
 - Independent DB queries → `Promise.all` not serial `await`
 - Computed from large reactive arrays → direct property mutation, not spread re-creation
 - Only add dependencies that actually change the result to `watch()` / `computed()`
@@ -56,7 +56,7 @@ Run `npm run policy` before you finish: it checks that every token is documented
 
 ## Testing
 
-- `npm run test:run` — Vitest suite (≈3,360 tests, ~2.5 min)
+- `npm run test:run` — Vitest suite (326 files, ≈3,470 tests); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
 - `npm run typecheck` — `tsc --noEmit`, zero errors
 - `npm run lint` — ESLint (0 errors; the four `services must not import stores` warnings are the known architectural debt)
 - `npm run format` — Prettier over `src/**/*.{js,ts,vue,css}`; CI checks the same scope
@@ -69,7 +69,7 @@ Run `npm run policy` before you finish: it checks that every token is documented
   before the test ends: a new module registry does not stop the old instance,
   and a stray timer firing inside a later test fails whichever test it lands on.
 - Real-model runs are not tests: `tools/generate-sample.mjs` (one chapter) and
-  `vitest.live.config.js` (a whole book, headless). Mocked tests have missed
+  `vitest.live.config.js` with `src/tests/live/saltRoad.live.js` (a whole book, headless; name the file, the folder also holds 15 probes). Mocked tests have missed
   silent overflow and JSON-envelope defects before — a pipeline change that
   touches prompts or provider options wants one real run. See `TESTING.md`.
 
@@ -89,7 +89,7 @@ This file is the one agent instruction file with content. Every other agent file
 |---|---|---|
 | OpenCode | `AGENTS.md` (native), `opencode.json` → `instructions` | listed in the config too, so a global OpenCode config cannot shadow it |
 | Claude Code | `CLAUDE.md` → `@AGENTS.md` | an import, not a copy; `.claude/` holds settings and skills only |
-| Codex CLI / Copilot coding agent | `AGENTS.md` (native) | `.codex/hooks.json` is hooks, not rules |
+| Codex CLI / Copilot coding agent | `AGENTS.md` (native) | `.codex/hooks.json` is hooks, not rules (and local: `.codex/` is gitignored) |
 | Cursor | `.cursor/rules/agents.mdc` (`alwaysApply`) | newer Cursor also reads `AGENTS.md` directly |
 | GitHub Copilot (IDE chat) | `.github/copilot-instructions.md` | |
 | Gemini CLI | `GEMINI.md` | |

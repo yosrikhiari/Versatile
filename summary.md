@@ -2,7 +2,9 @@
 > in "What We Did" has shipped; the solution file is now `backend/Versatile.slnx`; the
 > calibration self-defence described in Session 2 is what prints the
 > `[tokenCalibration] … auto-reset` lines in every live run. Current state lives in
-> `README.md` / `ARCHITECTURE.md` / `planning/README.md`.
+> `README.md` / `ARCHITECTURE.md` / `CHANGELOG.md`.
+> (2026-10-04: `planning/` is gitignored, so `planning/README.md` and
+> `planning/AI-PIPELINE-HARDENING.md`, now `planning/Done/`, exist only on the author's machine.)
 
 ## Current State
 

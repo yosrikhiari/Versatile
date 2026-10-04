@@ -1,5 +1,9 @@
 # .NET Agent Skills
 
+> **Status (2026-10-04).** A copy of the README of the third-party repo
+> https://github.com/dotnet/skills, kept as an install reference. "This repository",
+> `CONTRIBUTING.md` and `LICENSE` below mean that repo, not Versatile.
+
 ## Dashboard
 
 This repository contains the .NET team's curated set of core skills and custom agents for coding agents. For information about the Agent Skills standard, see agentskills.io.

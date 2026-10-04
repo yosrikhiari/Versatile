@@ -2,7 +2,15 @@
 
 > **Status 2026-09-15.** Historical record of the mocked/dataset stress test. The pipeline has
 > since been run end to end against a real local model — `docs/GENERATION-PIPELINE-ANALYSIS.md`
-> §7 and `docs/examples/the-salt-road.md`. Test counts below are as of 2026-08-16 (now ≈2,950).
+> §7 and `docs/examples/the-salt-road.md`. Test counts below are as of 2026-08-16 (on 2026-10-04:
+> 3,473 passed and 2 skipped in 326 files).
+>
+> **Status (2026-10-04), two corrections.** §5 and §6 say every S-ID from 001 to 097 resolves;
+> `CONSISTENCY_LEDGER.md` in the repo only ever held S-076 to S-099, and its chapter 81 to 100
+> "tests" are not in the suite. The dataset the code actually ran is
+> `validation/novel-100-data.json` ("The Fractured Lattice"), not the Aldric arc; its report is
+> `validation/PIPELINE_VALIDATION_REPORT.md`. The S-096/S-097 fixes and their tests below are
+> real and still green.
 
 **Project**: Versatile (Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL 16 backend, AI providers, Dexie.js offline-first)
 **Validation target**: End-to-end fiction-writing pipeline, exercised by an interconnected 100-chapter novel dataset.

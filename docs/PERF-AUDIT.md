@@ -50,11 +50,16 @@ Also fixes the UX finding "Archive shows a new Writing session every few minutes
   `branches.sourceBranchId` and `volumeEntities.entityId` were sent to the server as **local**
   ids — fixed 2026-09-15 (translated both ways; `branches` gained the missing `apiId` index in
   schema v50). `planning/AUDIT-2026-09-15.md` B1.
-- 164 ESLint warnings, 134 of them unused variables — dead code worth a sweep.
+- ~~164 ESLint warnings, 134 of them unused variables — dead code worth a sweep.~~ Swept
+  2026-09-15 (69b19b31: 149 → 4); the four left are the known `services must not import
+  stores` warnings.
 - ~~Three files over 2,000 lines~~ — two of the three were split in the pipeline pass
   (`useVolumeStoryGenerator` 4,006 → 2,795 with the write strategies in
   `generation/writing/`; `StoryGeneratorPanel` 2,268 → 932 behind
   `GenerationRunView`). `StoryNetwork` (2,407) remains; split when next touched.
+  As of 2026-10-04 three files are over 2,000 lines again: `useVolumeStoryGenerator.ts`
+  3,043, `StoryNetwork.vue` 2,563 (still not split), `useStoryDirector.ts` 2,099;
+  `StoryGeneratorPanel.vue` is 1,143.
 
 ## Verification
 

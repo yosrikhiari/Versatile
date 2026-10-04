@@ -2,8 +2,9 @@
 
 `PIPELINE_ANALYSIS.md` and `CONSISTENCY_LEDGER.md` describe what the pipeline is *for*. This
 document is about how it *behaves*: what one scene costs, where the calls go, what the quality
-gates can and cannot see, and where the code is fragile. Everything below was read from the
-code as it runs today, with file:line references.
+gates can and cannot see, and where the code is fragile. Each section was read from the
+code as it ran on that section's date; its file:line references are from that date and
+many line numbers have drifted since.
 
 ## 1. Shape
 
@@ -24,6 +25,12 @@ One run = pre-run snapshot → volume → **Bible** (entity bootstrap) → **Net
 commit → digest) → chapter-boundary consistency → **Terminal audit** (+ fix rounds) → chapter gate
 → complete. Every phase transition goes through the Delegator; checkpoints are written per scene;
 a heartbeat watchdog beats on every streamed token.
+
+*Since then (checked 2026-10-04):* the panel's modes are Scene / Chapter / Arc, with Ideate
+and Blurb under More (`StoryGeneratorPanel.vue`, now 1,143 lines; `useVolumeStoryGenerator.ts`
+is 3,043). The terminal audit's fix rounds run only when "Fix continuity issues" is switched
+on, which is off by default (#64, `docs/UX-AUDIT.md` #51); off, the audit still runs and lists
+its issues.
 
 ## 2. What one scene costs
 
@@ -82,7 +89,7 @@ one scene-plan call per chapter — 109 calls before any prose for a 100-chapter
 ### UX of the run
 
 - Two levels of mode before anything happens (tab, then "Prompt type" chips on Ideate) — noted in
-  the UX audit.
+  the UX audit. (Fixed 2026-10-03: one row of modes, Ideate and Blurb under More.)
 - The plan-preview pause is the right gate; the sync-preview pause (entity acceptance) is a second
   interruption mid-run that auto mode skips but review mode does not explain.
 - `describeRunFailure` is good: every failure names how many scenes were written and that they are
@@ -846,7 +853,7 @@ today they all pass 40/40.
 
 §17a said to keep `deriveVerdict` and replace the single five-dimension call
 behind it with one focused call per dimension. Built, behind
-`STORAGE_KEYS.CRITIC_FOCUSED`, **off by default**. `gateSensitivity.live.js`
+`STORAGE_KEYS.CRITIC_FOCUSED`, **off by default** (made the default in §24). `gateSensitivity.live.js`
 with `FOCUSED=1` is its acceptance test — the same injected defects, through the
 production critic.
 
@@ -1820,7 +1827,7 @@ Nothing changed; recorded as a known 2/145 wrong-fail source.
 
 ## 35. The plan's remaining steps (2026-09-26)
 
-Section 7 of the report lists the plan. Steps 1-2 are done (§28-§31), step 4
+Section 7 of the report lists the plan (also §27 here). Steps 1-2 are done (§29-§31), step 4
 is mostly moot since §31 (the dimensions it would filter only warn). This
 section covers step 8 (small fixes), step 3 (emotional goal), step 5
 (contradictions on real prose) and step 6 (repair vs rewrite).
@@ -2032,7 +2039,7 @@ model or a trained checker, not another prompt.
 
 | step | status |
 |---|---|
-| 1 labelled real scenes | done (§28-§29); the user's own 12 still unlabelled |
+| 1 labelled real scenes | done (§29); the user's own 12 still unlabelled |
 | 2 show-tell | negative three ways; advisory (§31-§32) |
 | 3 emotional goal | reader's multiple choice, advisory (this section) |
 | 4 off-topic evidence filter | moot since §31 (those dimensions only warn) |
@@ -2710,6 +2717,13 @@ Next: show the writer less to copy (the last paragraph of the preceding
 scene and summaries of the others, not three 1,200-character tails) and
 measure whether the guard then has anything left to remove; and a branch
 written with the critic running, since none so far has been.
+
+*Update (2026-10-04):* both shipped on 2026-09-29 (bbb35d4d, 6406011f, 722f89f8). The
+code cites them as "§48", a section that was never written here. Per those commits: the
+writer now sees the last paragraph of the scene before, told in that scene's own tense and
+cut to 500 characters (`services/generation/precedingEnding.ts`), plus one-line summaries
+of the two scenes before it; branch 6, written with the critic running, had 0 repetition
+flags, with the copy guard removing 270 words (2,511 on branch 4).
 
 ## 49. Scenes that open on the same image (2026-10-02, issue #66)
 

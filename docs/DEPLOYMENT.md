@@ -26,7 +26,10 @@ docker compose up -d postgres redis
 
 Starts PostgreSQL 16 (`versatile-postgres`, port 5432, `postgres/postgres`,
 database `versatile`) and Redis 7 (`versatile-redis`, append-only). Both have
-health checks.
+health checks. Redis publishes no host port and `appsettings.json` has no
+`ConnectionStrings:Redis`, so an API started with `dotnet run` runs without
+the response cache (the cache fails open); set `ConnectionStrings__Redis` and
+map a port if you want it locally.
 
 ### 2. Backend
 
@@ -35,9 +38,10 @@ cd backend/Versatile.Api
 dotnet run
 ```
 
-Listens on `http://localhost:5171` (`launchSettings.json`). On start it
-applies EF migrations (skipped only in the `Testing` environment), exposes
-`/health`, and Swagger at `/swagger` in Development. Configuration comes from
+Listens on `http://localhost:5171` (`launchSettings.json`, environment
+`Development`). On start it applies EF migrations (skipped only in the
+`Testing` environment), seeds a default organization into an empty database
+in Development, exposes `/health`, and Swagger at `/swagger` in Development. Configuration comes from
 `appsettings.json` overridden by environment variables (`Section__Key` form).
 
 ### 3. Frontend
@@ -73,7 +77,7 @@ docker compose --profile frontend up --build
 | Service    | Image / build              | Port        | Profile    | Notes                                                                 |
 | ---------- | -------------------------- | ----------- | ---------- | --------------------------------------------------------------------- |
 | `postgres` | `postgres:16-alpine`       | 5432        | default    | volume `pgdata`                                                       |
-| `redis`    | `redis:7-alpine`           | —           | default    | volume `redisdata`; cache + rate limits                               |
+| `redis`    | `redis:7-alpine`           | —           | default    | volume `redisdata`; GET response cache only (fails open)              |
 | `api`      | `backend/Dockerfile`       | 5171 → 8080 | default    | waits for both health checks; `curl /health`; runs migrations on boot |
 | `frontend` | root `Dockerfile` (nginx)  | 8080 → 80   | `frontend` | proxies `/api/`, `/hubs/`, `/health` to `api:8080` same-origin        |
 | `ollama`   | `ollama/ollama:latest`     | 11434       | `ollama`   | volume `ollamadata`; the api's default `Ai__Ollama__BaseUrl` resolves to it |
@@ -98,7 +102,11 @@ sections (`JWT_KEY` → `Jwt__Key`). Generate secrets with
 | Variable                | Maps to                 | Description                       |
 | ----------------------- | ----------------------- | --------------------------------- |
 | `JWT_KEY`               | `Jwt__Key`              | Symmetric signing key, 32+ chars  |
-| `ENCRYPTION_MASTER_KEY` | `Encryption__MasterKey` | Encrypts stored per-user API keys |
+| `ENCRYPTION_MASTER_KEY` | `Encryption__MasterKey` | Encrypts stored per-user API keys, 32+ chars |
+
+Compose refuses to start without either. Outside Development the API also
+rejects a value shorter than 32 characters or still holding the
+`appsettings.json` placeholder (`RequireStrongSecret` in `Program.cs`).
 
 ### Optional
 
@@ -107,12 +115,14 @@ sections (`JWT_KEY` → `Jwt__Key`). Generate secrets with
 | `POSTGRES_DB/USER/PASSWORD` | `ConnectionStrings__DefaultConnection` | `versatile` / `postgres` / `postgres` | Override the password in production                  |
 | `JWT_ISSUER`        | `Jwt__Issuer`                           | `Versatile.Api`                  |                                                             |
 | `JWT_AUDIENCE`      | `Jwt__Audience`                         | `Versatile.App`                  |                                                             |
-| `OPENAI_API_KEY`    | `Ai__OpenAi__ApiKey`                    | inert placeholder                | Server-side fallback; users normally store their own keys via the API. An **empty string** trips the DI guard — leave unset instead |
+| `OPENAI_API_KEY`    | `Ai__OpenAi__ApiKey`                    | inert placeholder                | Server-side fallback; users normally store their own keys via the API. Compose maps an empty value to the placeholder; setting `Ai__OpenAi__ApiKey` to an **empty string** directly trips the DI guard, so leave it unset instead |
+| `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `GROQ_API_KEY` | `Ai__Anthropic__ApiKey` / `Ai__Gemini__ApiKey` / `Ai__Groq__ApiKey` | empty | Server-side fallbacks used when a user has no stored key |
+| `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` | `Ai__Cloudflare__ApiToken` / `Ai__Cloudflare__AccountId` | empty | Workers AI needs both |
 | `MISTRAL_API_KEY`   | `Ai__MistralKey`                        | —                                | Server-proxied embeddings (`POST /api/embedding/mistral`)   |
-| `OLLAMA_BASE_URL`   | `Ai__Ollama__BaseUrl`                   | `http://ollama:11434`            | Resolves inside compose when the `ollama` profile is active |
+| `OLLAMA_BASE_URL`   | `Ai__Ollama__BaseUrl`                   | `http://ollama:11434`            | Resolves inside compose when the `ollama` profile is active; outside compose the code default is `http://localhost:11434` |
 | `Cors__AllowedOrigins__0` | —                                 | —                                | Only when the API is reached cross-origin; compose is same-origin |
-| `ConnectionStrings__Redis` | —                                | `redis:6379` in compose          |                                                             |
-| `ASPNETCORE_ENVIRONMENT`   | —                                | `Production` in the image        | `Testing` disables migrations-on-boot and secure cookies    |
+| `ConnectionStrings__Redis` | —                                | `redis:6379` in compose          | unset outside compose                                       |
+| `ASPNETCORE_ENVIRONMENT`   | —                                | `Production` in the image        | `Development` drops the `Secure` flag on auth cookies, skips the strong-secret check, seeds a default org and enables Swagger; `Testing` disables migrations-on-boot and the response cache and uses an in-memory database |
 
 The frontend has no build-time secrets: AI provider keys are entered in the
 in-app Settings and kept locally (the server only ever returns a masked hint).
@@ -138,12 +148,13 @@ to `master`/`develop`; Node 22.x:
 
 | Job          | Steps                                                                 |
 | ------------ | --------------------------------------------------------------------- |
-| `lint`       | `npm run lint`, `npm run typecheck`, Prettier check, ESLint JSON report |
+| `lint`       | `npm run lint`, `npm run typecheck`, `npm run lint:tokens` + `npm run policy`, Prettier check, ESLint JSON report |
 | `test`       | `npm run test:coverage` (the suite, once), `npm run build`, Codecov   |
-| `e2e`        | Playwright (Chromium) with report artifact                            |
+| `e2e`        | Playwright (Chromium) with report artifact; runs after `lint`         |
 | `backend`    | `dotnet restore/build/test backend/Versatile.slnx`                    |
 
-`.github/workflows/backend-ci.yml` — on `backend/**` changes: build + test,
+`.github/workflows/backend-ci.yml` — on pushes and PRs to `master` that touch
+`backend/**` (or the workflow itself): build + test,
 and on `master` pushes the API image to
 `ghcr.io/yosrikhiari/versatile/versatile-api` tagged `latest` and by commit sha
 (GHCR requires the lowercase repository name).
@@ -159,8 +170,10 @@ secret can be deleted from the repository settings.
 `e97b6d1c`; both are pinned as devDependencies so the lock always carries
 them.
 
-Also present: `chromatic.yml` (Storybook visual regression),
-`eval-regression.yml`, `deps-audit.yml`, `stale.yml`, `branch-cleanup.yml`.
+Also present: `eval-regression.yml`, `deps-audit.yml`, `stale.yml`,
+`branch-cleanup.yml`. `chromatic.yml` (Storybook visual regression) exists
+locally but is gitignored until a `CHROMATIC_PROJECT_TOKEN` secret exists, so
+it does not run in CI.
 
 ## Post-deployment checklist
 
@@ -172,8 +185,8 @@ Also present: `chromatic.yml` (Storybook visual regression),
 - [ ] `JWT_KEY` and `ENCRYPTION_MASTER_KEY` are unique and stored in the platform's secret manager
 - [ ] `ASPNETCORE_ENVIRONMENT=Production`; the SPA is a production build (no demo-account seed)
 - [ ] `/assets/` served immutable; `index.html` `no-cache`
-- [ ] Rate limits observed: 100 req/min global, 20 req/min embedding → 429
-- [ ] Logs (Serilog) captured; Redis reachable (rate limits fail closed where safe)
+- [ ] Rate limits observed: 100 req/min per client IP, 20 req/min embedding → 429 (in-process limiter, so each API replica counts separately)
+- [ ] Logs (Serilog) captured; Redis reachable (the response cache fails open, so an outage only shows as slower reads and log warnings)
 
 ## Frontend compression notes
 

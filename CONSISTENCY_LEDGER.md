@@ -3,7 +3,17 @@
 > **Status 2026-09-15.** Ledger of the 100-chapter stress test (2026-08-16). The consistency
 > engine has since moved to a digest hierarchy with deterministic rules as a tree traversal
 > (`ARCHITECTURE.md` → AI and generation); the first real 10-chapter run and its open findings
-> (`bible_static`, degenerate critic scores) are in `planning/README.md`.
+> (`bible_static`, degenerate critic scores) are in `docs/GENERATION-PIPELINE-ANALYSIS.md` §7 to §10
+> (they were first written up in `planning/README.md`, which is gitignored and not in the repo).
+>
+> **Status (2026-10-04).** This file holds chapters 81 to 100 only (S-076 to S-095) plus the
+> code fixes S-096 to S-099; S-001 to S-075 were never committed (every version in `git log`
+> has the same range). The per-chapter "tests" named for chapters 81 to 100 are descriptions:
+> no Aldric/artifact dataset or test exists in the repo. The real regression tests are the ones
+> named under S-096 to S-099 (`deterministicSeam.test.js`, `syncTransport.test.js`,
+> `metadataChunking.test.js`, the guardrail suites), and they still pass. The 100-chapter
+> dataset the code checks is `validation/novel-100-data.json`, with its own ledger in
+> `validation/CONSISTENCY_LEDGER.md`.
 
 | Issue | Root Cause | Impact | Fix | Regression Test | Preventive Mechanism | Status |
 | ----- | ---------- | ------ | --- | --------------- | -------------------- | ------ |
