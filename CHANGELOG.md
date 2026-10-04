@@ -7,6 +7,49 @@ was verified.
 
 ## [Unreleased]
 
+### Sync works end to end for the first time (2026-10-04)
+- **A real push / pull round trip now passes** against Postgres, Redis and
+  the API (`src/tests/live/syncRoundTrip.live.js`): two projects pushed from
+  one device, pulled back into an empty second one with every link intact,
+  then an edit that clears a link and a delete pushed back. It had never been
+  run, and almost nothing in it worked:
+- **No response was ever read.** The API wraps every success as
+  `{ data, message }`; `api()` returned the wrapper, so pushes got no server
+  id, pulls read one bogus row, and login read `token` off the wrapper.
+  Paged lists (`items`) are now unwrapped and followed to the last page.
+- **Rows went to the wrong story.** Every row was pushed under one global
+  story id, so a second project's characters landed in the first project's
+  story. Each row now goes to its own project's story, a row whose project
+  is not on the server yet waits a cycle, and pull runs per project.
+- **Pull mixed tables:** characters and locations share one endpoint and
+  each pulled into the other's table.
+- **Missing and wrong endpoints:** research documents posted to a route that
+  does not exist; branches had no API at all (a `BranchController` now serves
+  the table that has existed since `AddBranchesTable`); manuscripts were
+  rejected for a missing title; the session-archive route had no `{storyId}`.
+- **Links that never travelled:** a chapter's volume and branch, a scene's
+  branch, order and chapter. The server gained `BranchId` on sections and
+  scenes (`AddBranchIdToSectionsAndSubsections`) and checks that a link
+  points inside the same story; the client sends the empty GUID to clear a
+  link and holds a row back while its link target is not on the server yet.
+  The unused `idBridge` config is gone.
+- **Deletes were never sent.** The delete hook wrote to `pendingDeletions`
+  inside the delete's own transaction and threw `NotFoundError`; it now
+  records after the commit. `destroy()` never removed the hooks (a bare
+  `unsubscribe()`), so each logout / login stacked another set; and the
+  `_suppressHooks` marker was stored on rows, so a copied row never synced.
+- **A new account could not sync at all:** registration created no
+  organization, so every story endpoint answered 403. It now creates a
+  personal workspace.
+- **The server served stale reads.** No write invalidated the Redis GET
+  cache, so a pull right after a push read the old rows for up to five
+  minutes. Writes now bump a per-organization cache generation.
+- **Rate limit:** sync sends a request per row and meets the 100/min per-IP
+  window on a book's first push. 429s now carry `Retry-After` and the client
+  waits it out; other 4xx answers are no longer retried three times.
+- Still open: no batch endpoint (a first push takes about a minute per
+  hundred rows), and a row deleted on another device stays locally.
+
 ### Tailwind 4; the braces advisory is gone (2026-10-03)
 - **Tailwind CSS 3.4 -> 4.3** (`@tailwindcss/postcss`; autoprefixer is built
   in now). `npm audit` reports 0 vulnerabilities: the high-severity `braces`

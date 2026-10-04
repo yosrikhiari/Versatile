@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Versatile.Application.Auth.Commands;
 using Versatile.Application.DTOs;
 using Versatile.Domain.Entities;
+using Versatile.Domain.Enums;
 using Versatile.Infrastructure.Data;
 using Versatile.Infrastructure.Services;
 
@@ -38,6 +39,24 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
         user.PasswordHash = _passwordHasher.HashPassword(user, command.Password);
 
         _db.Users.Add(user);
+        await _db.SaveChangesAsync(ct);
+
+        // Every story endpoint requires an active organization (the token's
+        // org_id claim); a user registered without one got 403 on everything,
+        // so a fresh account could never sync. Give each new user a personal
+        // workspace they administer; the token below then carries its org_id.
+        var org = new Organization
+        {
+            Name = $"{user.DisplayName}'s workspace",
+            Slug = $"personal-{user.Id:N}"
+        };
+        _db.Organizations.Add(org);
+        _db.OrganizationMemberships.Add(new OrganizationMembership
+        {
+            OrganizationId = org.Id,
+            UserId = user.Id,
+            Role = OrganizationRole.Admin
+        });
         await _db.SaveChangesAsync(ct);
 
         return await _tokenGenerator.GenerateAuthResponseAsync(user);

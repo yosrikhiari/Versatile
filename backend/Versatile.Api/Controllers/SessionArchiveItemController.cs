@@ -9,7 +9,7 @@ using Versatile.Domain.Interfaces;
 namespace Versatile.Api.Controllers;
 
 [ApiController]
-[Route("api/session-archive-item"), Authorize]
+[Route("api/story/{storyId}/session-archive-item"), Authorize]
 public class SessionArchiveItemController : ApiControllerBase
 {
     private readonly IMediator _mediator;

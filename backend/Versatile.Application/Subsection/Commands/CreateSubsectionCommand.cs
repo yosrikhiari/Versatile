@@ -4,4 +4,4 @@ using Versatile.Domain.Interfaces;
 
 namespace Versatile.Application.Subsection.Commands;
 
-public record CreateSubsectionCommand(Guid StoryId, Guid SectionId, string Title, string? Summary, string? Content, string? Tags, Guid? OrganizationId, Guid UserId) : IRequest<SubsectionDto>, IRequiresOrganization;
+public record CreateSubsectionCommand(Guid StoryId, Guid SectionId, string Title, string? Summary, string? Content, string? Tags, Guid? OrganizationId, Guid UserId, int? Order = null, Guid? BranchId = null) : IRequest<SubsectionDto>, IRequiresOrganization;

@@ -24,6 +24,8 @@ public sealed class SectionCrudIntegrationTests
         var handler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         var result = await handler.Handle(new CreateSectionCommand(story.Id, "Plot Setup", "Intro", "Once upon a time...", "Draft", "fiction", OrgId, UserId), default);
@@ -46,6 +48,8 @@ public sealed class SectionCrudIntegrationTests
         var handler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         var result = await handler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
@@ -63,6 +67,8 @@ public sealed class SectionCrudIntegrationTests
         var handler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -78,12 +84,16 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Original", "Old summary", "Old content", "Draft", "old", OrgId, UserId), default);
 
         var updateHandler = new UpdateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var result = await updateHandler.Handle(new UpdateSectionCommand(created.Id, "Updated", "New summary", "New content", null, "Revised", "new", OrgId, UserId), default);
 
@@ -102,12 +112,16 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Original", "Summary", "Content", "Draft", "tags", OrgId, UserId), default);
 
         var updateHandler = new UpdateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var result = await updateHandler.Handle(new UpdateSectionCommand(created.Id, Title: "Only Title Changed", null, null, null, null, null, OrgId, UserId), default);
 
@@ -126,6 +140,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "To Delete", null, null, null, null, OrgId, UserId), default);
 
@@ -162,6 +178,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var first = await createHandler.Handle(new CreateSectionCommand(story.Id, "B", null, null, null, null, OrgId, UserId), default);
         await Task.Delay(10);
@@ -183,6 +201,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Find Me", null, null, null, null, OrgId, UserId), default);
 
@@ -215,12 +235,16 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
 
         var handler = new UpdateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -236,12 +260,16 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
 
         var handler = new UpdateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -257,6 +285,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
 
@@ -278,6 +308,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
 
@@ -299,6 +331,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
 
@@ -319,6 +353,8 @@ public sealed class SectionCrudIntegrationTests
         var createHandler = new CreateSectionHandler(
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Volume>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSectionCommand(story.Id, "Title", null, null, null, null, OrgId, UserId), default);
 

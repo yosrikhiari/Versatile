@@ -16,10 +16,10 @@ public record CreatePlotThreadRequest(string Title, string? Status, string? Note
 public record UpdatePlotThreadRequest(string? Title, string? Status, string? Notes, int? Order);
 
 // Section
-public record SectionDto(Guid Id, Guid StoryId, Guid? VolumeId, string Title, string? Summary, string? Content, int Order, string Status, string? Tags, DateTime CreatedAt, DateTime UpdatedAt);
+public record SectionDto(Guid Id, Guid StoryId, Guid? VolumeId, string Title, string? Summary, string? Content, int Order, string Status, string? Tags, DateTime CreatedAt, DateTime UpdatedAt, Guid? BranchId = null);
 
 // Subsection
-public record SubsectionDto(Guid Id, Guid StoryId, Guid SectionId, string Title, string? Summary, string? Content, int Order, string? Tags, DateTime CreatedAt, DateTime UpdatedAt);
+public record SubsectionDto(Guid Id, Guid StoryId, Guid SectionId, string Title, string? Summary, string? Content, int Order, string? Tags, DateTime CreatedAt, DateTime UpdatedAt, Guid? BranchId = null);
 
 // SparkHistoryItem
 public record SparkHistoryItemDto(Guid Id, Guid StoryId, string Type, string? Prompt, string? Blueprint, string? GeneratedContent, DateTime CreatedAt);
@@ -124,3 +124,8 @@ public record UpdateResearchTagRequest(string? Name, string? Color);
 // FetchUrl
 public record FetchUrlRequest(string Url);
 public record FetchUrlResponse(string Title, string Html, int StatusCode);
+
+// Branch
+public record BranchDto(Guid Id, Guid StoryId, Guid? SourceBranchId, string Name, string? Description, string Status, DateTime CreatedAt, DateTime UpdatedAt);
+public record CreateBranchRequest(string Name, Guid? SourceBranchId, string? Description, string? Status);
+public record UpdateBranchRequest(string? Name, Guid? SourceBranchId, string? Description, string? Status);

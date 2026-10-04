@@ -1,6 +1,7 @@
+import Dexie from 'dexie'
 import { db } from './db-core'
 import { api, hasToken } from './api'
-import { findSyncConfig, SYNC_ENTITIES } from './sync-mapper'
+import { findSyncConfig, SYNC_ENTITIES, SYNC_ORDER } from './sync-mapper'
 import { SyncIdMap } from './sync-id-map'
 import { SyncTransport } from './sync-transport'
 import { reactive, ref } from 'vue'
@@ -20,6 +21,13 @@ export const syncStatus = reactive<{
   failedTables: []
 })
 
+/** A Dexie table hook, as subscribed and later unsubscribed (same function). */
+type HookFn = (...args: never[]) => unknown
+/** The slice of a Dexie transaction a hook uses. */
+interface HookTransaction {
+  on(event: 'complete', fn: () => void): void
+}
+
 let instance: SyncEngine | null = null
 
 export function getSyncEngine(): SyncEngine {
@@ -37,6 +45,7 @@ export function destroySyncEngine(): void {
 class SyncEngine {
   initialized = false
   private _hooksInstalled = false
+  private _hooks: Array<{ table: any; creating: HookFn; updating: HookFn; deleting: HookFn }> = []
   private _flushTimer: ReturnType<typeof setInterval> | null = null
   private _retryTimer: ReturnType<typeof setInterval> | null = null
   private _destroyed = false
@@ -85,39 +94,64 @@ class SyncEngine {
       const table = (db as any)[entity.table]
       if (!table) continue
 
-      table.hook('creating').subscribe((_primKey: unknown, obj: Record<string, unknown>) => {
-        if (obj._suppressHooks) return
+      // `_suppressHooks` marks a write made by sync itself. It is consumed
+      // here, not stored: a stored flag rode along when a row was copied
+      // (a branch fork copies its chapters) and the copy never synced.
+      const creating = (_primKey: unknown, obj: Record<string, unknown>) => {
+        if (obj._suppressHooks) {
+          delete obj._suppressHooks
+          return
+        }
         obj.syncStatus = 'pending-create'
         obj.lastSyncedAt = null
         obj.apiId = null
-      })
+      }
 
-      table
-        .hook('updating')
-        .subscribe(
-          (
-            modifications: Record<string, unknown>,
-            _primKey: unknown,
-            obj: Record<string, unknown>
-          ) => {
-            if (modifications._suppressHooks) return
-            if (obj.syncStatus !== 'pending-create') {
-              modifications.syncStatus = 'pending-update'
-              modifications.lastSyncedAt = null
-            }
-          }
-        )
-
-      table.hook('deleting').subscribe(async (primKey: string) => {
-        const existing = await table.get(primKey)
-        if (existing && existing.apiId) {
-          await db.pendingDeletions.put({
-            table: entity.table,
-            apiId: existing.apiId,
-            deletedAt: new Date().toISOString()
-          })
+      const updating = (
+        modifications: Record<string, unknown>,
+        _primKey: unknown,
+        obj: Record<string, unknown>
+      ) => {
+        if (modifications._suppressHooks) return { _suppressHooks: undefined }
+        if (obj.syncStatus !== 'pending-create') {
+          return { syncStatus: 'pending-update', lastSyncedAt: null }
         }
-      })
+      }
+
+      // The hook runs inside the delete's own transaction, which does not
+      // include `pendingDeletions` (or `projects` / `volumes`, read to find
+      // the story); writing there threw NotFoundError, so no delete of a
+      // synced row was ever recorded or sent. Record it once the delete has
+      // committed, outside that transaction.
+      const deleting = (
+        _primKey: unknown,
+        obj: Record<string, unknown>,
+        trans: HookTransaction
+      ) => {
+        if (!obj?.apiId) return
+        const row = { ...obj }
+        trans.on('complete', () => {
+          Dexie.ignoreTransaction(async () => {
+            const storyApiId =
+              entity.table === 'projects'
+                ? null
+                : await this._transport.storyApiIdFor(entity.table, row, this._idMap, db)
+            await db.pendingDeletions.put({
+              table: entity.table,
+              apiId: row.apiId,
+              storyApiId,
+              deletedAt: new Date().toISOString()
+            })
+          }).catch((err: Error) =>
+            console.warn(`[SyncEngine] Could not queue delete ${entity.table}`, err.message)
+          )
+        })
+      }
+
+      table.hook('creating').subscribe(creating)
+      table.hook('updating').subscribe(updating)
+      table.hook('deleting').subscribe(deleting)
+      this._hooks.push({ table, creating, updating, deleting })
     }
 
     this._hooksInstalled = true
@@ -125,17 +159,15 @@ class SyncEngine {
 
   private _uninstallHooks(): void {
     if (!this._hooksInstalled) return
-    for (const entity of SYNC_ENTITIES) {
-      const table = (db as any)[entity.table]
-      if (!table) continue
-      try {
-        table.hook('creating').unsubscribe()
-        table.hook('updating').unsubscribe()
-        table.hook('deleting').unsubscribe()
-      } catch {
-        // ignore
-      }
+    // Dexie's unsubscribe needs the very function subscribed; the old bare
+    // `unsubscribe()` removed nothing, so every logout / login stacked
+    // another set of hooks on each table.
+    for (const { table, creating, updating, deleting } of this._hooks) {
+      table.hook('creating').unsubscribe(creating)
+      table.hook('updating').unsubscribe(updating)
+      table.hook('deleting').unsubscribe(deleting)
     }
+    this._hooks = []
     this._hooksInstalled = false
   }
 
@@ -200,58 +232,14 @@ class SyncEngine {
     }
     syncStatus.state = 'syncing'
 
-    const storyApiId = await this._idMap.resolveStoryApiId()
-    if (!storyApiId) {
-      try {
-        const { failed } = await this._transport.pushTable(
-          'projects',
-          null,
-          this._idMap,
-          findSyncConfig,
-          db
-        )
-        if (failed > 0) {
-          // Projects could not bootstrap — nothing downstream can resolve.
-          // Carry it as a table failure so the retry queue picks it up.
-          this._failedTables.add('projects')
-          syncStatus.lastError = `Push failed on projects — ${failed} row(s) still pending`
-          syncStatus.state = 'error'
-          this._startRetryQueue()
-          return
-        }
-      } catch (err) {
-        console.error('[SyncEngine] Push failed for projects:', (err as Error).message)
-        syncStatus.lastError = `Push failed on projects — ${(err as Error).message}`
-        syncStatus.state = 'error'
-        return
-      }
-    }
-
-    // Parents before children (branches carry the branchId every row scoping
-    // reads through), documents before their chunks/tags.
-    const order = [
-      'branches',
-      'projects',
-      'volumes',
-      'characters',
-      'locations',
-      'plotThreads',
-      'sections',
-      'subsections',
-      'characterRelationships',
-      'volumeEntities',
-      'manuscripts',
-      'researchDocuments',
-      'researchChunks',
-      'researchTags'
-    ]
-
+    // Parents before children (SYNC_ORDER): projects first, so every other
+    // row can find its story; a row whose project has no story yet is
+    // deferred to the next cycle, not counted as a failure.
     let anyFailed = false
-    for (const tableName of order) {
+    for (const tableName of SYNC_ORDER) {
       try {
         const { failed } = await this._transport.pushTable(
           tableName,
-          storyApiId,
           this._idMap,
           findSyncConfig,
           db
@@ -272,7 +260,8 @@ class SyncEngine {
     }
 
     try {
-      await this._transport.pushDeletions(storyApiId, this._idMap, db, findSyncConfig)
+      const fallback = await this._idMap.resolveStoryApiId()
+      await this._transport.pushDeletions(fallback, db, findSyncConfig)
     } catch (err) {
       anyFailed = true
       console.error('[SyncEngine] Push deletions failed:', (err as Error).message)
@@ -296,19 +285,36 @@ class SyncEngine {
       syncStatus.state = 'offline'
       return
     }
-    const storyApiId = await this._idMap.resolveStoryApiId()
-    if (!storyApiId) return
-
     syncStatus.state = 'syncing'
     let anyFailed = false
-
-    for (const entity of SYNC_ENTITIES) {
+    const pullOne = async (table: string, storyApiId: string | null, localProjectId: unknown) => {
+      const config = findSyncConfig(table)
+      if (!config) return
       try {
-        await this._transport.pullTable(entity as never, storyApiId, this._idMap, db)
+        await this._transport.pullTable(
+          config as never,
+          storyApiId,
+          localProjectId as string | null,
+          this._idMap,
+          db
+        )
       } catch (err) {
         anyFailed = true
-        console.error(`[SyncEngine] Pull failed for ${entity.table}:`, (err as Error).message)
-        syncStatus.lastError = `Pull failed — ${entity.table}: ${(err as Error).message}`
+        console.error(`[SyncEngine] Pull failed for ${table}:`, (err as Error).message)
+        syncStatus.lastError = `Pull failed — ${table}: ${(err as Error).message}`
+      }
+    }
+
+    // Stories first (new ones from another device become local projects),
+    // then every table of every synced project, parents before children so
+    // a pulled chapter can find its volume and branch.
+    await pullOne('projects', null, null)
+    const projects: Array<{ id: unknown; apiId?: string | null }> = await db.projects.toArray()
+    for (const project of projects) {
+      if (!project.apiId) continue
+      for (const table of SYNC_ORDER) {
+        if (table === 'projects') continue
+        await pullOne(table, project.apiId, project.id)
       }
     }
 
@@ -352,10 +358,8 @@ class SyncEngine {
       const tables = [...this._failedTables]
       for (const tableName of tables) {
         try {
-          const storyApiId = await this._idMap.resolveStoryApiId()
           const { failed } = await this._transport.pushTable(
             tableName,
-            storyApiId,
             this._idMap,
             findSyncConfig,
             db

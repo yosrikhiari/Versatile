@@ -30,10 +30,10 @@ Entities in `SYNC_ENTITIES` that flow local ⇄ server. `characters` and `locati
 | `volumes` | Volume | |
 | `volumeEntities` | VolumeEntity | |
 | `manuscripts` | Manuscript | |
-| `researchDocuments` | ResearchDocument | **Endpoint mismatch:** the mapper calls `/story/{id}/research`, the controller route is `/story/{id}/research-document` |
+| `researchDocuments` | ResearchDocument | `/story/{id}/research-document`; the document text goes up as `content` |
 | `researchChunks` | ResearchChunk | |
 | `researchTags` | ResearchTag | |
-| `branches` | Branch | **No endpoint:** the `Branch` DbSet exists but there is no `BranchController`, so `/story/{id}/branch` has no route. Pushed first, serially (self-referencing `sourceBranchId`) |
+| `branches` | Branch | `BranchController` (added 2026-10-04). Pushed right after projects, serially (self-referencing `sourceBranchId`) |
 
 ---
 
@@ -102,12 +102,13 @@ server-side blob, so their custom fields and tags are local-only. Section/subsec
 `location`, `charactersPresent` and `wordCount` are local-only until the backend gains the
 columns.
 
-**Further gaps in the mapper (checked 2026-10-04):** `branchId` on sections and subsections is
-never sent (the backend `Section`/`Subsection` have no `BranchId`), so what-if chapters arrive on
-another device as main-line chapters. Section `volumeId` is not sent and a pull writes it back
-as `null` (the `idBridge.needsTranslation` lists are declared but nothing in `sync-transport.ts`
-reads them). Subsection `order` is read on pull but not sent on push, although the backend
-`Subsection` has an `Order` column. Subsection `contentStatus` is local-only.
+**Links between rows (fixed 2026-10-04):** a chapter's `volumeId` and `branchId` and a scene's
+`branchId`, `order` and `sectionId` (a scene moved to another chapter) now go up as server ids and
+come back as local ids; the backend `Section` / `Subsection` gained `BranchId`
+(`AddBranchIdToSectionsAndSubsections`). The server reads `null` as "leave the link" and the empty
+GUID as "clear it", so the client sends the empty GUID for no link; a link whose target has not
+reached the server yet fails the row, which stays pending and goes up on a later cycle with the
+link intact. Subsection `contentStatus` is local-only.
 
 ---
 
@@ -136,10 +137,33 @@ healthy; the backend suite is 985 tests green. A two-client sync run (register o
 editor's sign-in, edit on two browsers) has not been exercised in this audit — it needs a server account.
 
 **Re-checked 2026-10-04:** the table lists above still match `SYNC_ENTITIES` (14 tables), the 53
-Dexie tables declared through schema v55 and the backend `DbSet`s. Not re-verified live: the API
-wraps every 2xx body in `ApiResponse<T>` (`{ data, message }`) and paged lists in
-`PagedResponse<T>` (`items`), while `sync-transport.ts` reads the raw body (`apiItem.id`,
-`Array.isArray(items)`), so a real push/pull round trip should be exercised before relying on it.
+Dexie tables declared through schema v55 and the backend `DbSet`s.
+
+**First real round trip (2026-10-04).** `src/tests/live/syncRoundTrip.live.js` runs against the
+compose stack (Postgres, Redis, API): device A pushes two projects (branches, a volume, a chapter
+and scene on a fork, characters, a location, a research document, a manuscript), the local
+database is wiped and pulled back as device B, which clears a link, deletes a row and pushes again;
+every step is checked against the server's own answers. It passes. Getting there fixed:
+
+- `api()` never unwrapped the `{ data, message }` envelope, so no push got a server id (and login
+  read `token` off the envelope too); paged lists (`items`) were not unwrapped or followed.
+- Every row went to one global story id, so a second project's rows were filed under the first
+  story. Each row now goes to its own project's story; pull runs per synced project.
+- Pull wrote locations into `characters` and characters into `locations` (one shared entity
+  endpoint, no type filter).
+- Research documents posted to a route that does not exist; branches had no endpoint at all;
+  manuscripts were rejected for a missing title.
+- The delete hook wrote to `pendingDeletions` inside the delete's own transaction and threw, so
+  no delete of a synced row was ever recorded or sent; `destroy()` never removed the hooks.
+- A new account had no organization, so every story endpoint answered 403; registration now
+  creates a personal workspace.
+- Writes never invalidated the server's GET cache, so a pull after a push read stale rows for up
+  to the cache duration.
+- One request per row meets the 100/min per-IP limit on a book's first push; the server now sends
+  `Retry-After` and the client waits it out (other 4xx are no longer retried).
+
+Still open: there is no batch endpoint, so a first push of a long book takes about a minute per
+hundred rows; a row deleted on another device is not removed locally on pull.
 
 ## Workflow
 

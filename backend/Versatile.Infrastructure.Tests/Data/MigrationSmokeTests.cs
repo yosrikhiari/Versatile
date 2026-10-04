@@ -22,7 +22,8 @@ public class MigrationSmokeTests
         "AddRowLevelSecurity",
         "AddAuditLog",
         "AddBranchesTable",
-        "RemoveResearchNotes"
+        "RemoveResearchNotes",
+        "AddBranchIdToSectionsAndSubsections"
     ];
 
     [Fact]

@@ -54,6 +54,60 @@ describe('sync-mapper id translation', () => {
     expect(back).toMatchObject({ volumeId: 'v1', entityType: 'character', entityId: 'c1' })
   })
 
+  it("sends a chapter's volume and branch as server ids, the empty GUID for none, and reads them back", async () => {
+    await db.volumes.add({ id: 'v1', projectId: 'p1', title: 'Vol 1', apiId: 'srv-v1' })
+    await db.branches.add({ id: 'b1', projectId: 'p1', name: 'main', apiId: 'srv-b1' })
+    const cfg = findSyncConfig('sections')
+
+    const out = await cfg.toApi({ title: 'Ch 3', order: 3, volumeId: 'v1', branchId: 'b1' })
+    expect(out).toMatchObject({ order: 3, volumeId: 'srv-v1', branchId: 'srv-b1' })
+
+    // The server reads null as "leave the link"; only the empty GUID clears it.
+    const loose = await cfg.toApi({ title: 'Ch 4', volumeId: null, branchId: null })
+    expect(loose.volumeId).toBe('00000000-0000-0000-0000-000000000000')
+    expect(loose.branchId).toBe('00000000-0000-0000-0000-000000000000')
+
+    const back = await cfg.fromApi({
+      id: 'srv-s1',
+      title: 'Ch 3',
+      volumeId: 'srv-v1',
+      branchId: 'srv-b1'
+    })
+    expect(back).toMatchObject({ volumeId: 'v1', branchId: 'b1' })
+  })
+
+  it('fails a chapter whose volume has not reached the server, rather than sending it linkless', async () => {
+    await db.volumes.add({ id: 'v-new', projectId: 'p1', title: 'Unsynced' })
+    const cfg = findSyncConfig('sections')
+
+    await expect(cfg.toApi({ title: 'Ch 5', volumeId: 'v-new' })).rejects.toThrow(/no server id/)
+  })
+
+  it("sends a scene's order and branch", async () => {
+    await db.branches.add({ id: 'b2', projectId: 'p1', name: 'fork', apiId: 'srv-b2' })
+    const out = await findSyncConfig('subsections').toApi({ title: 'S', order: 4, branchId: 'b2' })
+    expect(out).toMatchObject({ order: 4, branchId: 'srv-b2' })
+  })
+
+  it('posts research documents to the route that exists, with the fields the server reads', async () => {
+    const cfg = findSyncConfig('researchDocuments')
+    expect(cfg.endpoint('story-1')).toBe('/story/story-1/research-document')
+    expect(cfg.toApi({ fileName: 'notes.md', fileType: 'md', text: 'hello' })).toEqual({
+      fileName: 'notes.md',
+      fileType: 'md',
+      content: 'hello'
+    })
+    expect(
+      cfg.fromApi({ id: 'r1', fileName: 'notes.md', fileType: 'md', content: 'hello' })
+    ).toMatchObject({ fileName: 'notes.md', text: 'hello', charCount: 5 })
+  })
+
+  it('gives a manuscript the title the server requires', () => {
+    expect(findSyncConfig('manuscripts').toApi({ content: 'x', wordCount: 1 }).title).toBe(
+      'Manuscript'
+    )
+  })
+
   it('falls back to the raw id when the entity has not been pushed yet', async () => {
     const cfg = findSyncConfig('volumeEntities')
     const out = await cfg.toApi({ volumeId: null, entityType: 'character', entityId: 'c-unsynced' })

@@ -34,7 +34,10 @@ conventions that hold across all controllers.
 Nearly every resource is organization-scoped: requests resolve the active
 organization from the token's `org_id` claim, and every controller marked
 "auth + org" below returns 403 when the token carries no active org
-(`RequireOrganizationAttribute`). Organization, ApiKeys and Embedding work
+(`RequireOrganizationAttribute`). Registration creates a personal workspace
+organization with the new user as admin, so the first token already carries
+an `org_id` (before 2026-10-04 a new account had none and got 403 on every
+story endpoint). Organization, ApiKeys and Embedding work
 without one (invite flow:
 `POST /api/Organization/{id}/invite`, remove:
 `DELETE /api/Organization/{id}/members/{userId}`). Reading an org you
@@ -51,7 +54,17 @@ existence check, so it reveals nothing to probe (verified live).
   pagination for sync-style polling.
 - Rate limits: 100 req/min globally per client IP, plus 20 req/min on the
   embedding proxy (one fixed window shared by all callers). Exceeding
-  returns 429.
+  returns 429 with `Retry-After` (seconds until the window resets); the
+  client's sync waits it out.
+- GETs marked cacheable are served from Redis for 60 to 300 seconds. Any
+  successful write retires the cached reads of its organization (keys carry
+  a per-org generation that each write bumps), so a read after a write is
+  never stale. The filter is off in the `Testing` environment.
+- Chapter and scene links: `Section` takes `volumeId`, `branchId` and
+  `order`; `Subsection` takes `branchId`, `order` and, on update,
+  `sectionId` (move to another chapter of the same story). On update `null`
+  leaves a link as it is and the empty GUID clears it; a link to a row of
+  another story is a 404.
 - No antiforgery tokens are required: cookie auth is an SPA convenience,
   not the trust boundary; JWT + org scoping is. (Deliberate decision after
   the global filter 500'd every mutating endpoint — see Phase 1 notes.)
@@ -97,6 +110,11 @@ SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 | | | `POST /api/story/{storyId}/author-profile` |
 | | | `PUT /api/story/{storyId}/author-profile/{id}` |
 | | | `DELETE /api/story/{storyId}/author-profile/{id}` |
+| Branch | auth + org | `GET /api/story/{storyId}/branch` |
+| | | `GET /api/story/{storyId}/branch/{id}` |
+| | | `POST /api/story/{storyId}/branch` |
+| | | `PUT /api/story/{storyId}/branch/{id}` |
+| | | `DELETE /api/story/{storyId}/branch/{id}` |
 | Bible | auth + org | `GET /api/story/{storyId}/bible` |
 | | | `GET /api/story/{storyId}/bible/{id}` |
 | | | `POST /api/story/{storyId}/bible` |
@@ -198,11 +216,11 @@ SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 | | | `POST /api/story/{storyId}/section` |
 | | | `PUT /api/story/{storyId}/section/{id}` |
 | | | `DELETE /api/story/{storyId}/section/{id}` |
-| SessionArchiveItem | auth + org | `GET /api/session-archive-item` |
-| | | `GET /api/session-archive-item/{id}` |
-| | | `POST /api/session-archive-item` |
-| | | `PUT /api/session-archive-item/{id}` |
-| | | `DELETE /api/session-archive-item/{id}` |
+| SessionArchiveItem | auth + org | `GET /api/story/{storyId}/session-archive-item` |
+| | | `GET /api/story/{storyId}/session-archive-item/{id}` |
+| | | `POST /api/story/{storyId}/session-archive-item` |
+| | | `PUT /api/story/{storyId}/session-archive-item/{id}` |
+| | | `DELETE /api/story/{storyId}/session-archive-item/{id}` |
 | Snapshot | auth + org | `GET /api/story/{storyId}/snapshot` |
 | | | `GET /api/story/{storyId}/snapshot/{id}` |
 | | | `POST /api/story/{storyId}/snapshot` |

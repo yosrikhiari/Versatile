@@ -28,7 +28,7 @@ public class GetSectionsHandler : IRequestHandler<GetSectionsQuery, List<Section
         return sections.OrderBy(s => s.Order).Select(ToDto).ToList();
     }
 
-    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt);
+    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt, s.BranchId);
 }
 
 public class GetSectionByIdHandler : IRequestHandler<GetSectionByIdQuery, SectionDto>
@@ -55,5 +55,5 @@ public class GetSectionByIdHandler : IRequestHandler<GetSectionByIdQuery, Sectio
         return ToDto(section);
     }
 
-    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt);
+    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt, s.BranchId);
 }

@@ -175,14 +175,14 @@ IndexedDB (Dexie.js) ←→ SyncEngine ←→ Backend API (ASP.NET Core)
 
 ### Sync Entities
 
-Entities synced with the backend (defined in `sync-mapper.ts:SYNC_ENTITIES`). Push order is the
-hard-coded `order` list in `SyncEngine.push()` (projects bootstrap first when the story has no
-`apiId` yet); pull walks `SYNC_ENTITIES` in declaration order.
+Entities synced with the backend (defined in `sync-mapper.ts:SYNC_ENTITIES`). Push and pull both
+walk `SYNC_ORDER` (parents before children); each row goes to its own project's story, and a row
+whose project has no server story yet waits for the next cycle.
 
 | Table | API Endpoint | Top-Level | Push order |
 |---|---|---|---|
-| branches | `/story/{id}/branch` (**no backend route**: no `BranchController`) | No | 0 |
-| projects (Stories) | `/story` | Yes (provides storyApiId) | 1 |
+| projects (Stories) | `/story` | Yes (provides storyApiId) | 0 |
+| branches | `/story/{id}/branch` | No | 1 |
 | volumes | `/story/{id}/volume` | No | 2 |
 | characters | `/story/{id}/entity` | No (type=Character) | 3 |
 | locations | `/story/{id}/entity` | No (type=Location) | 4 |
@@ -192,7 +192,7 @@ hard-coded `order` list in `SyncEngine.push()` (projects bootstrap first when th
 | characterRelationships | `/story/{id}/character-relationship` | No | 8 |
 | volumeEntities | `/story/{id}/volume-entity` | No | 9 |
 | manuscripts | `/story/{id}/manuscript` | No | 10 |
-| researchDocuments | `/story/{id}/research` (**mismatch**: the controller route is `research-document`) | No | 11 |
+| researchDocuments | `/story/{id}/research-document` | No | 11 |
 | researchChunks | `/story/{id}/research-chunk` | No | 12 |
 | researchTags | `/story/{id}/research-tag` | No | 13 |
 
@@ -212,9 +212,9 @@ Strategies defined in `sync-conflicts.ts`:
 
 ### Data Flow
 
-1. **Push** (`_installHooks`): IndexedDB `creating`/`updating` hooks set `syncStatus` to `pending-create` or `pending-update`. Deletions are recorded in `pendingDeletions` table.
+1. **Push** (`_installHooks`): IndexedDB `creating`/`updating` hooks set `syncStatus` to `pending-create` or `pending-update`. A delete of a synced row is recorded in `pendingDeletions`, with its story, after the delete commits (recording it inside the delete's transaction threw, so before 2026-10-04 no delete was sent).
 2. **Flush** (30s interval): `SyncEngine.push()` iterates sync-ordered tables, calling `transport.pushTable()` for each, then processes pending deletions. Rows within a table push with bounded concurrency (4; `branches` stays serial because it self-references). A row that fails is surfaced and retried, and a table with stranded rows is re-pushed rather than skipped; a re-push of a record that already has an `apiId` is a PUT update, never a duplicate POST.
-3. **Pull**: `SyncEngine.pull()` fetches all entities for the current story and upserts them into IndexedDB.
+3. **Pull**: `SyncEngine.pull()` pulls the story list (new stories become local projects), then every table of every synced project, following paged answers to the end, and upserts into IndexedDB. Rows with unpushed local edits are left alone. A row deleted on the server is not removed locally.
 4. **Sync Now**: `syncNow()` calls push then pull in sequence.
 
 ### Client schema (IndexedDB)
@@ -232,13 +232,14 @@ Caveats (checked 2026-10-04): the policies cover the tables that existed when th
 
 ## Migration Workflow
 
-**Current migrations (6 total):**
+**Current migrations (7 total):**
 1. `InitialCreate` — Base schema with all entities
 2. `AddOrganizationIdIndexes` — Indexes on OrganizationId for tenant filtering
 3. `AddRowLevelSecurity` — Database-level RLS policies
 4. `AddAuditLog` — AuditEntry/AuditLog table
 5. `AddBranchesTable` — Branch entity (git-like forking, self-referencing `SourceBranchId`)
 6. `RemoveResearchNotes` — drops the dead `Research`/`ResearchNotes` set (superseded by `ResearchDocument`)
+7. `AddBranchIdToSectionsAndSubsections` — nullable `BranchId` on `Sections` and `Subsections` (FK to `Branches`, set null on delete), so a what-if chapter keeps its branch across devices
 
 Migrations run automatically on API start except in the `Testing` environment.
 

@@ -16,6 +16,12 @@ public class Section : UserOwnedEntity
     [ForeignKey(nameof(VolumeId))]
     public Volume? Volume { get; set; }
 
+    /// <summary>The what-if branch this row belongs to; null on a story that has never branched.</summary>
+    public Guid? BranchId { get; set; }
+
+    [ForeignKey(nameof(BranchId))]
+    public Branch? Branch { get; set; }
+
     [Required, MaxLength(500)]
     public string Title { get; set; } = string.Empty;
 

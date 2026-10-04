@@ -60,7 +60,7 @@ public class SectionHandlerTests
             var sectionRepo = new Mock<IRepository<SectionEntity>>();
             sectionRepo.Setup(r => r.GetAllAsync(It.IsAny<System.Linq.Expressions.Expression<System.Func<SectionEntity, bool>>>(), It.IsAny<CancellationToken>())).ReturnsAsync(existingSections);
             var uow = new Mock<IUnitOfWork>();
-            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new CreateSectionCommand(StoryId, "New Section", "Summary", "Content", null, null, OrgId, UserId);
 
             var result = await handler.Handle(command, default);
@@ -81,7 +81,7 @@ public class SectionHandlerTests
             var sectionRepo = new Mock<IRepository<SectionEntity>>();
             sectionRepo.Setup(r => r.GetAllAsync(It.IsAny<System.Linq.Expressions.Expression<System.Func<SectionEntity, bool>>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<SectionEntity>());
             var uow = new Mock<IUnitOfWork>();
-            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new CreateSectionCommand(StoryId, "First Section", null, null, null, null, OrgId, UserId);
 
             var result = await handler.Handle(command, default);
@@ -97,7 +97,7 @@ public class SectionHandlerTests
             storyRepo.Setup(r => r.GetByIdForOrganizationAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), default)).ReturnsAsync((Story?)null);
             var sectionRepo = new Mock<IRepository<SectionEntity>>();
             var uow = new Mock<IUnitOfWork>();
-            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new CreateSectionCommand(Guid.NewGuid(), "Title", null, null, null, null, OrgId, UserId);
 
             await handler.Invoking(h => h.Handle(command, default))
@@ -113,7 +113,7 @@ public class SectionHandlerTests
             storyRepo.Setup(r => r.GetByIdForOrganizationAsync(StoryId, OrgId, default)).ReturnsAsync(story);
             var sectionRepo = new Mock<IRepository<SectionEntity>>();
             var uow = new Mock<IUnitOfWork>();
-            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new CreateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new CreateSectionCommand(StoryId, "Title", null, null, null, null, OrgId, UserId);
 
             await handler.Invoking(h => h.Handle(command, default))
@@ -133,7 +133,7 @@ public class SectionHandlerTests
             var storyRepo = new Mock<IOrganizationOwnedRepository<Story>>();
             storyRepo.Setup(r => r.GetByIdForOrganizationAsync(StoryId, OrgId, default)).ReturnsAsync(story);
             var uow = new Mock<IUnitOfWork>();
-            var handler = new UpdateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new UpdateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new UpdateSectionCommand(SectionId, "Updated Title", null, null, null, "Published", null, OrgId, UserId);
 
             var result = await handler.Handle(command, default);
@@ -150,7 +150,7 @@ public class SectionHandlerTests
             sectionRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync((SectionEntity?)null);
             var storyRepo = new Mock<IOrganizationOwnedRepository<Story>>();
             var uow = new Mock<IUnitOfWork>();
-            var handler = new UpdateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new UpdateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new UpdateSectionCommand(Guid.NewGuid(), "Title", null, null, null, null, null, OrgId, UserId);
 
             await handler.Invoking(h => h.Handle(command, default))
@@ -166,7 +166,7 @@ public class SectionHandlerTests
             var storyRepo = new Mock<IOrganizationOwnedRepository<Story>>();
             storyRepo.Setup(r => r.GetByIdForOrganizationAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), default)).ReturnsAsync((Story?)null);
             var uow = new Mock<IUnitOfWork>();
-            var handler = new UpdateSectionHandler(sectionRepo.Object, storyRepo.Object, uow.Object);
+            var handler = new UpdateSectionHandler(sectionRepo.Object, storyRepo.Object, new Mock<IRepository<Versatile.Domain.Entities.Volume>>().Object, new Mock<IRepository<Versatile.Domain.Entities.Branch>>().Object, uow.Object);
             var command = new UpdateSectionCommand(SectionId, "Title", null, null, null, null, null, OrgId, UserId);
 
             await handler.Invoking(h => h.Handle(command, default))

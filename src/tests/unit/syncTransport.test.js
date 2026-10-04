@@ -26,7 +26,11 @@ function makeMockDb() {
 }
 
 function makeIdMap() {
-  const store = new Map()
+  // Projects p1 / p2 are already on the server as story-1 / story-2.
+  const store = new Map([
+    ['projects:p1', 'story-1'],
+    ['projects:p2', 'story-2']
+  ])
   return {
     getApiId: (t, id) => store.get(`${t}:${id}`) ?? null,
     setMapping: (t, id, apiId) => store.set(`${t}:${id}`, apiId),
@@ -102,17 +106,17 @@ describe('SyncTransport.pushOne idempotency', () => {
 
   it('pushTable counts pushed vs failed rows instead of swallowing', async () => {
     const { db, rows } = makeMockDb()
-    rows.set('good-1', { id: 'good-1', syncStatus: 'pending-create' })
-    rows.set('bad-1', { id: 'bad-1', syncStatus: 'pending-create' })
+    rows.set('good-1', { id: 'good-1', syncStatus: 'pending-create', projectId: 'p1' })
+    rows.set('bad-1', { id: 'bad-1', syncStatus: 'pending-create', projectId: 'p1' })
     const idMap = makeIdMap()
     const api = async (url, opts) => {
       if (JSON.stringify(opts?.body || {}).includes('bad-1')) throw new Error('server down')
       return { id: 'api-x' }
     }
     const transport = new SyncTransport(api)
-    const result = await transport.pushTable('characters', 'story-1', idMap, () => CONFIG, db)
+    const result = await transport.pushTable('characters', idMap, () => CONFIG, db)
 
-    expect(result).toEqual({ pushed: 1, failed: 1 })
+    expect(result).toEqual({ pushed: 1, failed: 1, deferred: 0 })
   })
 })
 
@@ -137,14 +141,8 @@ describe('SyncTransport.pushTable concurrency', () => {
   it('pushes a table a few rows at a time instead of strictly one after another', async () => {
     const h = harness(10)
     const transport = new SyncTransport(h.api)
-    const result = await transport.pushTable(
-      'characters',
-      'story-1',
-      makeIdMap(),
-      () => CONFIG,
-      h.db
-    )
-    expect(result).toEqual({ pushed: 10, failed: 0 })
+    const result = await transport.pushTable('characters', makeIdMap(), () => CONFIG, h.db)
+    expect(result).toEqual({ pushed: 10, failed: 0, deferred: 0 })
     expect(h.peak()).toBeGreaterThan(1)
     expect(h.peak()).toBeLessThanOrEqual(4)
     expect([...h.rows.values()].every((r) => r.syncStatus === 'synced')).toBe(true)
@@ -154,7 +152,125 @@ describe('SyncTransport.pushTable concurrency', () => {
     const h = harness(6)
     const transport = new SyncTransport(h.api)
     const config = { ...CONFIG, table: 'branches', selfReferencing: true }
-    await transport.pushTable('branches', 'story-1', makeIdMap(), () => config, h.db)
+    await transport.pushTable('branches', makeIdMap(), () => config, h.db)
     expect(h.peak()).toBe(1)
+  })
+})
+
+describe('SyncTransport.pushTable story routing', () => {
+  const ROUTED = {
+    ...CONFIG,
+    endpoint: (storyApiId) => `/story/${storyApiId}/entity`
+  }
+
+  it("sends each row to its own project's story, not one global story", async () => {
+    const { db, rows } = makeMockDb()
+    rows.set('a', { id: 'a', syncStatus: 'pending-create', projectId: 'p1' })
+    rows.set('b', { id: 'b', syncStatus: 'pending-create', projectId: 'p2' })
+    const urls = []
+    const api = async (url) => {
+      urls.push(url)
+      return { id: `srv-${urls.length}` }
+    }
+    await new SyncTransport(api).pushTable('characters', makeIdMap(), () => ROUTED, db)
+
+    expect(urls.sort()).toEqual(['/story/story-1/entity', '/story/story-2/entity'])
+  })
+
+  it('defers a row whose project has no server story yet instead of failing it', async () => {
+    const { db, rows } = makeMockDb()
+    // The mock answers every table with the same object; `get` finds no project.
+    db.projects.get = async () => undefined
+    rows.set('c', { id: 'c', syncStatus: 'pending-create', projectId: 'p-new' })
+    let calls = 0
+    const api = async () => {
+      calls++
+      return { id: 'x' }
+    }
+    const result = await new SyncTransport(api).pushTable(
+      'characters',
+      makeIdMap(),
+      () => ROUTED,
+      db
+    )
+
+    expect(result).toEqual({ pushed: 0, failed: 0, deferred: 1 })
+    expect(calls).toBe(0)
+    expect(rows.get('c').syncStatus).toBe('pending-create')
+  })
+
+  it('leaves a row pending when the server answers without an id', async () => {
+    const { db, rows } = makeMockDb()
+    rows.set('d', { id: 'd', syncStatus: 'pending-create', projectId: 'p1' })
+    // A still-wrapped envelope: the shape every POST had before api() unwrapped it.
+    const api = async () => ({ data: { id: 'wrapped' } })
+    const result = await new SyncTransport(api).pushTable(
+      'characters',
+      makeIdMap(),
+      () => ROUTED,
+      db
+    )
+
+    expect(result.failed).toBe(1)
+    expect(rows.get('d').syncStatus).toBe('pending-create')
+  })
+})
+
+describe('SyncTransport.pullTable', () => {
+  function pullDb() {
+    const rows = []
+    let next = 1
+    const table = {
+      get: async (id) => rows.find((r) => r.id === id),
+      add: async (row) => {
+        const id = `local-${next++}`
+        rows.push({ ...row, id })
+        return id
+      },
+      where: () => ({ equals: () => ({ modify: async () => {} }) })
+    }
+    return { rows, db: new Proxy({}, { get: () => table }) }
+  }
+
+  it('follows server pages to the end', async () => {
+    const { db, rows } = pullDb()
+    const urls = []
+    const api = async (url) => {
+      urls.push(url)
+      const page = Number(new URL(url, 'http://x').searchParams.get('page'))
+      return page === 1
+        ? { items: [{ id: 's1', title: 'A' }], hasNextPage: true }
+        : { items: [{ id: 's2', title: 'B' }], hasNextPage: false }
+    }
+    const config = {
+      table: 'projects',
+      endpoint: '/story',
+      isTopLevel: true,
+      parentField: null,
+      fromApi: (a) => ({ name: a.title })
+    }
+    await new SyncTransport(api).pullTable(config, null, null, makeIdMap(), db)
+
+    expect(rows.map((r) => r.name)).toEqual(['A', 'B'])
+    expect(urls).toEqual(['/story?page=1&pageSize=100', '/story?page=2&pageSize=100'])
+  })
+
+  it('keeps characters and locations apart on the shared entity endpoint', async () => {
+    const { db, rows } = pullDb()
+    const api = async () => [
+      { id: 'e1', type: 'Character', name: 'Ines' },
+      { id: 'e2', type: 'Location', name: 'Docks' }
+    ]
+    const config = {
+      table: 'characters',
+      endpoint: (s) => `/story/${s}/entity`,
+      isTopLevel: false,
+      parentField: 'projectId',
+      entityType: 'Character',
+      fromApi: (a) => ({ name: a.name })
+    }
+    await new SyncTransport(api).pullTable(config, 'story-2', 'p2', makeIdMap(), db)
+
+    expect(rows).toEqual([{ name: 'Ines', projectId: 'p2', _suppressHooks: true, id: 'local-1' }])
   })
 })

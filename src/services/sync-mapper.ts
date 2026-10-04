@@ -11,14 +11,32 @@ interface SyncEntityConfig {
   entityType?: string
   toApi: (local: Record<string, unknown>) => unknown | Promise<unknown>
   fromApi: (api: Record<string, unknown>) => unknown | Promise<unknown>
-  idBridge?: {
-    localParentField: string | null
-    apiParentField: string | null
-    needsTranslation: string[]
-  }
   /** Rows reference other rows of the same table; push them one at a time. */
   selfReferencing?: boolean
 }
+
+/**
+ * Push and pull order: parents before children. Projects first (every other
+ * row needs its story's server id), branches next (chapters and scenes carry a
+ * branchId), volumes before the chapters that point at them, characters
+ * before relationships and volume memberships, documents before their chunks.
+ */
+export const SYNC_ORDER = [
+  'projects',
+  'branches',
+  'volumes',
+  'characters',
+  'locations',
+  'plotThreads',
+  'sections',
+  'subsections',
+  'characterRelationships',
+  'volumeEntities',
+  'manuscripts',
+  'researchDocuments',
+  'researchChunks',
+  'researchTags'
+]
 
 export function findSyncConfig(tableName: string): SyncEntityConfig | undefined {
   return SYNC_ENTITIES.find((e) => e.table === tableName)
@@ -45,6 +63,23 @@ async function lookupApiId(
   if (localId == null) return null
   const record = await dbTable(table).get(localId)
   return record?.apiId || null
+}
+
+const EMPTY_GUID = '00000000-0000-0000-0000-000000000000'
+
+/**
+ * An optional link (a chapter's volume or branch) as the server reads it: the
+ * empty GUID for "no link" (null there means "leave as it is", so clearing a
+ * link would never reach the server), the server id when the target has one,
+ * and a thrown error when it has not been pushed yet. The error fails this
+ * row, which stays pending and goes up on a later cycle with the link intact,
+ * instead of going up linkless and being marked synced.
+ */
+async function linkApiId(table: string, localId: unknown): Promise<string> {
+  if (localId == null || localId === '') return EMPTY_GUID
+  const apiId = await lookupApiId(table, localId as string)
+  if (!apiId) throw new Error(`${table} ${String(localId)} has no server id yet`)
+  return apiId
 }
 
 /** Dexie table that holds a volume-entity row's `entityId`, by its `entityType`. */
@@ -98,12 +133,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       updatedAt: (api.updatedAt || new Date().toISOString()) as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: null,
-      apiParentField: null,
-      needsTranslation: []
-    }
+    })
   },
 
   {
@@ -111,15 +141,20 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     endpoint: (storyApiId: string) => `/story/${storyApiId}/section`,
     isTopLevel: false,
     parentField: 'projectId',
-    toApi: (local: Record<string, unknown>) => ({
+    // A chapter's volume and branch are local ids; the server knows them by
+    // its own ids. Both used to be dropped, so a pulled chapter landed in no
+    // volume and on every branch at once.
+    toApi: async (local: Record<string, unknown>) => ({
       title: (local.title || '') as string,
       summary: (local.summary || null) as string | null,
       order: (local.order ?? 0) as number,
       status: (local.status || 'draft') as string,
       tags: tagsToApi(local.tags),
-      content: null
+      content: null,
+      volumeId: await linkApiId('volumes', local.volumeId),
+      branchId: await linkApiId('branches', local.branchId)
     }),
-    fromApi: (api: Record<string, unknown>) => ({
+    fromApi: async (api: Record<string, unknown>) => ({
       apiId: api.id,
       title: (api.title || '') as string,
       summary: (api.summary || '') as string,
@@ -127,17 +162,13 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       status: (api.status || 'draft') as string,
       tags: tagsFromApi(api.tags),
       content: (api.content || '') as string,
-      volumeId: null,
+      volumeId: await lookupLocalId('volumes', api.volumeId as string),
+      branchId: await lookupLocalId('branches', api.branchId as string),
       createdAt: (api.createdAt || new Date().toISOString()) as string,
       updatedAt: (api.updatedAt || new Date().toISOString()) as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: ['volumeId']
-    }
+    })
   },
 
   {
@@ -154,7 +185,9 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         title: (local.title || '') as string,
         summary: (local.summary || null) as string | null,
         content: (local.content || '') as string,
-        tags: tagsToApi(local.tags)
+        order: (local.order ?? 0) as number,
+        tags: tagsToApi(local.tags),
+        branchId: await linkApiId('branches', local.branchId)
       }
     },
     fromApi: async (api: Record<string, unknown>) => {
@@ -169,16 +202,12 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         content: (api.content || '') as string,
         order: (api.order ?? 0) as number,
         tags: tagsFromApi(api.tags),
+        branchId: await lookupLocalId('branches', api.branchId as string),
         createdAt: (api.createdAt || new Date().toISOString()) as string,
         updatedAt: (api.updatedAt || new Date().toISOString()) as string,
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
       }
-    },
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: ['sectionId']
     }
   },
 
@@ -236,11 +265,6 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
       }
-    },
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
     }
   },
 
@@ -281,11 +305,6 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
       }
-    },
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
     }
   },
 
@@ -308,12 +327,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       updatedAt: (api.updatedAt || new Date().toISOString()) as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
-    }
+    })
   },
 
   {
@@ -344,11 +358,6 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
       }
-    },
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: ['fromCharacterId', 'toCharacterId']
     }
   },
 
@@ -361,10 +370,10 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       title: (local.title || '') as string,
       description: (local.description || null) as string | null,
       color: (local.color || DEFAULT_VOLUME_COLOR) as string,
-      sortOrder: (local.sortOrder ?? 0) as number,
-      sectionIds: Array.isArray(local.sectionIds)
-        ? JSON.stringify(local.sectionIds)
-        : local.sectionIds || null
+      sortOrder: (local.sortOrder ?? 0) as number
+      // No member list: `section.volumeId` is the persisted fact (db-structure)
+      // and goes up with each chapter. The old `sectionIds` field had no
+      // server column (the server's is `chapterIds`), so it was dropped anyway.
     }),
     fromApi: (api: Record<string, unknown>) => ({
       apiId: api.id,
@@ -372,17 +381,11 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       description: (api.description || '') as string,
       color: (api.color || DEFAULT_VOLUME_COLOR) as string,
       sortOrder: (api.sortOrder ?? 0) as number,
-      sectionIds: api.sectionIds || null,
       createdAt: (api.createdAt || new Date().toISOString()) as string,
       updatedAt: (api.updatedAt || new Date().toISOString()) as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
-    }
+    })
   },
 
   {
@@ -423,11 +426,6 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
       }
-    },
-    idBridge: {
-      localParentField: null,
-      apiParentField: 'storyId',
-      needsTranslation: ['volumeId']
     }
   },
 
@@ -437,6 +435,8 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
     isTopLevel: false,
     parentField: 'projectId',
     toApi: (local: Record<string, unknown>) => ({
+      // The server requires a title; a local manuscript has none (one per project).
+      title: (local.title || 'Manuscript') as string,
       content: (local.content || '') as string,
       wordCount: (local.wordCount ?? 0) as number
     }),
@@ -447,36 +447,31 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       updatedAt: (api.updatedAt || new Date().toISOString()) as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
-    }
+    })
   },
 
   {
     table: 'researchDocuments',
-    endpoint: (storyApiId: string) => `/story/${storyApiId}/research`,
+    // The route is `research-document` (there is no `/research`), and the
+    // server's fields are fileName / fileType / content.
+    endpoint: (storyApiId: string) => `/story/${storyApiId}/research-document`,
     isTopLevel: false,
     parentField: 'projectId',
     toApi: (local: Record<string, unknown>) => ({
-      title: (local.fileName || '') as string,
-      fileType: (local.fileType || '') as string
+      fileName: (local.fileName || 'Untitled') as string,
+      fileType: (local.fileType || 'txt') as string,
+      content: (local.text ?? null) as string | null
     }),
     fromApi: (api: Record<string, unknown>) => ({
       apiId: api.id,
-      fileName: (api.title || api.fileName || '') as string,
+      fileName: (api.fileName || '') as string,
       fileType: (api.fileType || '') as string,
-      importedAt: (api.importedAt || new Date().toISOString()) as string,
+      text: (api.content || '') as string,
+      charCount: ((api.content as string) || '').length,
+      importedAt: Date.parse(api.importedAt as string) || Date.now(),
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
-    }
+    })
   },
 
   {
@@ -511,11 +506,6 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
         syncStatus: 'synced',
         lastSyncedAt: new Date().toISOString()
       }
-    },
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: ['documentId']
     }
   },
 
@@ -534,12 +524,7 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       color: (api.color || '') as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: []
-    }
+    })
   },
 
   {
@@ -572,11 +557,6 @@ export const SYNC_ENTITIES: SyncEntityConfig[] = [
       updatedAt: (api.updatedAt || new Date().toISOString()) as string,
       syncStatus: 'synced',
       lastSyncedAt: new Date().toISOString()
-    }),
-    idBridge: {
-      localParentField: 'projectId',
-      apiParentField: 'storyId',
-      needsTranslation: ['sourceBranchId']
-    }
+    })
   }
 ]

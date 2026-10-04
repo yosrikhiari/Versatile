@@ -4,6 +4,9 @@ using Versatile.Application.Section.Commands;
 using Versatile.Domain.Interfaces;
 using SectionEntity = Versatile.Domain.Entities.Section;
 using Story = Versatile.Domain.Entities.Story;
+using VolumeEntity = Versatile.Domain.Entities.Volume;
+using Branch = Versatile.Domain.Entities.Branch;
+using Versatile.Application.Common;
 
 namespace Versatile.Application.Section.Handlers;
 
@@ -11,12 +14,16 @@ public class UpdateSectionHandler : IRequestHandler<UpdateSectionCommand, Sectio
 {
     private readonly IRepository<SectionEntity> _sectionRepo;
     private readonly IOrganizationOwnedRepository<Story> _storyRepo;
+    private readonly IRepository<VolumeEntity> _volumeRepo;
+    private readonly IRepository<Branch> _branchRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateSectionHandler(IRepository<SectionEntity> sectionRepo, IOrganizationOwnedRepository<Story> storyRepo, IUnitOfWork unitOfWork)
+    public UpdateSectionHandler(IRepository<SectionEntity> sectionRepo, IOrganizationOwnedRepository<Story> storyRepo, IRepository<VolumeEntity> volumeRepo, IRepository<Branch> branchRepo, IUnitOfWork unitOfWork)
     {
         _sectionRepo = sectionRepo;
         _storyRepo = storyRepo;
+        _volumeRepo = volumeRepo;
+        _branchRepo = branchRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -36,10 +43,12 @@ public class UpdateSectionHandler : IRequestHandler<UpdateSectionCommand, Sectio
         if (request.Order.HasValue) section.Order = request.Order.Value;
         if (request.Status is not null) section.Status = request.Status;
         if (request.Tags is not null) section.Tags = request.Tags;
+        if (request.VolumeId.HasValue) section.VolumeId = await StoryLinks.VolumeInStory(_volumeRepo, request.VolumeId, section.StoryId, ct);
+        if (request.BranchId.HasValue) section.BranchId = await StoryLinks.BranchInStory(_branchRepo, request.BranchId, section.StoryId, ct);
         section.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(ct);
         return ToDto(section);
     }
 
-    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt);
+    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt, s.BranchId);
 }

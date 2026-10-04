@@ -182,6 +182,16 @@ try
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        // Say when to come back. Sync sends one request per row, so a book's
+        // first push runs into the per-IP window; with this the client waits
+        // out the window instead of burning its retries in a few seconds.
+        options.OnRejected = (context, _) =>
+        {
+            if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                context.HttpContext.Response.Headers.RetryAfter =
+                    ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return ValueTask.CompletedTask;
+        };
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",

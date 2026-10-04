@@ -7,7 +7,7 @@
 >
 > **Status (2026-10-04).** Still true: the 8 deterministic rule functions (7 rule types, Rule 7
 > split into scene and chapter seams), the S-096/S-097 fixes and every test file listed under
-> *Actual coverage*. Corrected below: the database counts (39 `DbSet`s and 6 EF migrations,
+> *Actual coverage*. Corrected below: the database counts (39 `DbSet`s and 7 EF migrations,
 > not "55+" and "15+"; `genRuns` is a Dexie table, not a PostgreSQL one) and where
 > `commitSync`/`discoverSync` live. The "Planned" stress suites (`src/tests/unit/stress/*`,
 > `e2e/100-chapter-consistency.spec.ts`, `e2e/edge-cases/*`) never existed in any commit
@@ -100,7 +100,7 @@ Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend,
 - 39 DbSet entities, tenant-filtered via `OrganizationId`
 - Key tables: `Stories`, `Chapters`, `Scenes`, `BibleEntries`, `Sections`, `Subsections`, `Volumes`, `PlotThreads`, `CharacterRelationships`, `GraphEdges`
 - Checkpoint system (client side, Dexie, not PostgreSQL): `genRuns` table with `state` JSON, `version: 2`, `currentStage`, per-stage progress
-- Migrations: 6 EF migrations (15 files with designers and the snapshot), from initial create through 20260723
+- Migrations: 7 EF migrations (14 files with designers and the snapshot; the RLS migration has no designer), from initial create through 20261004
 
 **Sync-Transport:**
 - `commitSync` discovers new entities + network events from structured metadata
@@ -173,7 +173,7 @@ Versatile is a fiction-writing assistant with a Vue 3 + Pinia + TipTap frontend,
 
 **Tenant filtering:** `OrganizationId` query filter on all story-related entities.
 
-**Migrations:** 6 migrations (15 files) in `Infrastructure/Migrations/`.
+**Migrations:** 7 migrations (14 files) in `Infrastructure/Migrations/`.
 
 ## AI Provider Configuration
 

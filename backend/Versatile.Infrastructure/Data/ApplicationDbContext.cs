@@ -219,6 +219,8 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(s => s.VolumeId);
             e.HasOne(s => s.Story).WithMany(st => st.Sections).HasForeignKey(s => s.StoryId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(s => s.Volume).WithMany().HasForeignKey(s => s.VolumeId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(s => s.BranchId);
+            e.HasOne(s => s.Branch).WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SessionArchiveItem>(e =>
@@ -269,6 +271,8 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(s => s.SectionId);
             e.HasOne(s => s.Story).WithMany(st => st.Subsections).HasForeignKey(s => s.StoryId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(s => s.Section).WithMany().HasForeignKey(s => s.SectionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(s => s.BranchId);
+            e.HasOne(s => s.Branch).WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<VoiceProfile>(e =>

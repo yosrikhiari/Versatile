@@ -37,6 +37,24 @@ public sealed class AuthIntegrationTests
     }
 
     [Fact]
+    public async Task Register_CreatesAPersonalWorkspace_SoTheFirstTokenCarriesAnOrg()
+    {
+        // Every story endpoint 403s without an org_id claim; before 2026-10-04
+        // a new account had none and could never sync.
+        var db = CreateDbContext();
+        var handler = CreateRegisterHandler(db);
+
+        var result = await handler.Handle(
+            new RegisterCommand("ws@test.com", "wsuser", "Password123!"), default);
+
+        result.Organizations.Should().ContainSingle();
+        var org = result.Organizations[0];
+        org.Role.Should().Be(nameof(OrganizationRole.Admin));
+        var claims = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(result.Token).Claims;
+        claims.Should().Contain(c => c.Type == "org_id" && c.Value == org.Id.ToString());
+    }
+
+    [Fact]
     public async Task Register_DuplicateUsername_ThrowsInvalidOperationException()
     {
         var db = CreateDbContext();

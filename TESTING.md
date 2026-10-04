@@ -95,9 +95,25 @@ LIVE_MODEL=qwen3:8b npx vitest run --config vitest.live.config.js src/tests/live
 ```
 
 Name the file: `src/tests/live/` also holds 15 measurement probes (critic,
-gate, continuity, repair, ...), none gated by an env var, and the config
-without a path runs all 16 one after another. Each probe's header gives its
-own command.
+gate, continuity, repair, ...) and the sync round trip, none gated by an env
+var, and the config without a path runs all 17 one after another. Each
+file's header gives its own command.
+
+The sync round trip needs no model, only the compose stack:
+
+```bash
+docker compose up -d postgres redis api
+npx vitest run --config vitest.live.config.js src/tests/live/syncRoundTrip.live.js
+```
+
+It registers a fresh account, pushes two projects from one "device", wipes
+the local database, pulls them back as a second device, edits and deletes,
+and checks every step against the server's own answers (`SYNC_API`
+overrides `http://localhost:5171`). Run twice inside a minute it meets the
+100/min rate limit and waits out `Retry-After`, which takes about a minute.
+The backend integration suite cannot catch what this does: it runs in the
+`Testing` environment, where the response cache is off and the database is
+in memory.
 
 The live config is standalone (not merged with `vitest.config.js`) because
 `mergeConfig` concatenates `include` and would pull the unit suite into every

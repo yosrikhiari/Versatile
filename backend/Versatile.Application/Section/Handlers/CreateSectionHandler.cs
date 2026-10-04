@@ -4,6 +4,9 @@ using Versatile.Application.Section.Commands;
 using Versatile.Domain.Interfaces;
 using SectionEntity = Versatile.Domain.Entities.Section;
 using Story = Versatile.Domain.Entities.Story;
+using VolumeEntity = Versatile.Domain.Entities.Volume;
+using Branch = Versatile.Domain.Entities.Branch;
+using Versatile.Application.Common;
 
 namespace Versatile.Application.Section.Handlers;
 
@@ -11,12 +14,16 @@ public class CreateSectionHandler : IRequestHandler<CreateSectionCommand, Sectio
 {
     private readonly IRepository<SectionEntity> _sectionRepo;
     private readonly IOrganizationOwnedRepository<Story> _storyRepo;
+    private readonly IRepository<VolumeEntity> _volumeRepo;
+    private readonly IRepository<Branch> _branchRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateSectionHandler(IRepository<SectionEntity> sectionRepo, IOrganizationOwnedRepository<Story> storyRepo, IUnitOfWork unitOfWork)
+    public CreateSectionHandler(IRepository<SectionEntity> sectionRepo, IOrganizationOwnedRepository<Story> storyRepo, IRepository<VolumeEntity> volumeRepo, IRepository<Branch> branchRepo, IUnitOfWork unitOfWork)
     {
         _sectionRepo = sectionRepo;
         _storyRepo = storyRepo;
+        _volumeRepo = volumeRepo;
+        _branchRepo = branchRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -35,9 +42,11 @@ public class CreateSectionHandler : IRequestHandler<CreateSectionCommand, Sectio
             Title = request.Title,
             Summary = request.Summary,
             Content = request.Content,
-            Order = maxOrder + 1,
+            Order = request.Order ?? maxOrder + 1,
             Status = request.Status ?? "Draft",
             Tags = request.Tags,
+            VolumeId = await StoryLinks.VolumeInStory(_volumeRepo, request.VolumeId, request.StoryId, ct),
+            BranchId = await StoryLinks.BranchInStory(_branchRepo, request.BranchId, request.StoryId, ct),
             UserId = request.UserId,
             OrganizationId = request.OrganizationId
         };
@@ -46,5 +55,5 @@ public class CreateSectionHandler : IRequestHandler<CreateSectionCommand, Sectio
         return ToDto(section);
     }
 
-    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt);
+    private static SectionDto ToDto(SectionEntity s) => new(s.Id, s.StoryId, s.VolumeId, s.Title, s.Summary, s.Content, s.Order, s.Status, s.Tags, s.CreatedAt, s.UpdatedAt, s.BranchId);
 }

@@ -26,6 +26,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         var result = await handler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Character Arc", "Intro", "Details about character", "arc", OrgId, UserId), default);
@@ -50,6 +51,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         var result = await handler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
@@ -67,6 +69,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -83,6 +86,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -108,6 +112,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -125,12 +130,15 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Original", "Old summary", "Old content", "old", OrgId, UserId), default);
 
         var updateHandler = new UpdateSubsectionHandler(
             new Repository<Subsection>(db),
+            new Repository<Versatile.Domain.Entities.Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var result = await updateHandler.Handle(new UpdateSubsectionCommand(created.Id, "Updated", "New summary", "New content", null, "new", OrgId, UserId), default);
 
@@ -150,12 +158,15 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Original", "Summary", "Content", "tags", OrgId, UserId), default);
 
         var updateHandler = new UpdateSubsectionHandler(
             new Repository<Subsection>(db),
+            new Repository<Versatile.Domain.Entities.Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var result = await updateHandler.Handle(new UpdateSubsectionCommand(created.Id, Title: "Only Title Changed", null, null, null, null, OrgId, UserId), default);
 
@@ -175,6 +186,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "To Delete", null, null, null, OrgId, UserId), default);
 
@@ -213,6 +225,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var first = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "B", null, null, null, OrgId, UserId), default);
         await Task.Delay(10);
@@ -236,6 +249,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Find Me", null, null, null, OrgId, UserId), default);
 
@@ -270,12 +284,15 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
 
         var handler = new UpdateSubsectionHandler(
             new Repository<Subsection>(db),
+            new Repository<Versatile.Domain.Entities.Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -293,12 +310,15 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
 
         var handler = new UpdateSubsectionHandler(
             new Repository<Subsection>(db),
+            new Repository<Versatile.Domain.Entities.Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
 
         await FluentActions
@@ -316,6 +336,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
 
@@ -339,6 +360,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
 
@@ -362,6 +384,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
 
@@ -384,6 +407,7 @@ public sealed class SubsectionCrudIntegrationTests
             new Repository<Subsection>(db),
             new Repository<Section>(db),
             new OrganizationOwnedRepository<Story>(db),
+            new Repository<Versatile.Domain.Entities.Branch>(db),
             new UnitOfWork(db));
         var created = await createHandler.Handle(new CreateSubsectionCommand(story.Id, section.Id, "Title", null, null, null, OrgId, UserId), default);
 

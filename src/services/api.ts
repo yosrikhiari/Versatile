@@ -59,7 +59,7 @@ async function tryRefresh(): Promise<boolean> {
       body: JSON.stringify({ refreshToken: refresh || '' })
     })
     if (!res.ok) return false
-    const data = await res.json()
+    const data = unwrapEnvelope(await res.json()) as { token?: string; refreshToken?: string }
     if (data.token) setToken(data.token)
     if (data.refreshToken) setRefreshToken(data.refreshToken)
     return true
@@ -139,109 +139,50 @@ export async function api<T = unknown>(path: string, options?: ApiOptions): Prom
       (errorBody?.message as string) ||
       (errorBody?.title as string) ||
       'Request failed: ' + response.status
-    throw new ApiError(message, response.status, errorBody)
+    const retryAfter = Number(response.headers.get('Retry-After'))
+    throw new ApiError(
+      message,
+      response.status,
+      errorBody,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
+    )
   }
 
   if (response.status === 204) return null
-  return (await response.json()) as T
+  return unwrapEnvelope(await response.json()) as T
+}
+
+/**
+ * The backend wraps every 2xx object result as `{ data, message }`
+ * (`ResponseEnvelopeFilter`). Callers want the payload: before this, login read
+ * `result.token`, sync read `result.id`, and both got `undefined`.
+ */
+export function unwrapEnvelope(body: unknown): unknown {
+  if (body && typeof body === 'object' && !Array.isArray(body) && 'data' in body) {
+    const keys = Object.keys(body)
+    if (keys.every((k) => k === 'data' || k === 'message')) {
+      return (body as { data: unknown }).data
+    }
+  }
+  return body
 }
 
 export class ApiError extends Error {
   name = 'ApiError'
   status: number
   body: Record<string, unknown> | null
+  /** Seconds the server asked us to wait (429 `Retry-After`). */
+  retryAfter?: number
 
-  constructor(message: string, status: number, body?: Record<string, unknown> | null) {
+  constructor(
+    message: string,
+    status: number,
+    body?: Record<string, unknown> | null,
+    retryAfter?: number
+  ) {
     super(message)
     this.status = status
     this.body = body ?? null
+    this.retryAfter = retryAfter
   }
-}
-
-interface CrudApi {
-  list(params?: Record<string, string>): Promise<unknown>
-  get(id: string): Promise<unknown>
-  create(data: unknown): Promise<unknown>
-  update(id: string, data: unknown): Promise<unknown>
-  del(id: string): Promise<unknown>
-}
-
-function crud(prefix: string): CrudApi {
-  return {
-    list(params?: Record<string, string>) {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-      return api(prefix + qs)
-    },
-    get(id: string) {
-      return api(prefix + '/' + id)
-    },
-    create(data: unknown) {
-      return api(prefix, { method: 'POST', body: data })
-    },
-    update(id: string, data: unknown) {
-      return api(prefix + '/' + id, { method: 'PUT', body: data })
-    },
-    del(id: string) {
-      return api(prefix + '/' + id, { method: 'DELETE' })
-    }
-  }
-}
-
-export interface StoryApi extends CrudApi {
-  chapters: CrudApi
-  entities: CrudApi
-  flows: CrudApi
-  research: CrudApi
-  bible: CrudApi
-}
-
-export function storyApi(storyId: string): StoryApi {
-  const base = '/story/' + storyId
-  return {
-    list: crud(base).list,
-    get: crud(base).get,
-    create: crud(base).create,
-    update: crud(base).update,
-    del: crud(base).del,
-    chapters: crud(base + '/chapter'),
-    entities: crud(base + '/entity'),
-    flows: crud(base + '/flow'),
-    research: crud(base + '/research'),
-    bible: crud(base + '/bible')
-  }
-}
-
-export interface ChapterApi extends CrudApi {
-  scenes: CrudApi
-}
-
-export function chapterApi(chapterId: string): ChapterApi {
-  return {
-    list: crud('/chapter/' + chapterId).list,
-    get: crud('/chapter/' + chapterId).get,
-    create: crud('/chapter/' + chapterId).create,
-    update: crud('/chapter/' + chapterId).update,
-    del: crud('/chapter/' + chapterId).del,
-    scenes: crud('/chapter/' + chapterId + '/scene')
-  }
-}
-
-export function sceneApi(sceneId: string): CrudApi {
-  return crud('/scene/' + sceneId)
-}
-
-export function entityApi(entityId: string): CrudApi {
-  return crud('/entity/' + entityId)
-}
-
-export function flowApi(flowId: string): CrudApi {
-  return crud('/flow/' + flowId)
-}
-
-export function researchApi(researchId: string): CrudApi {
-  return crud('/research/' + researchId)
-}
-
-export function bibleApi(bibleId: string): CrudApi {
-  return crud('/bible/' + bibleId)
 }
