@@ -116,7 +116,7 @@
     "lint-staged": "^17.2.0",
     "playwright": "^1.59.1",
     "postcss": "^8.4.0",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.9",
     "rollup-plugin-visualizer": "^7.1.1",
     "storybook": "^10.6.1",
     "tailwindcss": "^4.3.3",
