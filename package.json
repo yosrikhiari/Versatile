@@ -66,7 +66,7 @@
     "@vue-flow/core": "^1.48.2",
     "@vue-flow/minimap": "^1.5.4",
     "@vueuse/core": "^15.0.0",
-    "dexie": "^4.4.5",
+    "dexie": "^4.4.6",
     "diff": "^3.5.1",
     "docx": "^9.7.1",
     "dompurify": "^3.4.15",
