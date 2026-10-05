@@ -68,7 +68,7 @@
     "@vueuse/core": "^15.0.0",
     "dexie": "^4.4.5",
     "diff": "^3.5.1",
-    "docx": "^9.7.1",
+    "docx": "^9.8.1",
     "dompurify": "^3.4.15",
     "focus-trap": "^8.2.2",
     "gpt-tokenizer": "^3.4.0",
