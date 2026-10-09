@@ -49,7 +49,19 @@ public partial class InputSanitizationMiddleware
         return XssPatternRegex().IsMatch(input);
     }
 
-    [GeneratedRegex(@"<script[^>]*>|javascript\s*:|on\w+\s*=|<\s*[^>]*on\w+\s*=|alert\s*\(|prompt\s*\(|confirm\s*\(",
+    /// <summary>
+    /// Coarse stored-XSS backstop. Every alternative is anchored to markup
+    /// (<c>&lt;script</c>, an event handler inside a tag, a
+    /// <c>javascript:</c> URL): a payload that can execute must ride in a tag
+    /// or URL, while bare words with parentheses (<c>alert (the police)</c>,
+    /// <c>prompt (a laugh)</c>, <c>confirm (the booking)</c>) and
+    /// <c>word=</c> pairs (<c>the one = hero</c>) are ordinary fiction prose.
+    /// An earlier revision also blocked those bare forms and rejected
+    /// innocent novels — see the innocent-prose tests. There are no v-html
+    /// sinks today (frontend <c>sanitizeHtml</c> awaits them), so this stays a
+    /// backstop, not a sanitizer: it never rewrites, only rejects.
+    /// </summary>
+    [GeneratedRegex(@"<script[^>]*>|javascript\s*:|<\s*[^>]*on\w+\s*=",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex XssPatternRegex();
 }

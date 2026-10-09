@@ -54,15 +54,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<ICacheService>();
             services.AddSingleton<ICacheService>(_ => new NoOpCacheService());
-
-            services.PostConfigure<MvcOptions>(options =>
-            {
-                for (var i = options.Filters.Count - 1; i >= 0; i--)
-                {
-                    if (options.Filters[i] is FilterItem { Filter: AutoValidateAntiforgeryTokenAttribute })
-                        options.Filters.RemoveAt(i);
-                }
-            });
         });
     }
 }

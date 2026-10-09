@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationContext>(_ => new OrganizationContext());
 
         services.AddScoped<IGeneratedStoryService, GeneratedStoryService>();
+        services.AddScoped<IStoryAccessChecker, StoryAccessChecker>();
 
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));

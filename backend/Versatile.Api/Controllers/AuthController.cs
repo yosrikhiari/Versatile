@@ -9,7 +9,6 @@ namespace Versatile.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[IgnoreAntiforgeryToken]
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;

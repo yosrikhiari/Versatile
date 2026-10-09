@@ -98,6 +98,11 @@ try
     builder.Services.AddSignalR().AddHubOptions<CollaborationHub>(options =>
     {
         options.MaximumReceiveMessageSize = 128 * 1024;
+    }).AddHubOptions<GenerationHub>(options =>
+    {
+        // GenerateStream takes a client-supplied message list; bound it like
+        // the collaboration hub so one connection cannot push megabytes.
+        options.MaximumReceiveMessageSize = 128 * 1024;
     });
 
     builder.Services.AddScoped<CacheResultFilter>();
@@ -108,15 +113,16 @@ try
         if (!builder.Environment.IsEnvironment("Testing"))
         {
             options.Filters.Add(new TypeFilterAttribute(typeof(CacheResultFilter)));
-            // NOTE: no global AutoValidateAntiforgeryToken here. It was registered as
-            // Filters.Add<AutoValidateAntiforgeryTokenAttribute>(), which 500s every
-            // mutating endpoint — the inner AuthorizationFilter isn't in DI. Worse, the
-            // token flow is half-built (X-CSRF-TOKEN cookie is HttpOnly, so the SPA
-            // can't echo a request token; no endpoint issues one), so enabling it
-            // would 400 every SPA mutation. CSRF posture meanwhile: auth cookies are
-            // SameSite=Strict, CORS is locked down, and Bearer headers aren't
-            // auto-sent cross-origin. Follow-up: design the token-issuing endpoint +
-            // SPA wiring first, then re-enable globally.
+            // NOTE: no antiforgery validation anywhere. A global
+            // AutoValidateAntiforgeryToken filter 500'd every mutating endpoint
+            // (the inner AuthorizationFilter isn't in DI), and the token flow was
+            // half-built (HttpOnly cookie the SPA can't echo, since removed
+            // with the dead AntiforgeryController) — so there is deliberately no
+            // token issuing, no validation middleware, and no per-controller
+            // opt-out. CSRF posture: auth cookies are SameSite=Strict, CORS is
+            // locked down, and Bearer headers aren't auto-sent cross-origin.
+            // Reintroduce only as a complete flow (readable cookie + validation
+            // + SPA wiring), never piecemeal.
         }
     }).AddJsonOptions(options =>
     {
@@ -128,7 +134,6 @@ try
     builder.Services.AddHttpContextAccessor();
 
     builder.Services.AddApplication();
-
     if (builder.Environment.IsEnvironment("Testing"))
     {
         builder.Services.AddInfrastructure(builder.Configuration, useNpgsql: false);
@@ -137,15 +142,6 @@ try
     {
         builder.Services.AddInfrastructure(builder.Configuration);
     }
-
-    builder.Services.AddAntiforgery(options =>
-    {
-        options.HeaderName = "X-CSRF-TOKEN";
-        options.Cookie.Name = "X-CSRF-TOKEN";
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = builder.Environment.IsEnvironment("Testing") ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Strict;
-    });
 
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
@@ -241,7 +237,6 @@ try
     app.UseCors();
     app.UseAuthentication();
     app.UseAuthorization();
-    app.UseAntiforgery();
     app.UseMiddleware<TenantResolutionMiddleware>();
 
     app.MapControllers();

@@ -58,6 +58,29 @@ public class InputSanitizationMiddlewareTests
         ctx.Response.StatusCode.Should().Be(400);
     }
 
+    // Fiction false positives (P1-B): bare words with parentheses and
+    // word= pairs are ordinary prose — only markup-anchored payloads block.
+    [Theory]
+    [InlineData("{\"content\":\"She ran to alert (the police) at once.\"}")]
+    [InlineData("{\"content\":\"The joke did prompt (a laugh) from the back row.\"}")]
+    [InlineData("{\"content\":\"Please confirm (the booking) by Friday.\"}")]
+    [InlineData("{\"content\":\"In the end the one = hero and the other = fool.\"}")]
+    [InlineData("{\"content\":\"The button she sewed on [=] held fast.\"}")]
+    public async Task Allows_Innocent_Prose_With_Parens(string body)
+    {
+        var (middleware, ctx) = CreateContext("POST", body);
+        await middleware.InvokeAsync(ctx);
+        ctx.Response.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task Blocks_Svg_Onload_In_Body()
+    {
+        var (middleware, ctx) = CreateContext("POST", "{\"content\":\"<svg onload=alert(1)>\"}");
+        await middleware.InvokeAsync(ctx);
+        ctx.Response.StatusCode.Should().Be(400);
+    }
+
     [Fact]
     public async Task Blocks_Xss_In_QueryString()
     {
