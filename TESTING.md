@@ -6,7 +6,7 @@ How to run every check in this repo, and the conventions new tests must follow.
 
 ```bash
 npm test              # watch mode
-npm run test:run      # single run: 326 files (1 skipped), ≈3,470 tests
+npm run test:run      # single run: 330 files (1 skipped), ≈3,500 tests
 npm run test:coverage # what CI runs: v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
 npm run typecheck     # tsc --noEmit, must be zero errors
 npm run lint          # eslint, zero errors (warnings are pre-existing)
@@ -18,7 +18,7 @@ With a model loaded in Ollama, the default worker pool can run out of
 memory; `npx vitest run --maxWorkers=3` is how the suite is run locally.
 
 - Suites live under `src/tests/` (`vitest.config.js` includes
-  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 302 files),
+  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 306 files),
   `integration/` (10 multi-component flows: context pipeline, editor
   population, voice extraction, volume membership, the chapter-tab panel,
   book analysis, novel import, What If branches, branch integrity),

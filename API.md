@@ -6,15 +6,15 @@ forwards to the API port (see `vite.config.js`). Interactive reference:
 `/swagger` in Development builds only.
 
 The endpoint table at the bottom is generated from the controller
-`[Route]` and `[Http*]` attributes (register/login/refresh, the antiforgery
-token and `/health` are anonymous; everything else requires auth). For
+`[Route]` and `[Http*]` attributes (register/login/refresh and `/health`
+are anonymous; everything else requires auth). For
 request/response shapes, Swagger is authoritative — this file documents the
 conventions that hold across all controllers.
 
 ## Auth
 
 - `POST /api/Auth/register`, `/login`, `/refresh` are the only anonymous
-  endpoints (plus `GET /api/antiforgery/token` and `GET /health`).
+  endpoints (plus `GET /health`).
   `GET /api/Auth/me`, `POST /api/Auth/switch-org` (body `{ organizationId }`,
   returns a new token for that org) and `POST /api/Auth/logout` need auth.
 - Send the JWT as `Authorization: Bearer <token>`; register, login, refresh
@@ -65,9 +65,12 @@ existence check, so it reveals nothing to probe (verified live).
   `sectionId` (move to another chapter of the same story). On update `null`
   leaves a link as it is and the empty GUID clears it; a link to a row of
   another story is a 404.
-- No antiforgery tokens are required: cookie auth is an SPA convenience,
-  not the trust boundary; JWT + org scoping is. (Deliberate decision after
-  the global filter 500'd every mutating endpoint — see Phase 1 notes.)
+- No antiforgery tokens are required — and no token endpoint exists: cookie
+  auth is an SPA convenience, not the trust boundary; JWT + org scoping is.
+  (Deliberate decision after the global filter 500'd every mutating endpoint;
+  the half-built token flow — HttpOnly cookie the SPA could not echo — was
+  removed with its controller rather than left to suggest protection that
+  was never enforced. Reintroduce only as a complete flow.)
 - AI provider keys never leave the server: `GET /api/ApiKeys/{provider}`
   returns a masked hint; the Mistral embedding call is proxied through
   `POST /api/embedding/mistral`. The SPA keeps its own local copy of keys
@@ -76,9 +79,7 @@ existence check, so it reveals nothing to probe (verified live).
 ## Endpoint inventory
 
 Most resources are nested under their story (`/api/story/{storyId}/...`);
-scenes are nested under their chapter. `SessionArchiveItem` has no
-`{storyId}` in its route, so its `storyId` binds from the query string
-(`?storyId=`). Routes are case-insensitive.
+scenes are nested under their chapter. Routes are case-insensitive.
 
 SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 (`JoinStoryGroup`, `LeaveStoryGroup`, `CursorMoved`, `ContentChanged`) and
@@ -93,7 +94,6 @@ SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 | | | `POST /api/story/{storyId}/annotation` |
 | | | `PUT /api/story/{storyId}/annotation/{id}` |
 | | | `DELETE /api/story/{storyId}/annotation/{id}` |
-| Antiforgery | anon | `GET /api/antiforgery/token` |
 | ApiKeys | auth (no active org needed) | `POST /api/ApiKeys/test` |
 | | | `POST /api/ApiKeys/{provider}/models` |
 | | | `GET /api/ApiKeys/{provider}` |

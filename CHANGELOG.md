@@ -7,6 +7,75 @@ was verified.
 
 ## [Unreleased]
 
+### Judge-calibration metrics, executable before labels exist (2026-10-09)
+- **P0-A acceptance numbers are now pinned code, not prose.**
+  `src/evaluation/judgeMetrics.ts` (strict types, zero `any`) implements
+  Cohen's kappa (NaN on vacuous single-category labels — flagged, never
+  averaged), swap agreement (position consistency, bar ≥ 0.85), Pearson
+  correlation (verbosity check, bar |r| < 0.3), precision/recall/F1 and pass
+  rate, with 14 unit tests. The coming `calibrate.mjs` harness and the
+  40-scene hand-label set plug into these definitions.
+- Verified: 14/14 new tests, `tsc` clean, policy OK. Labels (2 reviewers,
+  frozen rubric v1) and GPU runs remain human-blocked.
+
+### Dead security theatre removed; docs corrected (2026-10-09)
+- **Deleted:** unwired in-memory `RateLimitingMiddleware` (50/min, would
+  have fought the live 100/min limiter) plus its test-only test;
+  `AntiforgeryController` (`GET /api/antiforgery/token`), `UseAntiforgery`,
+  `AddAntiforgery` config and the `[IgnoreAntiforgeryToken]` opt-out — a
+  token flow the HttpOnly cookie made unusable, suggesting protection that
+  was never enforced. Posture unchanged and now honest: SameSite=Strict +
+  Bearer + JWT/org scoping, documented in `API.md` (which also loses its
+  stale antiforgery row and the wrong SessionArchiveItem query-string
+  paragraph). Test-factory antiforgery filter shim removed with it.
+- **Doc fixes:** `TESTING.md` counts (330 files / ≈3,500 tests, 306 unit),
+  `planning/README.md` duplicate Open section merged,
+  `planning/OPEN-ITEMS.md` counts/group-chat/SonarCloud refreshed,
+  `docs/GAP-ANALYSIS.md` marked superseded, `docs/PERF-AUDIT.md` count
+  annotated.
+- Verified: full backend suite green (1,080 passed, 0 failed) with the dead
+  tests gone.
+
+### Pull watermark and backup-before-wipe (2026-10-09)
+- **A failed pull no longer reads as synced.** `syncStatus.lastSync` is
+  stamped only on a clean pull (push already guarded its stamp the same
+  way). Covered by an engine test that pulls with no server behind `/api`
+  and asserts the stamp stays empty.
+- **Auto-recovery backs up before wiping.** `db-core` `ready()` now
+  best-effort exports the database and saves it through the download shelf
+  (`versatile-recovery-<date>.json`, restorable via the DatabaseRecovery
+  Import) before `deleteDatabase` + reload; export failure still resets (a
+  broken database blocks the app) but is logged. Pure filename builder plus
+  export-shape tests; the download half mirrors the proven manual Export.
+- Verified with the suites below (backend 1,084, frontend full green).
+
+### SignalR story entitlement and quieter errors (2026-10-09)
+- **Joining a story group now verifies entitlement** on both hubs
+  (`IStoryAccessChecker`: story exists, caller owns it, org matches when
+  both name one) and fails closed with caller-only "Story not found."
+  Generation entry points check the same (they broadcast without requiring a
+  prior join); per-keystroke handlers keep trusting group membership by
+  design. `GenerateContinuation`/`GenerateCharacterProfile` now pass the
+  organization through to `CreateAsync` (was user-only).
+- **Errors no longer leak provider internals to the group:**
+  `GenerationError`/`StreamError` go to the caller with a generic message;
+  details stay in server logs. Connection-test echoes stay (caller's own
+  config diagnostics). `GenerationHub` gets the same 128 KB receive cap as
+  the collaboration hub.
+- **Tests:** 5 `StoryAccessCheckerTests` (owner/stranger/org/null-org/missing
+  cases, in-memory). Hub wiring itself needs a SignalR TestHost (no client
+  package vendored) — reviewed, not executed.
+
+### Sanitizer stops rejecting innocent fiction (2026-10-09)
+- **The XSS backstop now only fires on markup-anchored payloads**
+  (`<script`, event handlers inside tags, `javascript:` URLs). Bare
+  `alert(/prompt(/confirm(` and `word=` pairs — ordinary crime-fiction
+  dialogue — no longer 400. Bare forms are inert in every render context,
+  and there are no `v-html` sinks today (frontend `sanitizeHtml` awaits
+  them), so the bar is unchanged where it matters.
+- **Tests:** 13 `InputSanitizationMiddlewareTests` (5 innocent-prose cases
+  that fail on the old pattern + svg-onload still blocked).
+
 ### Sync batch pushes and converging deletes (2026-10-09)
 - **Push is now one request per 100 rows, not one per row.**
   `POST /api/story/{storyId}/sync/batch` dispatches each item through the

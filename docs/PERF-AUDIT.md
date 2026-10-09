@@ -64,7 +64,9 @@ Also fixes the UX finding "Archive shows a new Writing session every few minutes
 ## Verification
 
 - 2,718 unit tests pass (15 added: history-table bounds against real Dexie, non-blocking probe,
-  root-save ordering, push concurrency, schema v48).
+  root-save ordering, push concurrency, schema v48). (Count stale as of
+  2026-10-09: full suite is 3,509 passed across 331 files; findings above
+  still stand.)
 - `tsc --noEmit` and `vite build` clean.
 - In the browser: three changed saves → 3 content snapshots, 1 state snapshot, 0 archive rows
   (previously 3 / 3 / 3); root-document typing updates the count within the idle gap and survives
