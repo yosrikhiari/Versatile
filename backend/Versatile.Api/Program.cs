@@ -4,6 +4,7 @@ using Serilog;
 using Versatile.Application;
 using Versatile.Infrastructure;
 using Versatile.Infrastructure.Data;
+using Versatile.Domain.Interfaces;
 using Versatile.Infrastructure.Middleware;
 using Versatile.Api.Common;
 using Versatile.Api.Hubs;
@@ -267,13 +268,44 @@ try
     // Apply EF migrations on startup everywhere except tests, so the compose
     // `api` image boots against an empty postgres volume with no manual step.
     // (Single replica in compose — no multi-instance migrate race.)
+    //
+    // Two identities, two connection strings:
+    //   MigrationConnection (DDL-capable, e.g. the bootstrap superuser) runs
+    //     MigrateAsync and the app-role provisioning below. Falls back to
+    //     DefaultConnection so `dotnet run` flows keep working unchanged.
+    //   DefaultConnection is the runtime identity and should be the
+    //     least-privilege `versatile_app` role (compose sets this; the role,
+    //     its grants and FORCE RLS come from the AddApplicationRoleAndForceRls
+    //     migration). Normal operation never uses superuser privileges.
     if (!app.Environment.IsEnvironment("Testing"))
     {
         using (var scope = app.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            var runtimeConnectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured");
+            var migrationConnectionString = configuration.GetConnectionString("MigrationConnection");
+            if (string.IsNullOrWhiteSpace(migrationConnectionString))
+                migrationConnectionString = runtimeConnectionString;
+
             ApplicationDbContext.EnsureTenantSafety();
-            await db.Database.MigrateAsync();
+
+            var orgContext = scope.ServiceProvider.GetRequiredService<IOrganizationContext>();
+            var migrateOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseNpgsql(migrationConnectionString, npgsql =>
+                    npgsql.MigrationsAssembly(typeof(Versatile.Infrastructure.DependencyInjection).Assembly.FullName))
+                .Options;
+            await using var migrateDb = new ApplicationDbContext(migrateOptions, orgContext);
+            await migrateDb.Database.MigrateAsync();
+
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            await DatabaseProvisioning.SyncAppRolePasswordAsync(
+                migrationConnectionString,
+                runtimeConnectionString,
+                RlsTableSets.AppRole,
+                logger);
+
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             if (app.Environment.IsDevelopment())
                 await EnsureSeedDataAsync(db);
         }

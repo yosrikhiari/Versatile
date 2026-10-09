@@ -23,7 +23,8 @@ public class MigrationSmokeTests
         "AddAuditLog",
         "AddBranchesTable",
         "RemoveResearchNotes",
-        "AddBranchIdToSectionsAndSubsections"
+        "AddBranchIdToSectionsAndSubsections",
+        "AddApplicationRoleAndForceRls"
     ];
 
     [Fact]

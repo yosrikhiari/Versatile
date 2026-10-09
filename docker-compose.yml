@@ -7,9 +7,19 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       # Override in production: POSTGRES_PASSWORD=... docker compose up
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Least-privilege runtime role (created by backend/postgres-init on
+      # fresh volumes; on existing volumes by the
+      # AddApplicationRoleAndForceRls migration + startup provisioning).
+      # The API connects as this role — never as the bootstrap superuser.
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-versatile_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-versatile_app_local_dev_only}
     ports:
       - '5432:5432'
     volumes:
+      # Fresh volumes only: the image's entrypoint runs *.sh/*.sql here once,
+      # when PGDATA is empty. Existing volumes skip this directory entirely,
+      # so upgrades never re-run provisioning against live data.
+      - ./backend/postgres-init:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
@@ -42,7 +52,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       # Database + cache (service names resolve via compose DNS)
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-versatile};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      # Runtime identity: least-privilege app role (DML only). Migrations and
+      # role provisioning run at boot under MigrationConnection (DDL-capable);
+      # see backend/postgres-init/01-app-role.sh and Program.cs.
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-versatile};Username=${POSTGRES_APP_USER:-versatile_app};Password=${POSTGRES_APP_PASSWORD:-versatile_app_local_dev_only}
+      ConnectionStrings__MigrationConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-versatile};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       ConnectionStrings__Redis: redis:6379
       # REQUIRED — fail fast with a named error if unset (see .env.example)
       Jwt__Key: ${JWT_KEY:?set JWT_KEY - see .env.example}

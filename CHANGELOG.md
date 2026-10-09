@@ -7,6 +7,48 @@ was verified.
 
 ## [Unreleased]
 
+### Least-privilege database role; RLS actually enforced (2026-10-09)
+- **The API no longer talks to Postgres as superuser.** Compose now defines
+  `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` (`versatile_app`, local-dev
+  default in `.env.example`, override in production); the API's
+  `ConnectionStrings__DefaultConnection` uses that role, and a new optional
+  `ConnectionStrings__MigrationConnection` (bootstrap superuser, falls back
+  to the default) is used only at boot for `MigrateAsync` + role-password
+  provisioning. `dotnet run` flows are unchanged (fallback = current string).
+- **New corrective migration `AddApplicationRoleAndForceRls`** (additive,
+  idempotent, no applied migration touched): ensures the `versatile_app`
+  LOGIN role, grants exactly DML on present and future tables/sequences
+  (`ALTER DEFAULT PRIVILEGES`, `REVOKE CREATE`), adds the missing
+  `tenant_isolation` policy on `Branches`, and applies `FORCE ROW LEVEL
+  SECURITY` to all 34 tables in the new shared `RlsTableSets` set — the old
+  RLS migration's set (which included dropped `ResearchNotes` and missed
+  `Branches`) is superseded but unmodified. The tenant predicate itself is
+  unchanged. Downgrade removes FORCE + the Branches policy and keeps the
+  role/grants (dropping a role can strand objects).
+- **Fresh vs existing volumes:** `backend/postgres-init/01-app-role.sh`
+  (mounted into `/docker-entrypoint-initdb.d`, runs once on empty PGDATA
+  only) provisions the role for new databases; existing databases get it from
+  the migration + `DatabaseProvisioning.SyncAppRolePasswordAsync` at startup
+  (password from config via server-side `quote_literal`, never in source).
+  No volume is deleted or recreated by any step.
+- **Tests:** `MigrationSmokeTests` expects the new migration;
+  `RlsCoverageTests` fails if any future `UserOwnedEntity` table leaves the
+  forced set; `DatabaseProvisioningTests` covers role-name validation and
+  statement building. Full backend suite green (1,017 passed, 0 failed;
+  1 pre-existing skip). Rendered the idempotent SQL offline
+  (`dotnet ef migrations script --idempotent`) and reviewed the role, grant,
+  policy and FORCE statements. Live Postgres checks (fresh init, upgrade,
+  cross-tenant reads/writes) are scripted in
+  `scripts/verify-postgres-rls.sh` but need a Docker daemon, which this
+  machine lacks — run it in CI or locally before merge.
+- **Docs:** `docs/DEPLOYMENT.md` (database identities, upgrade notes,
+  prerequisites/recovery/rollback), `.env.example` (new vars),
+  `docs/sync-status.md` (migration count).
+- Still open: NULL-`OrganizationId` rows keep their old visibility (same
+  predicate by design); tightening to `WITH CHECK` + backfill is a
+  follow-up, as is removing the dead-secret fallbacks after all
+  environments rotate. `POSTGRES_APP_PASSWORD` default is local-dev only.
+
 ### Sync works end to end for the first time (2026-10-04)
 - **A real push / pull round trip now passes** against Postgres, Redis and
   the API (`src/tests/live/syncRoundTrip.live.js`): two projects pushed from

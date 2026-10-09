@@ -24,12 +24,25 @@ Optional: `psql` for inspecting Postgres; Ollama on the host for local AI.
 docker compose up -d postgres redis
 ```
 
-Starts PostgreSQL 16 (`versatile-postgres`, port 5432, `postgres/postgres`,
-database `versatile`) and Redis 7 (`versatile-redis`, append-only). Both have
-health checks. Redis publishes no host port and `appsettings.json` has no
+Starts PostgreSQL 16 (`versatile-postgres`, port 5432, database `versatile`)
+and Redis 7 (`versatile-redis`, append-only). Both have health checks. Redis
+publishes no host port and `appsettings.json` has no
 `ConnectionStrings:Redis`, so an API started with `dotnet run` runs without
 the response cache (the cache fails open); set `ConnectionStrings__Redis` and
 map a port if you want it locally.
+
+Database identities: Postgres boots a bootstrap superuser
+(`POSTGRES_USER`/`POSTGRES_PASSWORD`, default `postgres`/`postgres`) and —
+on fresh volumes only, via `backend/postgres-init/01-app-role.sh` — a
+least-privilege runtime role (`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD`,
+default `versatile_app` / `versatile_app_local_dev_only`). The API connects
+as the app role (`ConnectionStrings__DefaultConnection`); boot-time
+migrations and role-password provisioning use `MigrationConnection`
+(superuser). Upgrading an existing `pgdata` volume needs no manual step:
+the `AddApplicationRoleAndForceRls` migration plus startup provisioning
+create the role and sync its password from the environment. Never delete or
+recreate `pgdata` as a shortcut — the init script skips non-empty volumes by
+design, and the migration path preserves every row.
 
 ### 2. Backend
 
@@ -76,7 +89,7 @@ docker compose --profile frontend up --build
 
 | Service    | Image / build              | Port        | Profile    | Notes                                                                 |
 | ---------- | -------------------------- | ----------- | ---------- | --------------------------------------------------------------------- |
-| `postgres` | `postgres:16-alpine`       | 5432        | default    | volume `pgdata`                                                       |
+| `postgres` | `postgres:16-alpine`       | 5432        | default    | volume `pgdata`; `backend/postgres-init` mounted read-only (fresh volumes only); app role `versatile_app` + bootstrap superuser |
 | `redis`    | `redis:7-alpine`           | —           | default    | volume `redisdata`; GET response cache only (fails open)              |
 | `api`      | `backend/Dockerfile`       | 5171 → 8080 | default    | waits for both health checks; `curl /health`; runs migrations on boot |
 | `frontend` | root `Dockerfile` (nginx)  | 8080 → 80   | `frontend` | proxies `/api/`, `/hubs/`, `/health` to `api:8080` same-origin        |
@@ -112,7 +125,8 @@ rejects a value shorter than 32 characters or still holding the
 
 | Variable            | Maps to                                 | Default                          | Description                                                 |
 | ------------------- | --------------------------------------- | -------------------------------- | ----------------------------------------------------------- |
-| `POSTGRES_DB/USER/PASSWORD` | `ConnectionStrings__DefaultConnection` | `versatile` / `postgres` / `postgres` | Override the password in production                  |
+| `POSTGRES_DB/USER/PASSWORD` | `ConnectionStrings__MigrationConnection` | `versatile` / `postgres` / `postgres` | Bootstrap superuser: boot-time `MigrateAsync` + role provisioning only, never request traffic. Override the password in production |
+| `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` | `ConnectionStrings__DefaultConnection` | `versatile_app` / `versatile_app_local_dev_only` | Runtime role (DML only, no DDL/CREATE, FORCE RLS applies). Override the password in production; changing it is the rotation story (restart applies it) |
 | `JWT_ISSUER`        | `Jwt__Issuer`                           | `Versatile.Api`                  |                                                             |
 | `JWT_AUDIENCE`      | `Jwt__Audience`                         | `Versatile.App`                  |                                                             |
 | `OPENAI_API_KEY`    | `Ai__OpenAi__ApiKey`                    | inert placeholder                | Server-side fallback; users normally store their own keys via the API. Compose maps an empty value to the placeholder; setting `Ai__OpenAi__ApiKey` to an **empty string** directly trips the DI guard, so leave it unset instead |
@@ -139,7 +153,64 @@ reverse proxy routing `/api/`, `/hubs/` (WebSocket upgrade) and `/health`
 to it — `nginx.conf` is the reference. When the SPA and API are on different
 origins, set `Cors__AllowedOrigins__0`. Use a managed PostgreSQL 16 and a
 managed Redis; run migrations either on boot (default) or with
-`dotnet ef database update` against `ConnectionStrings__DefaultConnection`.
+`dotnet ef database update` against `ConnectionStrings__MigrationConnection`
+(the DDL-capable identity). On a managed database there is no entrypoint init
+script, so create the runtime role once (adapt
+`backend/postgres-init/01-app-role.sh`: `CREATE ROLE versatile_app WITH LOGIN
+PASSWORD '...'` plus its grants), point `ConnectionStrings__DefaultConnection`
+at it, and let boot-time provisioning keep the password in sync. Verify FORCE
+RLS is active (see `scripts/verify-postgres-rls.sh` for the exact checks).
+
+## Database migration workflow
+
+EF Core code-first; migrations live in
+`backend/Versatile.Infrastructure/Migrations` and run at API boot
+(`MigrateAsync`, skipped only in `Testing`). No applied migration is ever
+edited — corrections ship as new migrations.
+
+### Prerequisites
+
+- Postgres 16 reachable; bootstrap superuser credentials in
+  `ConnectionStrings__MigrationConnection` (compose: `POSTGRES_USER` /
+  `POSTGRES_PASSWORD`); app-role password in `POSTGRES_APP_PASSWORD`.
+- A backup before any production upgrade (`pg_dump -Fc`), even though every
+  migration below is additive/idempotent.
+
+### Execution order
+
+1. **Fresh volume** (`pgdata` empty): image entrypoint runs
+   `backend/postgres-init/01-app-role.sh` (role + grants, password from env),
+   then the API applies all migrations as the superuser and syncs the role
+   password. No manual step.
+2. **Existing volume**: entrypoint scripts are skipped automatically; the API
+   applies pending migrations (currently just `AddApplicationRoleAndForceRls`)
+   as the superuser, provisions the role password, then serves traffic as the
+   app role. Data is untouched — the migration adds a role, grants, one
+   policy and FORCE flags; it drops nothing.
+3. **Managed Postgres / no compose**: create the role once from the init
+   script, then boot or `dotnet ef database update`.
+
+### Failure recovery
+
+- Migration failure at boot fails the container fast (non-zero exit,
+  `restart: unless-stopped` retries); rows are safe because each migration
+  runs in its own transaction and the new statements are idempotent —
+  re-running converges.
+- If the app-role login fails after an upgrade, the cause is a password
+  mismatch (`POSTGRES_APP_PASSWORD` changed without restart, or provisioning
+  skipped): fix the env var and restart; the migration never needs re-running.
+- Worst case: restore the `pg_dump` and boot the previous image; the
+  `Down()` path (removes FORCE + the Branches policy, keeps role/grants) is
+  exercised via `dotnet ef database update <previous>` only, never by
+  deleting the volume.
+
+### Rollback limitations
+
+- `Down()` never drops the `versatile_app` role or revokes grants (dropping
+  a role can strand default privileges); remove it manually with
+  `DROP OWNED BY versatile_app; DROP ROLE versatile_app;` after reassigning.
+- Data-changing migrations (none in this release) would need their own
+  restore plan — see the migration's XML doc before downgrading.
 
 ## CI/CD
 
@@ -179,7 +250,9 @@ it does not run in CI.
 
 - [ ] SPA loads; `/health` returns 200 through the proxy
 - [ ] No CORS errors (same-origin proxy, or `Cors__AllowedOrigins` set)
-- [ ] EF migrations applied; connection string uses production credentials
+- [ ] EF migrations applied; runtime connection string uses the app role, not the superuser
+- [ ] `SELECT rolname FROM pg_roles` shows `versatile_app` with `rolcanlogin`; `relforcerowsecurity` is true on the 34 tables in `RlsTableSets`
+- [ ] Cross-tenant reads return only the caller's org (run `scripts/verify-postgres-rls.sh`)
 - [ ] Register/login work; protected endpoints return 401 without a token
 - [ ] `/hubs/generation` and `/hubs/collaboration` upgrade to WebSocket (`?access_token=` is accepted only on `/hubs/*`)
 - [ ] `JWT_KEY` and `ENCRYPTION_MASTER_KEY` are unique and stored in the platform's secret manager

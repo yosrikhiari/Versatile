@@ -131,8 +131,8 @@ Exist only in the backend database — no IndexedDB counterpart.
 
 `SYNC_ENTITIES` in `sync-mapper.ts` lists exactly the 14 tables above; the backend `DbSet`s match the
 local-only and server-only lists (the `Research`/ResearchNotes set this doc used to list was removed by the
-`RemoveResearchNotes` migration). The API boots against an empty Postgres 16, applies both migrations
-(`InitialCreate`, `AddOrganizationIdIndexes`) and answers `/health` with `database` and `ai_provider`
+`RemoveResearchNotes` migration). The API boots against an empty Postgres 16, applies its migrations
+in order (currently 8, ending with `AddApplicationRoleAndForceRls`) and answers `/health` with `database` and `ai_provider`
 healthy; the backend suite is 985 tests green. A two-client sync run (register on the server through the
 editor's sign-in, edit on two browsers) has not been exercised in this audit — it needs a server account.
 
