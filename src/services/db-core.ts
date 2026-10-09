@@ -87,6 +87,35 @@ for (const { version, stores } of SCHEMA_VERSIONS) {
 
 const recoveryFlag = 'versatile_db_recovery'
 
+/**
+ * Backup file name for pre-recovery exports. Pure (takes the date) so the
+ * recovery path's naming is unit-testable without touching Blob/URL.
+ */
+export function backupFileName(at: Date = new Date()): string {
+  return `versatile-recovery-${at.toISOString().split('T')[0]}.json`
+}
+
+/**
+ * Save a database dump through the browser download shelf — the same pattern
+ * as the manual Export in DatabaseRecovery. No-op outside a DOM (tests, SSR):
+ * the caller still proceeds, having logged the miss.
+ */
+export function downloadBackup(dump: Record<string, unknown[]>): boolean {
+  if (typeof document === 'undefined' || typeof URL === 'undefined') return false
+  try {
+    const blob = new Blob([JSON.stringify(dump)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = backupFileName()
+    anchor.click()
+    URL.revokeObjectURL(url)
+    return true
+  } catch {
+    return false
+  }
+}
+
 let _ready: Promise<void> | undefined
 export async function ready() {
   if (!_ready) {
@@ -104,10 +133,26 @@ export async function ready() {
         localStorage.setItem(recoveryFlag, '1')
         db.close()
 
-        const delReq = indexedDB.deleteDatabase('VersatileDB')
-        delReq.onsuccess = () => window.location.reload()
-        delReq.onerror = () => window.location.reload()
-        delReq.onblocked = () => window.location.reload()
+        // Best-effort backup before the wipe: when open() rejects, the data
+        // is often still readable (version/upgrade failures), and deleting
+        // first would destroy it. When the dump itself fails the reset still
+        // proceeds — a broken database blocks the whole app — but the miss is
+        // logged and the restore path is the manual Import in DatabaseRecovery.
+        exportDatabase()
+          .then((dump) => {
+            if (!downloadBackup(dump)) {
+              console.warn('[DB] Pre-recovery backup could not be saved.')
+            }
+          })
+          .catch((backupErr: Error) => {
+            console.warn('[DB] Pre-recovery backup failed; resetting anyway:', backupErr.message)
+          })
+          .finally(() => {
+            const delReq = indexedDB.deleteDatabase('VersatileDB')
+            delReq.onsuccess = () => window.location.reload()
+            delReq.onerror = () => window.location.reload()
+            delReq.onblocked = () => window.location.reload()
+          })
       })
   }
   return _ready

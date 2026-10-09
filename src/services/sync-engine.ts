@@ -334,8 +334,13 @@ class SyncEngine {
       }
     }
 
-    if (!anyFailed) syncStatus.lastError = null
-    syncStatus.lastSync = new Date().toISOString()
+    if (!anyFailed) {
+      syncStatus.lastError = null
+      // lastSync means "everything known pulled" — stamping it after a
+      // partial failure is what made failed pulls read as synced. Push
+      // already guards its stamp the same way.
+      syncStatus.lastSync = new Date().toISOString()
+    }
     if (!anyFailed && syncStatus.state !== 'error') syncStatus.state = 'idle'
   }
 

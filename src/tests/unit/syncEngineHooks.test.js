@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { db } from '@/services/db-core'
-import { getSyncEngine, destroySyncEngine } from '@/services/sync-engine'
+import { getSyncEngine, destroySyncEngine, syncStatus } from '@/services/sync-engine'
 import { SyncTransport } from '@/services/sync-transport'
 
 /**
@@ -117,6 +117,35 @@ describe('sync engine hooks', () => {
 
     expect(await db.pendingDeletions.count()).toBe(0)
   })
+})
+
+describe('sync engine pull watermark', () => {
+  beforeAll(async () => {
+    await db.open()
+  })
+
+  beforeEach(async () => {
+    await db.projects.clear()
+    syncStatus.lastSync = null
+    syncStatus.lastError = null
+    localStorage.setItem('versatile_api_token', 'test-token')
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('versatile_api_token')
+    destroySyncEngine()
+  })
+
+  it('does not stamp lastSync when the pull fails', async () => {
+    // No server behind the relative /api URL: every pull table fails, so a
+    // stamp would mark failed rows as synced.
+    const engine = getSyncEngine()
+    await engine.init()
+    await engine.pull()
+
+    expect(syncStatus.lastSync).toBeNull()
+    expect(syncStatus.lastError).not.toBeNull()
+  }, 30000)
 })
 
 describe('SyncTransport.withRetry', () => {
