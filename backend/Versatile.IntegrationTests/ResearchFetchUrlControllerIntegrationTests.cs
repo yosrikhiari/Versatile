@@ -48,4 +48,18 @@ public sealed class ResearchFetchUrlControllerIntegrationTests : ControllerTestB
 
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
     }
+
+    [Theory]
+    [InlineData("http://169.254.169.254/latest/meta-data/")]
+    [InlineData("http://127.0.0.1/admin")]
+    [InlineData("http://10.0.0.5/")]
+    [InlineData("http://[::1]/")]
+    [InlineData("http://localhost:8080/")]
+    [InlineData("http://user:pass@example.com/")]
+    public async Task FetchUrl_WithBlockedTarget_Returns400WithoutFetching(string url)
+    {
+        var response = await PostAsync($"/api/story/{StoryId}/research-document/fetch-url", new FetchUrlRequest(url));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

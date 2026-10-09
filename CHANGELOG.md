@@ -7,6 +7,24 @@ was verified.
 
 ## [Unreleased]
 
+### SSRF guard on research fetch-url (2026-10-09)
+- **`POST /api/story/{storyId}/research-document/fetch-url` no longer fetches
+  arbitrary targets.** New `UrlFetchGuard` (Infrastructure) rejects non-http(s)
+  schemes, credential-bearing URLs, `localhost`, literal private IPs
+  (loopback, RFC 1918, link-local incl. cloud metadata, CGNAT, documentation,
+  multicast/reserved, IPv6 equivalents, mapped private) and anything that
+  resolves to them (fail-closed on DNS failure). Redirects are followed
+  manually (max 3) with every hop re-validated the same way — the old
+  `HttpClient` followed them blindly. Bodies stream through a 5 MB cap
+  instead of an unbounded read, and fetch failures return a generic message
+  instead of echoing resolver/socket internals.
+- **Tests:** 41 `UrlFetchGuardTests` cases (offline-safe) + 6 blocked-target
+  controller tests (metadata IP, loopback, localhost, userinfo → 400 without
+  fetching). Full backend suite green (1,064 passed, 0 failed; 1 pre-existing
+  skip). Live redirect-chain and real-network behavior still need a Docker
+  host with egress; DNS-rebinding TOCTOU remains a documented follow-up
+  (needs connection-level IP pinning).
+
 ### Least-privilege database role; RLS actually enforced (2026-10-09)
 - **The API no longer talks to Postgres as superuser.** Compose now defines
   `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` (`versatile_app`, local-dev
