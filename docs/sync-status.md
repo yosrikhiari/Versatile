@@ -112,7 +112,7 @@ link intact. Subsection `contentStatus` is local-only.
 
 ---
 
-## 🖥 Server-only (6 entities)
+## 🖥 Server-only (7 entities)
 
 Exist only in the backend database — no IndexedDB counterpart.
 
@@ -124,6 +124,7 @@ Exist only in the backend database — no IndexedDB counterpart.
 | BibleEntry | `DbSet<BibleEntry>` | Story-bible entries; no Dexie counterpart |
 | OutboxMessage | `DbSet<OutboxMessage>` | Infrastructure: outbox pattern for event-driven processing |
 | AuditEntry | `DbSet<AuditEntry>` (AuditLog) | Server audit trail only |
+| SyncTombstone | `DbSet<SyncTombstone>` | Deletion records for pull convergence; read via `GET /api/story/{storyId}/sync/tombstones`, never stored locally |
 
 ---
 
@@ -132,7 +133,7 @@ Exist only in the backend database — no IndexedDB counterpart.
 `SYNC_ENTITIES` in `sync-mapper.ts` lists exactly the 14 tables above; the backend `DbSet`s match the
 local-only and server-only lists (the `Research`/ResearchNotes set this doc used to list was removed by the
 `RemoveResearchNotes` migration). The API boots against an empty Postgres 16, applies its migrations
-in order (currently 8, ending with `AddApplicationRoleAndForceRls`) and answers `/health` with `database` and `ai_provider`
+in order (currently 9, ending with `AddSyncTombstones`) and answers `/health` with `database` and `ai_provider`
 healthy; the backend suite is 985 tests green. A two-client sync run (register on the server through the
 editor's sign-in, edit on two browsers) has not been exercised in this audit — it needs a server account.
 
@@ -162,8 +163,23 @@ every step is checked against the server's own answers. It passes. Getting there
 - One request per row meets the 100/min per-IP limit on a book's first push; the server now sends
   `Retry-After` and the client waits it out (other 4xx are no longer retried).
 
-Still open: there is no batch endpoint, so a first push of a long book takes about a minute per
-hundred rows; a row deleted on another device is not removed locally on pull.
+Previously open (resolved 2026-10-09, P1-A — live round trip still owed): there
+was no batch endpoint, so a first push of a long book took about a minute per
+hundred rows; a row deleted on another device stayed locally on pull.
+
+**Update 2026-10-09 (P1-A, implemented; live round trip owed):**
+`POST /api/story/{storyId}/sync/batch` carries up to 100 row upserts per
+request through the same MediatR commands (same handlers, validation and
+tenant checks) as the single-row endpoints — per-item results, one bad row
+fails only itself, unknown tables/actions fail their items, 404/405 falls
+back to per-row pushes for old servers. Deletes now converge both ways: a
+`SyncTombstoneInterceptor` records every deleted synced row server-side
+(`SyncTombstones`, RLS-protected, 90-day prune, no Dexie table); pull applies
+tombstones per project to clean rows only (locally dirty rows keep
+local-wins) via a hook-suppressed delete plus id-map removal, so nothing is
+queued back to the server. Backend suite green; frontend sync suites green;
+`src/tests/live/syncRoundTrip.live.js` exercises the same client paths
+(batch-first) but needs the compose stack to run — not executed here.
 
 ## Workflow
 

@@ -46,7 +46,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v55) ──/api, /hubs──► .NET 10 API 
 
 Clean Architecture, one solution (`Versatile.slnx`):
 
-- `Versatile.Api` — 38 controllers, SignalR hubs
+- `Versatile.Api` — 40 controllers, SignalR hubs
   (`/hubs/collaboration`, `/hubs/generation`), rate limiting (100/min
   global, 20/min embedding), exception handling (generic 500s),
   per-user response caching, Swagger (Development only), `/health`,

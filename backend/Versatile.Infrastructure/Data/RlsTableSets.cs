@@ -59,6 +59,7 @@ public static class RlsTableSets
         "StoryElements",
         "StoryStateSnapshots",
         "Subsections",
+        "SyncTombstones",
         "VoiceProfiles",
         "VolumeEntities",
         "Volumes",

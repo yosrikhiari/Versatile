@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Versatile.Domain.Entities;
 using Versatile.Domain.Interfaces;
 
 namespace Versatile.Infrastructure.Data;
@@ -33,7 +34,9 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.Entity is AuditEntry || entry.Entity is OutboxMessage)
+            // SyncTombstone rows (including the 90-day prune deletes) are sync
+            // infrastructure, like OutboxMessage — not auditable activity.
+            if (entry.Entity is AuditEntry || entry.Entity is OutboxMessage || entry.Entity is SyncTombstone)
                 continue;
 
             if (entry.State is EntityState.Detached or EntityState.Unchanged)

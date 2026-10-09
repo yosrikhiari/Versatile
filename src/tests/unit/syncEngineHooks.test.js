@@ -96,6 +96,27 @@ describe('sync engine hooks', () => {
     await db.characters.add({ id: 'c5', projectId: 'p-hooks', name: 'E' })
     expect((await db.characters.get('c5')).syncStatus).toBeUndefined()
   })
+
+  it('does not queue a delete the sync engine performs itself (tombstone apply)', async () => {
+    await db.projects.put({ id: 'p-tomb', name: 'P', apiId: 'story-9', _suppressHooks: true })
+    const engine = getSyncEngine()
+    await engine.init()
+    await db.characters.add({
+      id: 'c9',
+      projectId: 'p-tomb',
+      name: 'Z',
+      apiId: 'srv-c9',
+      syncStatus: 'synced',
+      _suppressHooks: true
+    })
+
+    // What pullTombstones does for a clean remotely-deleted row.
+    engine.suppressNextDelete('characters', 'c9')
+    await db.characters.delete('c9')
+    await tick()
+
+    expect(await db.pendingDeletions.count()).toBe(0)
+  })
 })
 
 describe('SyncTransport.withRetry', () => {

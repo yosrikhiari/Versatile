@@ -51,6 +51,30 @@ export class SyncIdMap {
     this._idMap.apiToLocal[`${tableName}:${apiId}`] = localId
   }
 
+  removeMapping(tableName: string, localId: string, apiId: string): void {
+    delete this._idMap.localToApi[`${tableName}:${localId}`]
+    delete this._idMap.apiToLocal[`${tableName}:${apiId}`]
+  }
+
+  /**
+   * One-shot suppression for deletes the sync engine itself performs (remote
+   * tombstones applied on pull). The Dexie deleting hook consumes the flag so
+   * a remotely-deleted row is not queued back to the server as a local delete
+   * (which would 404 and retry forever).
+   */
+  private _suppressedDeletes = new Set<string>()
+
+  suppressNextDelete(tableName: string, localId: string): void {
+    this._suppressedDeletes.add(`${tableName}:${localId}`)
+  }
+
+  consumeSuppressedDelete(tableName: string, localId: string): boolean {
+    const key = `${tableName}:${localId}`
+    if (!this._suppressedDeletes.has(key)) return false
+    this._suppressedDeletes.delete(key)
+    return true
+  }
+
   clear(): void {
     this._idMap = { localToApi: {}, apiToLocal: {} }
   }

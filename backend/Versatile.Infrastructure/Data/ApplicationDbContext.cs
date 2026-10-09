@@ -56,6 +56,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<AuditEntry> AuditLog => Set<AuditEntry>();
+    public DbSet<SyncTombstone> SyncTombstones => Set<SyncTombstone>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -317,6 +318,12 @@ public class ApplicationDbContext : DbContext
             e.Property(o => o.Content).IsRequired();
             e.Property(o => o.CreatedAt).IsRequired();
             e.HasIndex(o => new { o.ProcessedAt, o.RetryCount });
+        });
+
+        modelBuilder.Entity<SyncTombstone>(e =>
+        {
+            e.HasIndex(t => t.StoryId);
+            e.HasIndex(t => t.DeletedAt);
         });
 
         ApplyTenantFilter(modelBuilder);

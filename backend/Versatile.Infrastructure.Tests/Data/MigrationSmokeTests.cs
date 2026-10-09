@@ -24,7 +24,8 @@ public class MigrationSmokeTests
         "AddBranchesTable",
         "RemoveResearchNotes",
         "AddBranchIdToSectionsAndSubsections",
-        "AddApplicationRoleAndForceRls"
+        "AddApplicationRoleAndForceRls",
+        "AddSyncTombstones"
     ];
 
     [Fact]

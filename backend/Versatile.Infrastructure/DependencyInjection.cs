@@ -20,6 +20,7 @@ public static class DependencyInjection
     {
         services.AddScoped<TenantSessionInterceptor>();
         services.AddScoped<AuditSaveChangesInterceptor>();
+        services.AddScoped<SyncTombstoneInterceptor>();
 
         if (useNpgsql)
         {
@@ -30,10 +31,11 @@ public static class DependencyInjection
             {
                 var tenantInterceptor = sp.GetRequiredService<TenantSessionInterceptor>();
                 var auditInterceptor = sp.GetRequiredService<AuditSaveChangesInterceptor>();
+                var tombstoneInterceptor = sp.GetRequiredService<SyncTombstoneInterceptor>();
                 options.UseNpgsql(connectionString, npgsql =>
                         npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(2), null)
                                .MigrationsAssembly(typeof(DependencyInjection).Assembly.FullName))
-                       .AddInterceptors(tenantInterceptor, auditInterceptor);
+                       .AddInterceptors(tenantInterceptor, auditInterceptor, tombstoneInterceptor);
             }, ServiceLifetime.Scoped, ServiceLifetime.Scoped);
         }
         else

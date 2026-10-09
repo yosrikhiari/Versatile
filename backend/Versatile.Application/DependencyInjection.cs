@@ -19,6 +19,8 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
+        services.AddScoped<Sync.SyncBatchDispatcher>();
+
         return services;
     }
 }

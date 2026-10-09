@@ -129,3 +129,16 @@ public record FetchUrlResponse(string Title, string Html, int StatusCode);
 public record BranchDto(Guid Id, Guid StoryId, Guid? SourceBranchId, string Name, string? Description, string Status, DateTime CreatedAt, DateTime UpdatedAt);
 public record CreateBranchRequest(string Name, Guid? SourceBranchId, string? Description, string? Status);
 public record UpdateBranchRequest(string? Name, Guid? SourceBranchId, string? Description, string? Status);
+
+// Sync batch (P1-A): one request carrying many row upserts, reusing the exact
+// command types the single-row controllers bind. Bodies are byte-identical to
+// what the client already POSTs/PUTs per row, so deserialization behavior is
+// identical by construction.
+public record SyncBatchItemDto(string Table, string Action, string? Ref, Guid? ApiId, System.Text.Json.JsonElement Body);
+public record SyncBatchRequestDto(List<SyncBatchItemDto> Items);
+public record SyncBatchResultItemDto(string? Ref, bool Ok, Guid? ApiId, string? Error);
+public record SyncBatchResponseDto(List<SyncBatchResultItemDto> Items);
+
+// Sync tombstones: server-side records of deleted synced rows, read by other
+// devices on pull. Client vocabulary table names (see RlsTableSets).
+public record SyncTombstoneDto(Guid StoryId, string Table, Guid RowId, DateTime DeletedAt);

@@ -7,6 +7,34 @@ was verified.
 
 ## [Unreleased]
 
+### Sync batch pushes and converging deletes (2026-10-09)
+- **Push is now one request per 100 rows, not one per row.**
+  `POST /api/story/{storyId}/sync/batch` dispatches each item through the
+  exact MediatR commands the single-row endpoints bind (same handlers,
+  validation and tenant checks; items run sequentially so intra-batch order
+  holds), with per-item results — one bad row fails only itself. The client
+  chunks each table per story and falls back to per-row pushes on 404/405
+  (old servers). A first push no longer meets the 100/min window row by row.
+- **Deletes converge both ways.** A `SyncTombstoneInterceptor` records every
+  deleted synced row server-side (`SyncTombstones`: RLS-protected with FORCE
+  in the `AddSyncTombstones` migration, 90-day prune, no Dexie table);
+  `GET /api/story/{storyId}/sync-tombstones` feeds pull, which deletes clean
+  local rows via a hook-suppressed delete plus id-map removal — nothing is
+  queued back to a server that already deleted it. Locally dirty rows keep
+  local-wins, as elsewhere.
+- **Tests:** 9 batch/tombstone backend integration tests, 33 frontend sync
+  unit tests (batch apply, fallback, order, tombstone apply/skip,
+  suppression, id-map), RLS set extended (35 tables). Full backend suite
+  green (1,073 passed, 0 failed); frontend suite green (3,410 passed; 12
+  component suites needed a documented `npm install` env heal first).
+  `syncRoundTrip.live.js` drives the same client paths but needs the compose
+  stack — not executed here (no Docker daemon).
+- **Docs:** `API.md` (Sync rows), `ARCHITECTURE.md` (40 controllers),
+  `docs/sync-status.md` (tombstones server-only, batch notes).
+- Still open: DNS-rebinding TOCTOU (P0-B follow-up); NULL-org visibility and
+  `WITH CHECK` hardening (P0-C follow-ups); tombstones for devices offline
+  over 90 days.
+
 ### SSRF guard on research fetch-url (2026-10-09)
 - **`POST /api/story/{storyId}/research-document/fetch-url` no longer fetches
   arbitrary targets.** New `UrlFetchGuard` (Infrastructure) rejects non-http(s)

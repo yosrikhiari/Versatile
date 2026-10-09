@@ -40,8 +40,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.RemoveAll<ApplicationDbContext>();
 
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseInMemoryDatabase(_dbName));
+            services.AddDbContext<ApplicationDbContext>((sp, options) =>
+                options.UseInMemoryDatabase(_dbName)
+                    // Production registers save interceptors on the Npgsql
+                    // options; this replacement registration must carry the
+                    // sync tombstone one too, or deletes in tests never record
+                    // tombstones and the tombstone suite passes vacuously.
+                    .AddInterceptors(sp.GetRequiredService<SyncTombstoneInterceptor>()));
 
             services.AddAuthentication(TestAuthHandler.SchemeName)
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(

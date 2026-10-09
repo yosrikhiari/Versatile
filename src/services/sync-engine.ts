@@ -128,6 +128,9 @@ class SyncEngine {
         obj: Record<string, unknown>,
         trans: HookTransaction
       ) => {
+        // A delete the sync engine performs itself (a remote tombstone applied
+        // on pull) must not come back as an outbound local delete.
+        if (this._idMap.consumeSuppressedDelete(entity.table, String(_primKey))) return
         if (!obj?.apiId) return
         const row = { ...obj }
         trans.on('complete', () => {
@@ -208,6 +211,10 @@ class SyncEngine {
 
   getLocalId(tableName: string, apiId: string): string | null {
     return this._idMap.getLocalId(tableName, apiId)
+  }
+
+  suppressNextDelete(tableName: string, localId: string): void {
+    this._idMap.suppressNextDelete(tableName, localId)
   }
 
   persistStoryId(apiId: string): void {
@@ -315,6 +322,15 @@ class SyncEngine {
       for (const table of SYNC_ORDER) {
         if (table === 'projects') continue
         await pullOne(table, project.apiId, project.id)
+      }
+      // Remote deletes last: a row deleted on another device leaves the
+      // local copy only when it carries unpushed local edits (local wins).
+      try {
+        await this._transport.pullTombstones(project.apiId, this._idMap, findSyncConfig, db)
+      } catch (err) {
+        anyFailed = true
+        console.error('[SyncEngine] Tombstone pull failed:', (err as Error).message)
+        syncStatus.lastError = `Tombstone pull failed — ${(err as Error).message}`
       }
     }
 

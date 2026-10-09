@@ -65,7 +65,7 @@ public class RlsCoverageTests
     {
         // The set is a security contract: any silent add/remove must be a
         // deliberate, reviewed change to RlsTableSets.
-        RlsTableSets.ForcedTables.Should().HaveCount(34);
+        RlsTableSets.ForcedTables.Should().HaveCount(35);
     }
 
     [Fact]

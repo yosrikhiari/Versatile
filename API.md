@@ -261,6 +261,8 @@ SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 | | | `POST /api/story/{storyId}/subsection` |
 | | | `PUT /api/story/{storyId}/subsection/{id}` |
 | | | `DELETE /api/story/{storyId}/subsection/{id}` |
+| Sync | auth + org | `POST /api/story/{storyId}/sync/batch` |
+| | | `GET /api/story/{storyId}/sync/tombstones` |
 | VoiceProfile | auth + org | `GET /api/story/{storyId}/voice-profile` |
 | | | `GET /api/story/{storyId}/voice-profile/{id}` |
 | | | `POST /api/story/{storyId}/voice-profile` |
