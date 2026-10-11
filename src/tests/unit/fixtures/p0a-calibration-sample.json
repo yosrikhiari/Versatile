@@ -1,0 +1,83 @@
+{
+  "comment": "overall field name is VERIFY-AGAINST-DATA — real consensus.json is absent from this tree; verify against reports/live/labelling/claude-labels/consensus.json before harness integration.",
+  "entries": [
+    {
+      "sceneId": "p0a-sample-01",
+      "order": 0,
+      "overall": "Keep",
+      "dims": {
+        "continuity": "Fine",
+        "voice": "Fine",
+        "show_tell": "Fine",
+        "pacing": "Fine",
+        "emotional_goal": "Fine"
+      },
+      "note": "Clean keep with no problems flagged."
+    },
+    {
+      "sceneId": "p0a-sample-02",
+      "order": 1,
+      "overall": "Keep",
+      "dims": {
+        "continuity": "Problem",
+        "voice": "Fine",
+        "show_tell": "Fine",
+        "pacing": "Fine",
+        "emotional_goal": "Fine"
+      },
+      "note": "Minor continuity problem noted, but reviewer judged the scene shippable."
+    },
+    {
+      "sceneId": "p0a-sample-03",
+      "order": 2,
+      "overall": "Revise",
+      "dims": {
+        "continuity": "Problem",
+        "voice": "Fine",
+        "show_tell": "Fine",
+        "pacing": "Fine",
+        "emotional_goal": "Fine"
+      },
+      "note": "Structural continuity break needs rebuilding."
+    },
+    {
+      "sceneId": "p0a-sample-04",
+      "order": 3,
+      "overall": "Revise",
+      "dims": {
+        "continuity": "Fine",
+        "voice": "Problem",
+        "show_tell": "Fine",
+        "pacing": "Fine",
+        "emotional_goal": "Fine"
+      },
+      "note": "Voice break needs rebuilding."
+    },
+    {
+      "sceneId": "p0a-sample-05",
+      "order": 4,
+      "overall": "Revise",
+      "dims": {
+        "continuity": "Problem",
+        "voice": "Problem",
+        "show_tell": "Fine",
+        "pacing": "Fine",
+        "emotional_goal": "Fine"
+      },
+      "note": "Both load-bearing dimensions broken."
+    },
+    {
+      "sceneId": "p0a-sample-06",
+      "order": 5,
+      "overall": "Revise",
+      "dims": {
+        "continuity": "Fine",
+        "voice": "Fine",
+        "show_tell": "Problem",
+        "pacing": "Fine",
+        "emotional_goal": "Fine"
+      },
+      "note": "Telling summary fixable in place."
+    }
+  ]
+}
