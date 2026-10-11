@@ -107,3 +107,87 @@ export function passRate(passes: readonly boolean[]): number {
   if (passes.length === 0) throw new Error('Empty input.')
   return passes.filter(Boolean).length / passes.length
 }
+
+/**
+ * Linearly weighted Cohen's kappa for three ORDERED classes
+ * (pass < revise < rewrite). Near misses (off by one) count half as much as
+ * full flips (off by two): w[i][j] = |i-j| / 2.
+ * Returns NaN when expected disagreement is 0 (vacuous single-category
+ * labels) — same convention as cohensKappa.
+ */
+export function weightedKappa(
+  a: readonly string[],
+  b: readonly string[],
+  classes: readonly [string, string, string]
+): number {
+  checkPaired(a, b)
+  const n = a.length
+  const k = classes.length
+  const indexOf = (label: string): number => {
+    const idx = classes.indexOf(label)
+    if (idx === -1) throw new Error(`Unknown label: ${label}.`)
+    return idx
+  }
+  const counts: number[][] = Array.from({ length: k }, () => Array(k).fill(0))
+  const rowSums: number[] = Array(k).fill(0)
+  const colSums: number[] = Array(k).fill(0)
+  for (let i = 0; i < n; i++) {
+    const r = indexOf(a[i])
+    const c = indexOf(b[i])
+    counts[r][c]++
+    rowSums[r]++
+    colSums[c]++
+  }
+  let qo = 0
+  let qe = 0
+  for (let i = 0; i < k; i++) {
+    for (let j = 0; j < k; j++) {
+      const w = Math.abs(i - j) / (k - 1)
+      qo += (w * counts[i][j]) / n
+      qe += w * (rowSums[i] / n) * (colSums[j] / n)
+    }
+  }
+  if (qe === 0) return NaN
+  return 1 - qo / qe
+}
+
+/**
+ * Wilson score interval (95%, z = 1.96) for a binomial proportion k/n.
+ * Returns [NaN, NaN] when n is 0 (nothing observed) — the harness must flag
+ * that, not average it.
+ */
+export function wilsonCI(k: number, n: number): [number, number] {
+  if (n === 0) return [NaN, NaN]
+  const z = 1.96
+  const z2 = z * z
+  const p = k / n
+  const denom = 1 + z2 / n
+  const centre = (p + z2 / (2 * n)) / denom
+  const delta = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / denom
+  return [Math.max(0, centre - delta), Math.min(1, centre + delta)]
+}
+
+/**
+ * Per-class agreement (recall against hand labels) with support counts.
+ * Classes with no support score NaN agreement — uninformative, not perfect.
+ */
+export function perClassAgreement(
+  actual: readonly string[],
+  predicted: readonly string[],
+  classes: readonly string[]
+): Record<string, { agreement: number; support: number }> {
+  checkPaired(actual, predicted)
+  const result: Record<string, { agreement: number; support: number }> = {}
+  for (const c of classes) {
+    let support = 0
+    let correct = 0
+    for (let i = 0; i < actual.length; i++) {
+      if (actual[i] === c) {
+        support++
+        if (predicted[i] === c) correct++
+      }
+    }
+    result[c] = { agreement: support === 0 ? NaN : correct / support, support }
+  }
+  return result
+}
