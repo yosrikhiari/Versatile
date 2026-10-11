@@ -56,6 +56,10 @@ public static class DependencyInjection
 
         services.AddScoped<IGeneratedStoryService, GeneratedStoryService>();
         services.AddScoped<IStoryAccessChecker, StoryAccessChecker>();
+        // GenerationHub depends on this; without the registration every
+        // /hubs/generation connection died at activation (caught by the
+        // SignalR wire tests, which connect for real).
+        services.AddScoped<IAiGenerationService, AiGenerationService>();
 
         services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));

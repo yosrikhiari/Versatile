@@ -62,12 +62,12 @@ public class ApiKeysController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
         var user = await _userRepo.GetByIdAsync(userId);
-        if (user?.ApiKeysEncrypted == null || user.ApiKeysNonce == null)
+        if (user is null || user.ApiKeysEncrypted is null || user.ApiKeysNonce is null)
             return NotFound(new { message = "No API keys stored" });
 
         var json = _keys.Decrypt(user.ApiKeysEncrypted, user.ApiKeysNonce);
         var keys = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-        if (keys?.TryGetValue(provider, out var key) != true)
+        if (keys is null || !keys.TryGetValue(provider, out var key) || key is null)
             return NotFound(new { message = $"Key for {provider} not found" });
 
         // Never return the plaintext secret: presence + masked hint only.
