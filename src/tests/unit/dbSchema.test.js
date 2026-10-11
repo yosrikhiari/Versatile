@@ -78,6 +78,7 @@ const EXPECTED = {
   researchTags: '++id | [projectId+name], lastSyncedAt, name, projectId, syncStatus',
   revisionComments:
     '++id | comment, createdAt, endOffset, paragraphIndex, projectId, selectedText, startOffset',
+  sceneLabels: '++id | [storyId+reviewerName], createdAt, overallLabel, reviewerName, storyId',
   sections:
     '++id | *charactersPresent, *tags, [projectId+branchId], apiId, branchId, lastSyncedAt, location, order, pov, projectId, status, summary, syncStatus, title, volumeId',
   sessionArchive: '++id | [projectId+timestamp], projectId, signal, timestamp, type',
@@ -116,7 +117,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(55)
+    expect(verno).toBe(56)
   })
 
   it('has exactly the expected set of tables', () => {

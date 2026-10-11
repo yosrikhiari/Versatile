@@ -511,5 +511,11 @@ export const SCHEMA_VERSIONS = [
       volumeDigests:
         '++id, projectId, branchId, volumeId, contentHash, updatedAt, [projectId+volumeId], &[projectId+branchId+volumeId]'
     }
+  },
+  {
+    version: 56,
+    stores: {
+      sceneLabels: '++id, storyId, reviewerName, overallLabel, createdAt, [storyId+reviewerName]'
+    }
   }
 ]
