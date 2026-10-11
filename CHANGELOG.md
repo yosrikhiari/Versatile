@@ -7,6 +7,19 @@ was verified.
 
 ## [Unreleased]
 
+### Sync fail-loud fixes F9/F10 (2026-10-11)
+- **F9**: mapping-less `pending-update` rows now fail visibly (`pushOne`
+  returns `false`; batched path excludes them from server chunks and counts
+  them failed) instead of reporting success. Found in passing: the old batched
+  path sent meaningless `noop` actions the server rejects per item, then
+  counted the same rows pushed anyway (`{pushed:1,failed:1}`) — eliminated.
+- **F10**: `fetchAll` throws on malformed envelopes (existing `anyFailed`
+  path blocks the `lastSync` stamp) instead of returning silent partials;
+  the 1000-page cap stays with a loud warn.
+- Verified: 5 new red-first tests (4 failed as predicted); 31/31 sync tests;
+  typecheck/policy/lint clean; full suites green (backend 1,094/0, frontend
+  3,577/0). Happy paths untouched; no auto-POST.
+
 ### P0-A derivation + harness + pre-registration (2026-10-11)
 - Implemented the approved label-derivation design (Approach A) as pure
   tested functions: `deriveLabel()` (v1 Keep/Revise + marks → pass/revise/rewrite
