@@ -160,9 +160,13 @@ export class SyncTransport {
     guardSyncPush(tableName, pendings, { entryPoint: `sync-transport.pushTable.${tableName}` })
 
     // Projects are one or two rows with no story yet; batching buys nothing.
+    // Self-referencing tables (branches) stay per-row and serial: a fork's
+    // body is built against the id map, so its source must already be pushed
+    // AND mapped in the same cycle — batching builds every body up front,
+    // before any mapping exists, and would strand every fork a cycle late.
     // Every other table goes out in chunks of BATCH_CHUNK per story instead
     // of one request per row (a book's first push met the 100/min window).
-    if (tableName !== 'projects') {
+    if (tableName !== 'projects' && !config.selfReferencing) {
       const batched = await this.pushTableBatched(tableName, config, pendings, idMap, db)
       if (batched) return batched
       // Batch endpoint unknown (old server): fall through to per-row.

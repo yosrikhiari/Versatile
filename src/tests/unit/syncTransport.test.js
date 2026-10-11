@@ -163,20 +163,23 @@ describe('SyncTransport.pushTable batching', () => {
     expect(posts).toBe(3)
   })
 
-  it('keeps a self-referencing table in request order inside the batch', async () => {
+  it('keeps a self-referencing table on serial per-row pushes, in order', async () => {
     const h = harness(6)
-    const transport = new SyncTransport(h.api)
+    const posts = []
+    const api = async (url, opts) => {
+      if (opts.method === 'POST') posts.push(url)
+      return { id: `api-${posts.length}` }
+    }
+    const transport = new SyncTransport(api)
     const config = { ...CONFIG, table: 'branches', selfReferencing: true }
-    await transport.pushTable('branches', makeIdMap(), () => config, h.db)
-    expect(h.calls).toHaveLength(1)
-    expect(h.calls[0].body.items.map((i) => i.ref)).toEqual([
-      'local-0',
-      'local-1',
-      'local-2',
-      'local-3',
-      'local-4',
-      'local-5'
-    ])
+    const result = await transport.pushTable('branches', makeIdMap(), () => config, h.db)
+    // No batch: a fork's body is built against the id map, so its source must
+    // already be pushed and mapped in the same cycle (the live round trip
+    // regressed when batching built every body up front — fork links arrived
+    // a cycle late).
+    expect(posts).toHaveLength(6)
+    expect(h.calls).toHaveLength(0)
+    expect(result).toEqual({ pushed: 6, failed: 0, deferred: 0 })
   })
 
   it('marks rows failed when their batch item fails, without failing the chunk', async () => {
