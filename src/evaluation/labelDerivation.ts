@@ -101,3 +101,83 @@ export function deriveLabel(input: LabelInput): DerivedResult {
     missingLoadBearing: false
   }
 }
+
+/**
+ * Mapping-review detection: pre-registered §2 keyword scan over the reviewer
+ * note. The scan proposes, a human disposes — a hit surfaces the scene as a
+ * mapping-review case (counted and reported, never silently auto-resolved).
+ *
+ * Frozen verbatim from the spec (ea1cf552, lines 80-86); do not add, drop,
+ * or alter any phrase.
+ */
+const REBUILD_PHRASES: string[] = [
+  'rewrite',
+  'rewritten',
+  'rebuild',
+  'rebuilt',
+  'rebuilding',
+  'start over',
+  'starting over',
+  'from scratch',
+  'fundamentally broken',
+  'structurally broken',
+  'needs rebuilding',
+  'tear down',
+  'throw out',
+  'throw away'
+]
+
+/**
+ * Fix-in-place phrases matched case-insensitively. `polish` is deliberately
+ * excluded here and matched separately below: the nationality is always
+ * capitalized while the verb is overwhelmingly lowercase mid-sentence, so
+ * case-sensitive `\bpolish\b` guards against flagging e.g. "the Polish
+ * dialogue sings". Sentence-initial "Polish the transitions" (capitalized
+ * verb) is a documented accepted miss — covered by the unflagged-note
+ * backstop sample plus human disposal.
+ */
+const FIX_PHRASES_CASELESS: string[] = [
+  'touch up',
+  'small fix',
+  'minor fix',
+  'minor edit',
+  'one edit',
+  'single edit',
+  'quick fix',
+  'tighten',
+  'trim',
+  'tweak',
+  'copyedit',
+  'copy-edit',
+  'line edit'
+]
+
+function escapeRegExp(phrase: string): string {
+  return phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function buildWordBoundaryPattern(phrases: string[]): string {
+  return `\\b(?:${phrases.map(escapeRegExp).join('|')})\\b`
+}
+
+const REBUILD_RE = new RegExp(buildWordBoundaryPattern(REBUILD_PHRASES), 'i')
+const FIX_RE = new RegExp(buildWordBoundaryPattern(FIX_PHRASES_CASELESS), 'i')
+const POLISH_VERB_RE = /\bpolish\b/
+
+/**
+ * Return true when the reviewer note contradicts the derived label:
+ * rebuild-class language on derived-revise, or fix-in-place language on
+ * derived-rewrite. Derived-pass notes never contradict (a kept scene is a
+ * pass by reviewer judgment). Matching is word-boundary, not naive
+ * substring, so e.g. "rebuilding" does not fire on a "rebuild" alternative
+ * branch and vice versa — each phrase stands on its own boundaries.
+ */
+export function detectMappingReview(derived: DerivedLabel, note: string): boolean {
+  if (derived === 'pass') {
+    return false
+  }
+  if (derived === 'revise') {
+    return REBUILD_RE.test(note)
+  }
+  return FIX_RE.test(note) || POLISH_VERB_RE.test(note)
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deriveLabel } from '../../evaluation/labelDerivation'
+import { deriveLabel, detectMappingReview } from '../../evaluation/labelDerivation'
 import sample from './fixtures/p0a-calibration-sample.json'
 
 // P0-A judge calibration: derive pass/revise/rewrite from the frozen v1
@@ -188,5 +188,42 @@ describe('deriveLabel', () => {
     expect(deriveLabel(byId['p0a-sample-04']).trigger).toBe('voice-only')
     expect(deriveLabel(byId['p0a-sample-05']).trigger).toBe('both')
     expect(deriveLabel(byId['p0a-sample-06']).label).toBe('revise')
+  })
+})
+
+describe('detectMappingReview', () => {
+  it('flags rebuild language on derived-revise as needing mapping review', () => {
+    expect(
+      detectMappingReview('revise', 'This scene is fundamentally broken and needs rebuilding')
+    ).toBe(true)
+  })
+
+  it('flags fix-in-place language on derived-rewrite as needing mapping review', () => {
+    expect(
+      detectMappingReview('rewrite', 'Just a quick fix — tighten the dialogue and trim the ending')
+    ).toBe(true)
+  })
+
+  it('ignores clean notes on either derived label', () => {
+    expect(detectMappingReview('revise', 'Solid pacing with a satisfying emotional payoff')).toBe(
+      false
+    )
+    expect(detectMappingReview('rewrite', 'Solid pacing with a satisfying emotional payoff')).toBe(
+      false
+    )
+  })
+
+  it('does not flag the capitalized nationality "Polish" on either label', () => {
+    expect(detectMappingReview('revise', 'the Polish dialogue sings')).toBe(false)
+    expect(detectMappingReview('rewrite', 'the Polish dialogue sings')).toBe(false)
+  })
+
+  it('flags the lowercase polish verb on derived-rewrite (fix-class contradicts rewrite, not revise)', () => {
+    expect(detectMappingReview('rewrite', 'needs a polish in act two')).toBe(true)
+    expect(detectMappingReview('revise', 'needs a polish in act two')).toBe(false)
+  })
+
+  it('flags multi-hit fix language with word boundaries on derived-rewrite', () => {
+    expect(detectMappingReview('rewrite', 'Trade talks need polish and trim')).toBe(true)
   })
 })
