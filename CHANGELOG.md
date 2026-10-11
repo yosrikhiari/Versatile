@@ -7,6 +7,25 @@ was verified.
 
 ## [Unreleased]
 
+### P0-A derivation + harness + pre-registration (2026-10-11)
+- Implemented the approved label-derivation design (Approach A) as pure
+  tested functions: `deriveLabel()` (v1 Keep/Revise + marks → pass/revise/rewrite
+  with trigger, low-confidence and missing-load-bearing flags),
+  `detectMappingReview()` (frozen 14+14 keyword scan, word boundaries,
+  lowercase-only `polish` with pinned nationality/negation tests),
+  `weightedKappa()`/`wilsonCI()`/`perClassAgreement()`, SHA-256 held-out split
+  (SET-A detects, SET-B validates; byte-identical to `node:crypto` on 10
+  vectors), `wholeSceneScoreLabel()`, schema-gating `fromConsensusEntry()`,
+  seeded unflagged sampler, and `buildCalibrationReport()` (dual
+  reviewer/human-only arms, split focused/combined shadow, rewrite-by-trigger).
+  `calibrate.mjs` wired as a thin I/O shell (judge path byte-identical; dry run
+  exits pre-data with no calls). Two-pass consensus arms added per choice C +
+  bounded B (vs-each-pass, agreed-only optimistic, adjudicated) with
+  `PREREGISTRATION.md` Amendment 1. Pre-registration commit tagged
+  `p0a-prereg-v1`. Full suites green: backend 1,094/0, frontend 3,572/0.
+  Calibration run NOT started (awaits adjudicator names, reachable
+  consensus.json, run approval).
+
 ### P0-A research base + critic audit (2026-10-11)
 - Merged research evidence base (`#research-evidence-base`, S1–S16) into the
   roadmap between §§9–10. Verified S1/S3/S4 from full text, S5–S9/S11 from
