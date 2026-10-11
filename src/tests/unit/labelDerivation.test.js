@@ -472,3 +472,244 @@ describe('buildCalibrationReport', () => {
     expect(report.notes).toContain(FROZEN_CONTINUITY_NOTE)
   })
 })
+
+describe('two-pass consensus arms', () => {
+  const FINE_ALL = {
+    continuity: 'Fine',
+    voice: 'Fine',
+    show_tell: 'Fine',
+    pacing: 'Fine',
+    emotional_goal: 'Fine'
+  }
+
+  function judgeEntry(label) {
+    return { authoritativeLabel: label, focusedScore: 8, combinedScore: 8 }
+  }
+
+  it('(a) reports judge-vs-each-pass with B absent when no passB entries', () => {
+    const scenes = [
+      {
+        sceneId: 'a1',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' }
+      },
+      {
+        sceneId: 'a2',
+        humanOnly: false,
+        passA: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, show_tell: 'Problem' },
+          note: ''
+        }
+      },
+      {
+        sceneId: 'a3',
+        humanOnly: false,
+        passA: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: ''
+        }
+      }
+    ]
+    const judge = {
+      a1: judgeEntry('pass'),
+      a2: judgeEntry('revise'),
+      a3: judgeEntry('rewrite')
+    }
+    const report = buildCalibrationReport(scenes, judge)
+    expect(report.passes.A.n).toBe(3)
+    expect(report.passes.A.weightedKappa).toBe(1)
+    expect(report.passes.B).toBeUndefined()
+  })
+
+  it('(a) reports passes A and B when passB entries exist', () => {
+    const scenes = [
+      {
+        sceneId: 'b1',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' },
+        passB: { overall: 'Keep', dims: { ...FINE_ALL }, note: 'second confirms' }
+      },
+      {
+        sceneId: 'b2',
+        humanOnly: false,
+        passA: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: ''
+        },
+        passB: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: 'second confirms'
+        }
+      },
+      {
+        sceneId: 'b3',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' }
+      }
+    ]
+    const judge = {
+      b1: judgeEntry('pass'),
+      b2: judgeEntry('rewrite'),
+      b3: judgeEntry('pass')
+    }
+    const report = buildCalibrationReport(scenes, judge)
+    expect(report.passes.A.n).toBe(3)
+    expect(report.passes.A.weightedKappa).toBe(1)
+    expect(report.passes.B.n).toBe(2)
+    expect(report.passes.B.weightedKappa).toBe(1)
+  })
+
+  it('(b) agreedOnly contains only agreeing scenes, optimistic true, no headline', () => {
+    const scenes = [
+      {
+        sceneId: 'c1',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' },
+        passB: { overall: 'Keep', dims: { ...FINE_ALL }, note: 'agree' }
+      },
+      {
+        sceneId: 'c2',
+        humanOnly: false,
+        passA: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: ''
+        },
+        passB: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: 'agree'
+        }
+      },
+      {
+        sceneId: 'c3',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' },
+        passB: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: 'disagree'
+        }
+      }
+    ]
+    const judge = {
+      c1: judgeEntry('pass'),
+      c2: judgeEntry('rewrite'),
+      c3: judgeEntry('pass')
+    }
+    const report = buildCalibrationReport(scenes, judge)
+    expect(report.agreedOnly.n).toBe(2)
+    expect(report.agreedOnly.optimistic).toBe(true)
+    expect(report.agreedOnly.weightedKappa).toBe(1)
+    expect('headline' in report).toBe(false)
+  })
+
+  it('(c) adjudicated arm derives from adjudicated entries with count reported', () => {
+    const scenes = [
+      {
+        sceneId: 'd1',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' },
+        adjudicated: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, show_tell: 'Problem' },
+          note: 'adj'
+        }
+      },
+      {
+        sceneId: 'd2',
+        humanOnly: false,
+        passA: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: ''
+        },
+        adjudicated: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: 'adj'
+        }
+      },
+      {
+        sceneId: 'd3',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' }
+      }
+    ]
+    const judge = {
+      d1: judgeEntry('revise'),
+      d2: judgeEntry('rewrite'),
+      d3: judgeEntry('pass')
+    }
+    const report = buildCalibrationReport(scenes, judge)
+    expect(report.adjudicated.n).toBe(2)
+    expect(report.adjudicated.count).toBe(2)
+    expect(report.adjudicated.weightedKappa).toBe(1)
+  })
+
+  it('(d) disagreements reports count, rate, rateCI95 of passA-vs-passB mismatches', () => {
+    const scenes = [
+      {
+        sceneId: 'e1',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' },
+        passB: { overall: 'Keep', dims: { ...FINE_ALL }, note: 'agree' }
+      },
+      {
+        sceneId: 'e2',
+        humanOnly: false,
+        passA: { overall: 'Keep', dims: { ...FINE_ALL }, note: '' },
+        passB: {
+          overall: 'Revise',
+          dims: { ...FINE_ALL, continuity: 'Problem' },
+          note: 'disagree'
+        }
+      }
+    ]
+    const judge = { e1: judgeEntry('pass'), e2: judgeEntry('pass') }
+    const report = buildCalibrationReport(scenes, judge)
+    expect(report.disagreements.count).toBe(1)
+    expect(report.disagreements.rate).toBeCloseTo(0.5, 10)
+    expect(Array.isArray(report.disagreements.rateCI95)).toBe(true)
+    expect(report.disagreements.rateCI95).toHaveLength(2)
+  })
+
+  it('(e) single-pass scenes still work exactly as before', () => {
+    const scenes = [
+      {
+        sceneId: 'f1',
+        overall: 'Keep',
+        dims: { ...FINE_ALL },
+        note: '',
+        humanOnly: false
+      },
+      {
+        sceneId: 'f2',
+        overall: 'Revise',
+        dims: { ...FINE_ALL, continuity: 'Problem' },
+        note: '',
+        humanOnly: false
+      }
+    ]
+    const judge = { f1: judgeEntry('pass'), f2: judgeEntry('rewrite') }
+    const report = buildCalibrationReport(scenes, judge)
+    expect(report.distribution).toEqual({
+      pass: 1,
+      revise: 0,
+      rewrite: 1,
+      lowConfidence: 0,
+      missingLoadBearing: 0
+    })
+    expect(report.dual.reviewer.n).toBe(2)
+    expect(report.passes.A.n).toBe(2)
+    expect(report.passes.B).toBeUndefined()
+    expect(report.disagreements.count).toBe(0)
+    expect(report.adjudicated).toBeUndefined()
+    expect(report.agreedOnly.optimistic).toBe(true)
+    expect(report.agreedOnly.n).toBe(0)
+  })
+})

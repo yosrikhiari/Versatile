@@ -14,6 +14,17 @@
       },
       "note": "Clean keep with no problems flagged.",
       "humanOnly": true,
+      "passB": {
+        "overall": "Keep",
+        "dims": {
+          "continuity": "Fine",
+          "voice": "Fine",
+          "show_tell": "Fine",
+          "pacing": "Fine",
+          "emotional_goal": "Fine"
+        },
+        "note": "Second pass confirms clean keep."
+      },
       "judge": {
         "authoritativeLabel": "pass",
         "focusedScore": 8,
@@ -33,6 +44,28 @@
       },
       "note": "Minor continuity problem noted, but reviewer judged the scene shippable.",
       "humanOnly": false,
+      "passB": {
+        "overall": "Revise",
+        "dims": {
+          "continuity": "Problem",
+          "voice": "Fine",
+          "show_tell": "Fine",
+          "pacing": "Fine",
+          "emotional_goal": "Fine"
+        },
+        "note": "Second pass flags structural continuity break."
+      },
+      "adjudicated": {
+        "overall": "Revise",
+        "dims": {
+          "continuity": "Fine",
+          "voice": "Fine",
+          "show_tell": "Problem",
+          "pacing": "Fine",
+          "emotional_goal": "Fine"
+        },
+        "note": "Adjudicated: fixable telling summary, not structural."
+      },
       "judge": {
         "authoritativeLabel": "pass",
         "focusedScore": 8,
@@ -52,6 +85,17 @@
       },
       "note": "Structural continuity break needs rebuilding.",
       "humanOnly": false,
+      "passB": {
+        "overall": "Revise",
+        "dims": {
+          "continuity": "Problem",
+          "voice": "Fine",
+          "show_tell": "Fine",
+          "pacing": "Fine",
+          "emotional_goal": "Fine"
+        },
+        "note": "Second pass confirms structural continuity break."
+      },
       "judge": {
         "authoritativeLabel": "rewrite",
         "focusedScore": 4,
@@ -71,6 +115,17 @@
       },
       "note": "Voice break needs rebuilding.",
       "humanOnly": false,
+      "passB": {
+        "overall": "Revise",
+        "dims": {
+          "continuity": "Fine",
+          "voice": "Fine",
+          "show_tell": "Problem",
+          "pacing": "Fine",
+          "emotional_goal": "Fine"
+        },
+        "note": "Second pass sees fixable telling summary."
+      },
       "judge": {
         "authoritativeLabel": "rewrite",
         "focusedScore": null,

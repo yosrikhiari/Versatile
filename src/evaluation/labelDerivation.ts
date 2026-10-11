@@ -656,14 +656,45 @@ function buildShadowArm(
 }
 
 export function buildCalibrationReport(
-  scenes: CalibrationScene[],
+  scenes: CalibrationSceneInput[],
   judge: JudgeRecord
-): CalibrationReport {
-  const derivedByScene = scenes.map((scene) => ({
-    sceneId: scene.sceneId,
-    note: scene.note,
-    humanOnly: scene.humanOnly,
-    result: deriveLabel({ overall: scene.overall, dims: scene.dims, note: scene.note })
+): ExtendedCalibrationReport {
+  const normalized: Array<{
+    sceneId: string
+    humanOnly: boolean
+    passA: ReviewPassEntry
+    passB?: ReviewPassEntry
+    adjudicated?: ReviewPassEntry
+  }> = scenes.map((scene) => {
+    const nested = scene as TwoPassScene
+    if (nested.passA !== undefined) {
+      return {
+        sceneId: nested.sceneId,
+        humanOnly: nested.humanOnly,
+        passA: nested.passA,
+        passB: nested.passB,
+        adjudicated: nested.adjudicated
+      }
+    }
+    const legacy = scene as LegacySceneWithPasses
+    return {
+      sceneId: legacy.sceneId,
+      humanOnly: legacy.humanOnly,
+      passA: { overall: legacy.overall, dims: legacy.dims, note: legacy.note },
+      passB: legacy.passB,
+      adjudicated: legacy.adjudicated
+    }
+  })
+
+  const derivedByScene = normalized.map((entry) => ({
+    sceneId: entry.sceneId,
+    note: entry.passA.note,
+    humanOnly: entry.humanOnly,
+    result: deriveLabel({
+      overall: entry.passA.overall,
+      dims: entry.passA.dims,
+      note: entry.passA.note
+    })
   }))
 
   const distribution: CalibrationDistribution = {
@@ -740,9 +771,16 @@ export function buildCalibrationReport(
     humanOnly: { ...humanArm, descriptiveOnly: true as const }
   }
 
+  const shadowScenes: CalibrationScene[] = normalized.map((entry) => ({
+    sceneId: entry.sceneId,
+    overall: entry.passA.overall,
+    dims: entry.passA.dims,
+    note: entry.passA.note,
+    humanOnly: entry.humanOnly
+  }))
   const shadow: ShadowReport = {
-    focused: buildShadowArm(scenes, judge, (output) => output.focusedScore),
-    combined: buildShadowArm(scenes, judge, (output) => output.combinedScore)
+    focused: buildShadowArm(shadowScenes, judge, (output) => output.focusedScore),
+    combined: buildShadowArm(shadowScenes, judge, (output) => output.combinedScore)
   }
 
   const rewriteByTrigger: RewriteByTriggerReport = {
@@ -769,6 +807,95 @@ export function buildCalibrationReport(
     }
   }
 
+  const twoPassEntries = normalized.filter((entry) => entry.passB !== undefined)
+  let passesB: DualArmReport | undefined
+  if (twoPassEntries.length > 0) {
+    const bDerived: string[] = []
+    const bJudge: string[] = []
+    for (const entry of twoPassEntries) {
+      if (entry.passB === undefined) {
+        continue
+      }
+      bDerived.push(
+        deriveLabel({
+          overall: entry.passB.overall,
+          dims: entry.passB.dims,
+          note: entry.passB.note
+        }).label
+      )
+      const output = judge[entry.sceneId]
+      if (output === undefined) {
+        throw new Error(`buildCalibrationReport: missing judge output for "${entry.sceneId}".`)
+      }
+      bJudge.push(output.authoritativeLabel)
+    }
+    passesB = buildDualArm(bDerived, bJudge)
+  }
+  const passes: PassesReport = passesB === undefined ? { A: reviewer } : { A: reviewer, B: passesB }
+
+  let mismatchCount = 0
+  const agreedDerived: string[] = []
+  const agreedJudge: string[] = []
+  for (const entry of twoPassEntries) {
+    if (entry.passB === undefined) {
+      continue
+    }
+    const aLabel = deriveLabel({
+      overall: entry.passA.overall,
+      dims: entry.passA.dims,
+      note: entry.passA.note
+    }).label
+    const bLabel = deriveLabel({
+      overall: entry.passB.overall,
+      dims: entry.passB.dims,
+      note: entry.passB.note
+    }).label
+    if (aLabel !== bLabel) {
+      mismatchCount++
+    } else {
+      agreedDerived.push(aLabel)
+      const output = judge[entry.sceneId]
+      if (output === undefined) {
+        throw new Error(`buildCalibrationReport: missing judge output for "${entry.sceneId}".`)
+      }
+      agreedJudge.push(output.authoritativeLabel)
+    }
+  }
+  const agreedArm = buildDualArm(agreedDerived, agreedJudge)
+  const agreedOnly: AgreedOnlyReport = { ...agreedArm, optimistic: true as const }
+
+  const disagreements: DisagreementsReport = {
+    count: mismatchCount,
+    rate: twoPassEntries.length === 0 ? NaN : mismatchCount / twoPassEntries.length,
+    rateCI95: wilsonCI(mismatchCount, twoPassEntries.length)
+  }
+
+  const adjudicatedEntries = normalized.filter((entry) => entry.adjudicated !== undefined)
+  let adjudicated: AdjudicatedReport | undefined
+  if (adjudicatedEntries.length > 0) {
+    const adjDerived: string[] = []
+    const adjJudge: string[] = []
+    for (const entry of adjudicatedEntries) {
+      if (entry.adjudicated === undefined) {
+        continue
+      }
+      adjDerived.push(
+        deriveLabel({
+          overall: entry.adjudicated.overall,
+          dims: entry.adjudicated.dims,
+          note: entry.adjudicated.note
+        }).label
+      )
+      const output = judge[entry.sceneId]
+      if (output === undefined) {
+        throw new Error(`buildCalibrationReport: missing judge output for "${entry.sceneId}".`)
+      }
+      adjJudge.push(output.authoritativeLabel)
+    }
+    const adjArm = buildDualArm(adjDerived, adjJudge)
+    adjudicated = { ...adjArm, count: adjArm.n }
+  }
+
   return {
     distribution,
     triggers,
@@ -777,6 +904,57 @@ export function buildCalibrationReport(
     dual,
     shadow,
     rewriteByTrigger,
-    notes: [...CALIBRATION_NOTES]
+    notes: [...CALIBRATION_NOTES],
+    passes,
+    agreedOnly,
+    ...(adjudicated === undefined ? {} : { adjudicated }),
+    disagreements
   }
+}
+
+export interface ReviewPassEntry {
+  overall: OverallMark
+  dims: Record<DimensionKey, DimensionMark>
+  note: string
+}
+
+export interface TwoPassScene {
+  sceneId: string
+  humanOnly: boolean
+  passA: ReviewPassEntry
+  passB?: ReviewPassEntry
+  adjudicated?: ReviewPassEntry
+}
+
+export interface LegacySceneWithPasses extends CalibrationScene {
+  passB?: ReviewPassEntry
+  adjudicated?: ReviewPassEntry
+}
+
+export type CalibrationSceneInput = CalibrationScene | LegacySceneWithPasses | TwoPassScene
+
+export interface PassesReport {
+  A: DualArmReport
+  B?: DualArmReport
+}
+
+export interface AgreedOnlyReport extends DualArmReport {
+  optimistic: true
+}
+
+export interface AdjudicatedReport extends DualArmReport {
+  count: number
+}
+
+export interface DisagreementsReport {
+  count: number
+  rate: number
+  rateCI95: [number, number]
+}
+
+export type ExtendedCalibrationReport = CalibrationReport & {
+  passes: PassesReport
+  agreedOnly: AgreedOnlyReport
+  adjudicated?: AdjudicatedReport
+  disagreements: DisagreementsReport
 }

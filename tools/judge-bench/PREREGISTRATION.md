@@ -155,3 +155,29 @@ which is absent from this tree (verified `Test-Path` False at HEAD
 `5f5c72a7`). This commit freezes mapping, keyword lists, the 15% rule, the
 SET-A/SET-B split, and the shadow definition only; the run references this
 record's commit hash when it is eventually approved.
+
+## Amendment 1 — consensus/disagreement (date 2026-10-11)
+
+User-directed extension: primary C + bounded B. No calibration run. No data
+analysis (consensus data absent from this tree).
+
+- Choice: C-primary + bounded-B. The judge is reported against EACH reviewer
+  pass separately (judge-vs-passA and judge-vs-passB, each weightedKappa + n
+  under `passes: { A, B? }`); B is absent when no passB entries exist.
+- Agreed-only arm: derived three-way labels that agree across passes;
+  labeled `optimistic: true`, never headline. The report carries NO `headline`
+  field selecting an arm.
+- Adjudicated arm: scenes with human-adjudicated entries resolving three-way
+  disagreements; count reported (`adjudicated: { n, count, ... }`).
+  Adjudication itself is future human work — the builder accepts adjudicated
+  entries; blindness (to judge output, to pass source) is a recorded process
+  constraint, not code.
+- Adjudication scope = three-way-label disagreements only, blind to judge
+  output and pass source; adjudicators = named humans TBD (never Claude / never
+  the label model). Adjudicator names TBD; real consensus.json absent.
+- 12-human subset descriptive-only (already in base record — restate pointer):
+  see §5 / `dual.humanOnly.descriptiveOnly` (n below powered minimum, Wilson
+  95% CIs, no pass/fail claims).
+- No merge rule found in-tree: all consumers load consensus.json pre-merged;
+  cite `tools/judge-bench/bench.py:37`
+  (`cons = {r["sceneId"]: r for r in json.load(open(...consensus.json...))}`).
