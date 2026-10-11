@@ -56,6 +56,7 @@ public static class RlsTableSets
         "ResearchTags",
         "RevisionComments",
         "Scenes",
+        "SceneLabels",
         "Sections",
         "SessionArchiveItems",
         "Snapshots",

@@ -29,7 +29,8 @@ public class MigrationSmokeTests
         "AddApplicationRoleAndForceRls",
         "AddSyncTombstones",
         "AddMissingTenantPolicies",
-        "AddTenantEnableRls"
+        "AddTenantEnableRls",
+        "AddSceneLabels"
     ];
 
     /// <summary>
@@ -50,7 +51,8 @@ public class MigrationSmokeTests
         "20261009081623_AddApplicationRoleAndForceRls",
         "20261009100214_AddSyncTombstones",
         "20261011092950_AddMissingTenantPolicies",
-        "20261011093725_AddTenantEnableRls"
+        "20261011093725_AddTenantEnableRls",
+        "20261011102400_AddSceneLabels"
     ];
 
     [Fact]

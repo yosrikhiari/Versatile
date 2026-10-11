@@ -57,6 +57,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<AuditEntry> AuditLog => Set<AuditEntry>();
     public DbSet<SyncTombstone> SyncTombstones => Set<SyncTombstone>();
+    public DbSet<SceneLabel> SceneLabels => Set<SceneLabel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -324,6 +325,13 @@ public class ApplicationDbContext : DbContext
         {
             e.HasIndex(t => t.StoryId);
             e.HasIndex(t => t.DeletedAt);
+        });
+
+        modelBuilder.Entity<SceneLabel>(e =>
+        {
+            e.HasIndex(l => l.StoryId);
+            e.HasIndex(l => l.ReviewerName);
+            e.HasOne(l => l.Story).WithMany().HasForeignKey(l => l.StoryId).OnDelete(DeleteBehavior.Cascade);
         });
 
         ApplyTenantFilter(modelBuilder);
