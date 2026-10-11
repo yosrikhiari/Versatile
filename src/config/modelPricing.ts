@@ -10,6 +10,15 @@ export const MODEL_PRICING = {
   'gemini-2.5-pro': { input: 1.25, output: 5.0 },
   'gemini-2.5-flash': { input: 0.15, output: 0.6 },
   'gemini-1.5-pro': { input: 1.25, output: 5.0 },
+  // Standard paid tier per 1M tokens (no batch/cache discounts): 3.5 Flash
+  // $1.50/$9.00, 3.6 Flash $1.50/$7.50. Owed since the live-verified catalog
+  // refresh (config/ai.ts); re-check against the Google pricing page when
+  // touching these — tiers move.
+  'gemini-3.5-flash': { input: 1.5, output: 9.0 },
+  'gemini-3.6-flash': { input: 1.5, output: 7.5 },
+  // Groq-hosted OSS models ride the free tier with rate limits, same 0.0
+  // convention as the sibling entries below.
+  'qwen/qwen3.8-27b': { input: 0.0, output: 0.0 },
   'openai/gpt-oss-120b': { input: 0.0, output: 0.0 },
   'openai/gpt-oss-20b': { input: 0.0, output: 0.0 },
   'qwen/qwen3-32b': { input: 0.0, output: 0.0 },
@@ -19,6 +28,9 @@ export const MODEL_PRICING = {
   'mixtral-8x7b-32768': { input: 0.0, output: 0.0 },
   'gemma2-9b-it': { input: 0.0, output: 0.0 },
   'allam-2-7b': { input: 0.0, output: 0.0 }
+  // NOTE: Cloudflare Workers AI models (@cf/*) are deliberately absent:
+  // Workers AI bills compute, not tokens, so per-token pricing cannot
+  // represent them. Unknown models fall through to DEFAULT_PRICING (0.0).
 }
 
 const DEFAULT_PRICING = { input: 0.0, output: 0.0 }

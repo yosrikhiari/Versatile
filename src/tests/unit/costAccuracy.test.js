@@ -14,7 +14,10 @@ describe('cost accuracy — computeCost()', () => {
     ['claude-haiku-4-5', 2000, 500, 0.0036],
     ['gemini-2.5-pro', 1000, 200, 0.00225],
     ['gemini-2.5-flash', 3000, 600, 0.00081],
-    ['gemini-1.5-pro', 2000, 300, 0.004]
+    ['gemini-1.5-pro', 2000, 300, 0.004],
+    ['gemini-3.5-flash', 1000, 200, 0.0033],
+    ['gemini-3.6-flash', 1000, 200, 0.003],
+    ['qwen/qwen3.8-27b', 5000, 1000, 0]
   ])(
     'computes correct cost for %s with %i prompt + %i completion tokens',
     (model, promptTokens, completionTokens, expected) => {
@@ -25,6 +28,29 @@ describe('cost accuracy — computeCost()', () => {
 
   it('returns 0 for null usage', () => {
     expect(computeCost('gpt-4o', null)).toBe(0)
+  })
+
+  it('covers every token-billed model in the live catalog', () => {
+    // config/ai.ts lists only IDs that answered a real generation call; each
+    // one needs a pricing entry (Cloudflare @cf/* excluded by billing model).
+    const catalogued = [
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo',
+      'claude-sonnet-4-5',
+      'claude-opus-4-5',
+      'claude-haiku-4-5',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b'
+    ]
+    for (const model of catalogued) {
+      expect(MODEL_PRICING).toHaveProperty(model)
+    }
   })
 
   it('returns 0 for undefined usage', () => {
