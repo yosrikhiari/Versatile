@@ -7,6 +7,20 @@ was verified.
 
 ## [Unreleased]
 
+### P0-A research base + critic audit (2026-10-11)
+- Merged research evidence base (`#research-evidence-base`, S1–S16) into the
+  roadmap between §§9–10. Verified S1/S3/S4 from full text, S5–S9/S11 from
+  abstract/full text as marked; corrected S2 (CreativityPrism is not an
+  alt-test paper) and S13 (sycophancy paper, not kappa power calcs); flagged
+  S10 (venue confirmed, finding provisional) and S12 (topic mismatch).
+- Read-only critic audit: verdict is boolean pass/fail (no revise/rewrite
+  mapping), advisory exclusion is focused-path-only, continuity is binary 8/3
+  with quoted evidence, five separate judge calls. Five discrepancies vs the
+  two-gate policy reported; no production code touched.
+- §10 P0-A calibration plan updated (weighted κ/α + CIs, human ceiling,
+  alt-test, self-consistency, shadow median/min, n = 40 exploratory,
+  label-rate monitoring). Roadmap HTML validated 29/29; focused suites green.
+
 ### Live verification: dead RLS migration, FORCE≠ENABLE, branch ordering (2026-10-11)
 - **First live run of the new stack caught three real defects.**
   `scripts/verify-postgres-rls.sh` (9 checks, all green now) and
