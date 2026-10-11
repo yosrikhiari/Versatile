@@ -44,6 +44,7 @@ export interface VersatileTables {
   pendingDeletions: VersatileTable
   plotThreads: VersatileTable
   sceneDigests: VersatileTable
+  sceneLabels: VersatileTable
   projectBlurbs: VersatileTable
   projects: VersatileTable
   researchChunks: VersatileTable
