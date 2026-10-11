@@ -101,10 +101,13 @@ scenes, the mapping rule is revised as v1.1 — never a v1 rubric edit.
 change** (see held-out split below).
 
 **Held-out split (pre-registered before adjudication).** Before any
-adjudication begins, Revise-labeled scenes are split into SET-A
-(mapping-validation: even pool-order indices) and SET-B (held-out: odd pool
-indices). The 15% trigger is evaluated on SET-A only; v1.1 validation uses
-SET-B scenes exclusively.
+adjudication begins, Revise-labeled scenes (the split applies to Revise scenes
+only — pass scenes need no mapping validation) are split by SHA-256 hex digest
+of `sceneId`, parity of the first byte: even → SET-A, odd → SET-B. SET-A is
+the detection set (the 15% trigger is evaluated here; it may motivate a v1.1);
+SET-B is the validation set (a v1.1 is tested here; these scenes never motivate
+changes). Amended 2026-10-11: replaces even/odd pool-order with SHA-256
+parity (pool-order parity alternates on sequential IDs).
 
 ## §3 — Harness integration and gate (approved with conditions)
 
