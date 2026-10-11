@@ -7,6 +7,33 @@ was verified.
 
 ## [Unreleased]
 
+### Live verification: dead RLS migration, FORCE≠ENABLE, branch ordering (2026-10-11)
+- **First live run of the new stack caught three real defects.**
+  `scripts/verify-postgres-rls.sh` (9 checks, all green now) and
+  `syncRoundTrip.live.js` (3/3 green) run against compose Postgres + Redis +
+  API, plus a live fetch-url probe (example.com 200 with real HTML;
+  metadata IP and localhost 404 with guard messages).
+- **`20260718105000_AddRowLevelSecurity` never ran — anywhere.** The file has
+  no Designer (no `[Migration]` attribute), so EF never discovered it while
+  the name-based smoke test passed vacuously. Deleted; coverage lives in the
+  dated, discoverable `AddMissingTenantPolicies` (+ `AddTenantEnableRls`),
+  and the smoke test now asserts EF-discovered IDs, not class names.
+- **FORCE does not imply ENABLE.** Forced-but-disabled tables filter nothing
+  (verified live); the corrective migration sets both. Related: the live run
+  also showed `Branches` had FORCE-but-no-ENABLE — folded in.
+- **Corrective migration edited after applying → new migration instead.**
+  The ENABLE statements landed on `AddMissingTenantPolicies` after it had
+  already applied to the dev volume; since editing applied migrations never
+  re-runs, the correction shipped as `AddTenantEnableRls`. Both lessons are
+  machine-guarded (frozen-list reflection test, discoverability test).
+- **Batching broke same-cycle branch links.** Building every body up front
+  left forks unmapped until the next cycle (live round trip caught it;
+  unit tests missed the cross-row dependency). Self-referencing tables stay
+  on serial per-row pushes; 10/10 migrations, data intact, `/health` 200.
+- Verified: backend 1,094/0, frontend 3,513/0, verify script 9/9, round trip
+  3/3, fetch probe 3/3. Test stack: Docker host with the 3-week-old volume
+  preserved throughout (row counts snapshotted pre/post).
+
 ### Dependency audit triaged; key-hint null guard (2026-10-09)
 - **`source-map-js` GHSA-68fv-2mgg-jv7q: accepted risk, not fixed.**
   Reachable only via `vue-router → @vue/compiler-sfc` (build-time source-map

@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
-using Versatile.Infrastructure.Data;
 
 #nullable disable
 
@@ -19,10 +18,9 @@ namespace Versatile.Infrastructure.Migrations
     ///      so it holds whoever owns the tables). No DDL, no CREATE.
     ///   3. Adds the tenant policy to <c>Branches</c> (a UserOwnedEntity table
     ///      the original RLS migration missed) with the same predicate.
-    ///   4. Applies FORCE ROW LEVEL SECURITY to every table in
-    ///      <see cref="RlsTableSets.ForcedTables"/> so policies also bind
-    ///      table owners — previously the compose superuser connection
-    ///      bypassed every policy silently.
+    ///   4. Applies FORCE ROW LEVEL SECURITY to the 34 tables below so
+    ///      policies also bind table owners — previously the compose
+    ///      superuser connection bypassed every policy silently.
     ///
     /// Idempotency: every statement is re-runnable (DO ... IF NOT EXISTS,
     /// DROP POLICY IF EXISTS, plain GRANT/ALTER). Safe on fresh databases
@@ -30,8 +28,54 @@ namespace Versatile.Infrastructure.Migrations
     /// The tenant predicate is unchanged — rows with NULL OrganizationId keep
     /// the same visibility as before (see RlsCoverageTests and DEPLOYMENT.md).
     /// </summary>
+    /// <remarks>
+    /// The table list below is DELIBERATELY frozen inline and must never be
+    /// replaced with <c>RlsTableSets.ForcedTables</c>: migrations execute
+    /// against current compiled code, so a shared mutable set silently rewrites
+    /// history — a later table addition made this migration ALTER a table that
+    /// did not exist yet (42P01, caught live on 2026-10-11). Later tables get
+    /// their own policy/FORCE in their own migrations (see AddSyncTombstones).
+    /// <c>RlsTableSets</c> remains the contract for application code and tests.
+    /// </remarks>
     public partial class AddApplicationRoleAndForceRls : Migration
     {
+        private static readonly string[] ForcedTables =
+        [
+            "Annotations",
+            "AuthorProfiles",
+            "BibleEntries",
+            "Branches",
+            "Chapters",
+            "CharacterRelationships",
+            "DailyGoals",
+            "Entities",
+            "Flows",
+            "GeneratedStories",
+            "GraphEdges",
+            "GraphGroups",
+            "GroupEdges",
+            "Manuscripts",
+            "NodePositions",
+            "PlotThreads",
+            "ResearchChunks",
+            "ResearchDocuments",
+            "ResearchTags",
+            "RevisionComments",
+            "Scenes",
+            "Sections",
+            "SessionArchiveItems",
+            "Snapshots",
+            "Snippets",
+            "SparkHistoryItems",
+            "Stories",
+            "StoryDocuments",
+            "StoryElements",
+            "StoryStateSnapshots",
+            "Subsections",
+            "VoiceProfiles",
+            "VolumeEntities",
+            "Volumes",
+        ];
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -65,7 +109,7 @@ namespace Versatile.Infrastructure.Migrations
                     USING ("OrganizationId" IS NULL OR "OrganizationId" = current_setting('app.organization_id', true)::uuid);
                 """);
 
-            foreach (var table in RlsTableSets.ForcedTables)
+            foreach (var table in ForcedTables)
             {
                 migrationBuilder.Sql($"""
                     ALTER TABLE "{table}" FORCE ROW LEVEL SECURITY;
@@ -81,7 +125,7 @@ namespace Versatile.Infrastructure.Migrations
         /// </summary>
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            foreach (var table in RlsTableSets.ForcedTables)
+            foreach (var table in ForcedTables)
             {
                 migrationBuilder.Sql($"""
                     ALTER TABLE "{table}" NO FORCE ROW LEVEL SECURITY;

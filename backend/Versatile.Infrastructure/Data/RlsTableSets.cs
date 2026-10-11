@@ -16,6 +16,13 @@ namespace Versatile.Infrastructure.Data;
 /// <c>OrganizationMemberships</c>) and infrastructure tables
 /// (<c>AuditLog</c>, <c>OutboxMessages</c>) are deliberately excluded, matching
 /// <see cref="ApplicationDbContext.EnsureTenantSafety"/>.
+///
+/// Migration discipline: this set is the CURRENT contract for application code
+/// and tests. Migrations must NOT enumerate it — they execute against current
+/// compiled code, so a later addition would silently rewrite an old
+/// migration's statements (this exact bug crashed boot with 42P01 on
+/// 2026-10-11). Each migration freezes its own table list inline; new tables
+/// get policy/FORCE in their own migration.
 /// </summary>
 public static class RlsTableSets
 {

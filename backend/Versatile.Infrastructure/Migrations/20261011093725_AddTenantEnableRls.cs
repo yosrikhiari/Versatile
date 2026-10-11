@@ -1,16 +1,30 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Versatile.Infrastructure.Migrations
 {
-    public partial class AddRowLevelSecurity : Migration
+    /// <inheritdoc />
+    /// <summary>
+    /// Enables (and forces) RLS on every tenant table. Needed because the
+    /// ENABLE statements were added to AddMissingTenantPolicies only after
+    /// it had already applied on upgraded databases — editing an applied
+    /// migration never re-runs, so the correction ships here instead. Every
+    /// statement is idempotent (re-running converges), so fresh databases
+    /// (which run the full corrected history) and upgraded ones end identical.
+    /// </summary>
+    /// <remarks>
+    /// Frozen inline list, like every migration in this project: migrations
+    /// must never enumerate the shared <c>RlsTableSets</c>.
+    /// </remarks>
+    public partial class AddTenantEnableRls : Migration
     {
         private static readonly string[] Tables =
         [
             "Annotations",
             "AuthorProfiles",
             "BibleEntries",
+            "Branches",
             "Chapters",
             "CharacterRelationships",
             "DailyGoals",
@@ -25,7 +39,6 @@ namespace Versatile.Infrastructure.Migrations
             "PlotThreads",
             "ResearchChunks",
             "ResearchDocuments",
-            "ResearchNotes",
             "ResearchTags",
             "RevisionComments",
             "Scenes",
@@ -39,39 +52,29 @@ namespace Versatile.Infrastructure.Migrations
             "StoryElements",
             "StoryStateSnapshots",
             "Subsections",
+            "SyncTombstones",
             "VoiceProfiles",
             "VolumeEntities",
             "Volumes",
         ];
 
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             foreach (var table in Tables)
             {
-                migrationBuilder.Sql($$"""
-                    ALTER TABLE "{{table}}" ENABLE ROW LEVEL SECURITY;
-                """);
-
-                migrationBuilder.Sql($$"""
-                    CREATE POLICY tenant_isolation ON "{{table}}"
-                        FOR ALL
-                        USING ("OrganizationId" IS NULL OR "OrganizationId" = current_setting('app.organization_id', true)::uuid);
-                """);
+                migrationBuilder.Sql($"""
+                    ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE "{table}" FORCE ROW LEVEL SECURITY;
+                    """);
             }
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            foreach (var table in Tables)
-            {
-                migrationBuilder.Sql($$"""
-                    DROP POLICY IF EXISTS tenant_isolation ON "{{table}}";
-                """);
-
-                migrationBuilder.Sql($$"""
-                    ALTER TABLE "{{table}}" DISABLE ROW LEVEL SECURITY;
-                """);
-            }
+            // Keep enforcement on downgrade: removing FORCE re-opens the
+            // superuser bypass with no benefit. Policies stay as well.
         }
     }
 }

@@ -22,11 +22,18 @@ pass() { echo "PASS: $1"; }
 command -v docker >/dev/null 2>&1 || fail "docker CLI not found"
 
 # --- Phase 1: fresh-init on a throwaway container (never touches pgdata) ---
+# Bind-mount portability: MSYS/Git-Bash on Windows rewrites absolute POSIX
+# paths in docker arguments (breaking both the -v source and container-side
+# paths), so resolve the source in OS-native form there.
+case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*) INIT_SRC="$(pwd -W)/backend/postgres-init" ;;
+  *) INIT_SRC="$(pwd)/backend/postgres-init" ;;
+esac
 FRESH_NAME="verify-pg-fresh-$$"
 docker run -d --rm --name "$FRESH_NAME" \
   -e POSTGRES_DB=versatile -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_APP_USER=versatile_app -e POSTGRES_APP_PASSWORD=verify-secret-only \
-  -v "$PWD/backend/postgres-init:/docker-entrypoint-initdb.d:ro" \
+  -v "$INIT_SRC:/docker-entrypoint-initdb.d:ro" \
   postgres:16-alpine >/dev/null
 trap 'docker rm -f "$FRESH_NAME" >/dev/null 2>&1 || true' EXIT INT TERM
 i=0
@@ -46,22 +53,27 @@ pass "fresh grants: USAGE yes, CREATE no"
 
 # --- Phase 2: live compose stack ---
 docker compose ps postgres >/dev/null 2>&1 || fail "compose postgres not running (docker compose up -d postgres)"
-PSQL="docker compose exec -T postgres psql -U postgres -d ${POSTGRES_DB:-versatile} -v ON_ERROR_STOP=1 -tA"
+PSQL="docker compose exec -T postgres psql -U postgres -d ${POSTGRES_DB:-versatile} -v ON_ERROR_STOP=1 -q -tA"
 
 FORCE_OFF=$($PSQL -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
   WHERE n.nspname='public' AND c.relname IN ('Stories','Branches','Sections','Subsections')
-  AND NOT c.relforcerowsecurity;")
-[ "$FORCE_OFF" = "0" ] || fail "FORCE RLS missing on $FORCE_OFF of Stories/Branches/Sections/Subsections"
-pass "FORCE RLS active on Stories/Branches/Sections/Subsections"
+  AND (NOT c.relforcerowsecurity OR NOT c.relrowsecurity);")
+[ "$FORCE_OFF" = "0" ] || fail "FORCE+ENABLE RLS missing on $FORCE_OFF of Stories/Branches/Sections/Subsections"
+pass "FORCE+ENABLE RLS active on Stories/Branches/Sections/Subsections"
 
 POLICIES=$($PSQL -c "SELECT count(DISTINCT tablename) FROM pg_policies WHERE schemaname='public' AND policyname='tenant_isolation';")
-[ "$POLICIES" -ge 34 ] || fail "expected tenant_isolation on >=34 tables, found $POLICIES"
+[ "$POLICIES" -ge 35 ] || fail "expected tenant_isolation on >=35 tables, found $POLICIES"
 pass "tenant_isolation on $POLICIES tables"
 
 # Shared seed for the checks below: temp org + user (FK targets for Stories).
+# The org is SET before writing, exactly like TenantSessionInterceptor does
+# per request — without it even same-org INSERTs fail the policy check (the
+# FOR ALL policy doubles as the insert check), which is also how the app
+# behaves.
 # Every check runs in one transaction ending in ROLLBACK; the cleanup delete
 # afterwards only matters if a check aborts before rolling back.
-SEED="INSERT INTO \"Organizations\" (\"Id\",\"CreatedAt\",\"UpdatedAt\",\"Name\",\"Slug\")
+SEED="SET LOCAL app.organization_id = '$ORG_A';
+INSERT INTO \"Organizations\" (\"Id\",\"CreatedAt\",\"UpdatedAt\",\"Name\",\"Slug\")
   VALUES ('$ORG_A', now(), now(), 'verify', 'verify-org-a') ON CONFLICT (\"Id\") DO NOTHING;
 INSERT INTO \"Users\" (\"Id\",\"CreatedAt\",\"UpdatedAt\",\"Username\",\"PasswordHash\")
   VALUES ('$USER_A', now(), now(), 'verify-user', 'x') ON CONFLICT (\"Id\") DO NOTHING;"
@@ -69,7 +81,20 @@ CLEANUP="DELETE FROM \"Stories\" WHERE \"Title\" LIKE 'verify-%';
 DELETE FROM \"Users\" WHERE \"Username\"='verify-user';
 DELETE FROM \"Organizations\" WHERE \"Slug\" LIKE 'verify-%';"
 
-READ_OTHER=$($PSQL -c "BEGIN; $SEED
+# Behavioral checks run as the APPLICATION role, not the bootstrap superuser:
+# PostgreSQL superusers (and BYPASSRLS roles) bypass RLS unconditionally —
+# FORCE only binds non-superuser owners. Runtime isolation therefore holds
+# through the app-role connection (what the API uses), while the superuser
+# migration identity rightly sees everything. Testing isolation as
+# superuser can only ever prove deny-all or nothing.
+export PGPASSWORD="${POSTGRES_APP_PASSWORD:-versatile_app_local_dev_only}"
+APP_PSQL="docker compose exec -T postgres psql -U ${POSTGRES_APP_USER:-versatile_app} -d ${POSTGRES_DB:-versatile} -v ON_ERROR_STOP=1 -q -tA"
+
+NOBYPASS=$($PSQL -c "SELECT count(*) FROM pg_roles WHERE rolname='${POSTGRES_APP_USER:-versatile_app}' AND rolbypassrls;")
+[ "$NOBYPASS" = "0" ] || fail "application role has BYPASSRLS (RLS would never bind)"
+pass "application role has no BYPASSRLS"
+
+READ_OTHER=$($APP_PSQL -c "BEGIN; $SEED
   INSERT INTO \"Stories\" (\"Id\",\"CreatedAt\",\"UpdatedAt\",\"UserId\",\"OrganizationId\",\"Title\")
     VALUES (gen_random_uuid(), now(), now(), '$USER_A', '$ORG_A', 'verify-a');
   SET LOCAL app.organization_id = '$ORG_B';
@@ -79,7 +104,7 @@ $PSQL -c "$CLEANUP" >/dev/null
 [ "$READ_OTHER" = "0" ] || fail "cross-tenant read leaked ($READ_OTHER rows visible to org B)"
 pass "cross-tenant read blocked (org B sees 0 rows of org A)"
 
-UPD_OTHER=$($PSQL -c "BEGIN; $SEED
+UPD_OTHER=$($APP_PSQL -c "BEGIN; $SEED
   INSERT INTO \"Stories\" (\"Id\",\"CreatedAt\",\"UpdatedAt\",\"UserId\",\"OrganizationId\",\"Title\")
     VALUES (gen_random_uuid(), now(), now(), '$USER_A', '$ORG_A', 'verify-b');
   SET LOCAL app.organization_id = '$ORG_B';
@@ -98,16 +123,17 @@ else
   pass "versatile_app denied DDL (CREATE TABLE fails)"
 fi
 
-# Superuser bypass closed: even the owner, with an org set, sees only that org.
-OWNER_SEES=$($PSQL -c "BEGIN; $SEED
+# Positive control: the same org sees its own row (distinguishes isolation
+# from deny-all — without this, every block above could pass vacuously).
+OWN_SEES=$($APP_PSQL -c "BEGIN; $SEED
   INSERT INTO \"Stories\" (\"Id\",\"CreatedAt\",\"UpdatedAt\",\"UserId\",\"OrganizationId\",\"Title\")
     VALUES (gen_random_uuid(), now(), now(), '$USER_A', '$ORG_A', 'verify-c');
-  SET LOCAL app.organization_id = '$ORG_B';
+  SET LOCAL app.organization_id = '$ORG_A';
   SELECT count(*) FROM \"Stories\" WHERE \"Title\"='verify-c';
-ROLLBACK;") || fail "owner check errored"
+ROLLBACK;") || fail "same-org check errored"
 $PSQL -c "$CLEANUP" >/dev/null
-[ "$OWNER_SEES" = "0" ] || fail "FORCE RLS not applied to owner ($OWNER_SEES rows visible)"
-pass "FORCE RLS binds table owner too"
+[ "$OWN_SEES" = "1" ] || fail "same-org read returned $OWN_SEES rows, want exactly 1 (deny-all?)"
+pass "same-org read works (isolation, not deny-all)"
 
 if [ "${1:-}" = "--live" ]; then
   curl -fsS http://localhost:5171/health >/dev/null || fail "/health not OK"
