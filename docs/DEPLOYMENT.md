@@ -158,8 +158,9 @@ managed Redis; run migrations either on boot (default) or with
 script, so create the runtime role once (adapt
 `backend/postgres-init/01-app-role.sh`: `CREATE ROLE versatile_app WITH LOGIN
 PASSWORD '...'` plus its grants), point `ConnectionStrings__DefaultConnection`
-at it, and let boot-time provisioning keep the password in sync. Verify FORCE
-RLS is active (see `scripts/verify-postgres-rls.sh` for the exact checks).
+at it, and let boot-time provisioning keep the password in sync. Verify
+ENABLE+FORCE RLS is active (see `scripts/verify-postgres-rls.sh` for the exact
+checks — 9/9 green on compose 2026-10-11).
 
 ## Database migration workflow
 
@@ -251,8 +252,8 @@ it does not run in CI.
 - [ ] SPA loads; `/health` returns 200 through the proxy
 - [ ] No CORS errors (same-origin proxy, or `Cors__AllowedOrigins` set)
 - [ ] EF migrations applied; runtime connection string uses the app role, not the superuser
-- [ ] `SELECT rolname FROM pg_roles` shows `versatile_app` with `rolcanlogin`; `relforcerowsecurity` is true on the 34 tables in `RlsTableSets`
-- [ ] Cross-tenant reads return only the caller's org (run `scripts/verify-postgres-rls.sh`)
+- [ ] `SELECT rolname FROM pg_roles` shows `versatile_app` with `rolcanlogin`; `relforcerowsecurity` AND `relrowsecurity` are true on the 35 tables in `RlsTableSets`
+- [ ] Cross-tenant reads return only the caller's org (run `scripts/verify-postgres-rls.sh` — 9/9 green 2026-10-11)
 - [ ] Register/login work; protected endpoints return 401 without a token
 - [ ] `/hubs/generation` and `/hubs/collaboration` upgrade to WebSocket (`?access_token=` is accepted only on `/hubs/*`)
 - [ ] `JWT_KEY` and `ENCRYPTION_MASTER_KEY` are unique and stored in the platform's secret manager

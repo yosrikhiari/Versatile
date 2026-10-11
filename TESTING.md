@@ -104,12 +104,15 @@ The sync round trip needs no model, only the compose stack:
 ```bash
 docker compose up -d postgres redis api
 npx vitest run --config vitest.live.config.js src/tests/live/syncRoundTrip.live.js
+sh scripts/verify-postgres-rls.sh
 ```
 
-It registers a fresh account, pushes two projects from one "device", wipes
-the local database, pulls them back as a second device, edits and deletes,
-and checks every step against the server's own answers (`SYNC_API`
-overrides `http://localhost:5171`). Run twice inside a minute it meets the
+Round trip verified 3/3 green and verify script 9/9 green on compose
+2026-10-11. The round trip registers a fresh account, pushes two projects
+from one "device", wipes the local database, pulls them back as a second
+device, edits and deletes, and checks every step against the server's own
+answers (`SYNC_API` overrides `http://localhost:5171`). Run twice inside a
+minute it meets the
 100/min rate limit and waits out `Retry-After`, which takes about a minute.
 The backend integration suite cannot catch what this does: it runs in the
 `Testing` environment, where the response cache is off and the database is
