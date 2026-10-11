@@ -237,10 +237,12 @@ export class SyncTransport {
           apiId = idMap.getApiId(tableName, String(local.id))
           if (apiId) action = 'update'
         } else {
-          // Same no-op rule as pushOne: no server record, nothing to update.
+          // Same fail-loud rule as pushOne: no server record, nothing to
+          // update — and the row must surface as failed, never sent to the
+          // server as a meaningless action and never counted as pushed (F9).
           apiId = idMap.getApiId(tableName, String(local.id))
           if (!apiId) {
-            built.push({ local, storyApiId, action: 'noop', apiId: null, body: null })
+            buildFailed++
             continue
           }
         }
@@ -273,10 +275,6 @@ export class SyncTransport {
         pushed += chunkResult.pushed
         failed += chunkResult.failed
       }
-    }
-    // No-op rows (pending-update with no server twin) count as pushed, as in pushOne.
-    for (const item of built) {
-      if (item.action === 'noop') pushed++
     }
     return { pushed, failed, deferred }
   }
@@ -419,10 +417,12 @@ export class SyncTransport {
         }
       } else if (local.syncStatus === 'pending-update') {
         const apiId = idMap.getApiId(table, local.id)
-        // No server record to update: nothing to do, not a failure. (A
-        // pending-update without an apiId is itself suspicious, but inventing
-        // a POST here would risk the duplicates the PUT path exists to avoid.)
-        if (!apiId) return true
+        // No server record to update: fail loudly, never silently. A
+        // pending-update without an apiId means the id mapping was lost;
+        // counting it as pushed would strand the edits forever with no
+        // visible cause (F9). Never auto-convert to POST here — that risks
+        // the duplicates the PUT path exists to avoid.
+        if (!apiId) return false
 
         await this.withRetry(() => this._api(`${resolved}/${apiId}`, { method: 'PUT', body }))
 
@@ -482,10 +482,20 @@ export class SyncTransport {
         this._api(`${url}${sep}page=${page}&pageSize=100`, { method: 'GET' })
       )) as ApiRow[] | Page | null
       if (Array.isArray(res)) return res
-      if (!res || !Array.isArray(res.items)) return all
+      if (!res || !Array.isArray(res.items)) {
+        // A malformed envelope must fail the pull, never masquerade as a
+        // complete one: callers stamp lastSync only on success, and a partial
+        // pull stamped clean is silent divergence (F10).
+        throw new Error(`malformed sync page at ${url} page ${page}`)
+      }
       all.push(...res.items)
       if (!res.hasNextPage || res.items.length === 0) return all
     }
+    // Practically unreachable (100k rows/table) but loud if ever hit: the
+    // pull continues truncated and must not look clean.
+    console.warn(
+      `[SyncTransport] fetchAll hit the 1000-page cap at ${url}: returning ${all.length} rows truncated`
+    )
     return all
   }
 

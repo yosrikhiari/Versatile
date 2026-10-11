@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { SyncTransport } from '../../services/sync-transport'
 import { findSyncConfig } from '../../services/sync-mapper'
 
@@ -394,5 +394,77 @@ describe('SyncTransport.pullTombstones', () => {
     expect(result).toEqual({ applied: 0, skipped: 3 })
     expect(rows.has('c1')).toBe(true)
     expect(idMap.suppressed).toEqual([])
+  })
+})
+
+describe('SyncTransport fail-loud failure semantics (F9/F10)', () => {
+  it('F9: pushOne reports false for a pending-update with no server twin', async () => {
+    const { db, rows } = makeMockDb()
+    const idMap = makeIdMap()
+    let calls = 0
+    const api = async () => {
+      calls++
+      return {}
+    }
+    const transport = new SyncTransport(api)
+    const row = { id: 'orphan-1', syncStatus: 'pending-update', projectId: 'p1' }
+    rows.set('orphan-1', { ...row })
+
+    const ok = await transport.pushOne(CONFIG, row, 'story-1', idMap, db)
+
+    // A row that cannot be pushed must fail loudly: no request (nothing to
+    // update), still pending, and never counted as pushed.
+    expect(ok).toBe(false)
+    expect(calls).toBe(0)
+    expect(rows.get('orphan-1').syncStatus).toBe('pending-update')
+  })
+
+  it('F9: batched push counts a mapping-less pending-update as failed and never sends a noop action', async () => {
+    const { db, rows } = makeMockDb()
+    rows.set('orphan-1', { id: 'orphan-1', syncStatus: 'pending-update', projectId: 'p1' })
+    const bodies = []
+    const api = async (url, opts) => {
+      bodies.push(opts?.body)
+      const items = opts?.body?.items ?? []
+      return { items: items.map((it) => ({ ref: it.ref, ok: true, apiId: `srv-${it.ref}` })) }
+    }
+    const result = await new SyncTransport(api).pushTable(
+      'characters',
+      makeIdMap(),
+      () => CONFIG,
+      db
+    )
+
+    expect(result).toEqual({ pushed: 0, failed: 1, deferred: 0 })
+    expect(bodies.flatMap((b) => b?.items ?? []).map((i) => i.action)).not.toContain('noop')
+    expect(rows.get('orphan-1').syncStatus).toBe('pending-update')
+  })
+
+  it('F10: fetchAll throws on a malformed envelope instead of returning partial rows', async () => {
+    const api = async () => ({ garbage: true })
+    await expect(new SyncTransport(api).fetchAll('/story/x/entity')).rejects.toThrow()
+  })
+
+  it('F10: fetchAll still pages to the end on well-formed envelopes', async () => {
+    const api = async (url) => {
+      const page = Number(new URL(url, 'http://x').searchParams.get('page'))
+      return page === 1
+        ? { items: [{ id: 'a' }], hasNextPage: true }
+        : { items: [{ id: 'b' }], hasNextPage: false }
+    }
+    const rows = await new SyncTransport(api).fetchAll('/story/x/entity')
+    expect(rows).toEqual([{ id: 'a' }, { id: 'b' }])
+  })
+
+  it('F10: fetchAll warns loudly when it hits the page cap', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const api = async () => ({ items: [{ id: 'x' }], hasNextPage: true })
+      const rows = await new SyncTransport(api).fetchAll('/story/x/entity')
+      expect(rows).toHaveLength(1000)
+      expect(warn).toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
   })
 })
