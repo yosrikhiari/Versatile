@@ -7,6 +7,69 @@ was verified.
 
 ## [Unreleased]
 
+### Dependency audit triaged; key-hint null guard (2026-10-09)
+- **`source-map-js` GHSA-68fv-2mgg-jv7q: accepted risk, not fixed.**
+  Reachable only via `vue-router → @vue/compiler-sfc` (build-time source-map
+  handling; no runtime user input reaches it). `npm audit fix` was attempted
+  and reverted: it stripped `peer`/`dev` flags across the lockfile (the exact
+  churn class behind the documented emnapi CI breakage) for a dev-only
+  advisory. Revisit on the next toolchain upgrade, not as a hotfix. The
+  environment was restored with `npm ci` and re-verified (typecheck, cost
+  suites).
+- **`ApiKeysController.GetKey` null-dereference warning removed** (explicit
+  null checks for user, key map and key; identical 404 behavior). Build is
+  now 0 warnings / 0 errors. Covered by the 6 existing ApiKeys integration
+  tests.
+
+### Cost tracking covers the live model catalog (2026-10-09)
+- **The `modelPricing` debt from `f437012` is closed:**
+  `gemini-3.5-flash` ($1.50/$9.00) and `gemini-3.6-flash` ($1.50/$7.50, standard
+  paid tier) researched against current pricing sources;
+  `qwen/qwen3.8-27b` follows the file's Groq free-tier 0.0 convention.
+  Cloudflare `@cf/*` models stay unlisted deliberately (Workers AI bills
+  compute, not tokens) with a comment saying so.
+- **Tests:** 3 cost rows plus a catalog-coverage test (every token-billed ID
+  in `config/ai.ts` must have an entry). Pricing re-checks are owed whenever
+  these tiers move — noted in code.
+
+### GenerationHub was never registered; wire tests now cover both hubs (2026-10-09)
+- **Real bug found by the new wire tests:** `AiGenerationService` existed but
+  was never registered in DI, so every `/hubs/generation` connection died at
+  hub activation — the whole generation hub was unusable. One-line fix
+  (`AddScoped<IAiGenerationService, AiGenerationService>`) with a comment
+  naming the trap.
+- **5 `SignalRHubWireTests`** connect over the real TestServer wire
+  (LongPolling, new `Microsoft.AspNetCore.SignalR.Client` test-only
+  reference): entitlement-gated joins on both hubs, foreign-story rejection
+  arriving as an error (detailed errors off, so the message is the generic
+  wrapper — asserted with a wildcard), and a two-connection
+  cursor-broadcast reaching only the other member. Generation streaming
+  itself stays with the mocked unit tests (it would call real providers).
+- Verified: full backend suite 1,092 passed, 0 failed (was 1,087; +5 wire).
+
+### Hub method bodies now executed in tests (2026-10-09)
+- **7 `SignalRHubTests`** drive join/generate/stream paths against mocked
+  SignalR plumbing (no TestHost client package vendored): entitlement-gated
+  join + namespaced group, malformed-id rejection without checker contact,
+  suggestion progress/completion to caller, generic caller-only errors that
+  provably exclude the injected secret, continuation org pass-through plus
+  group broadcast, generic stream errors. Wire behavior (reconnects,
+  backplane) still needs a live host.
+- Verified: 7/7 new tests; full backend suite 1,087 passed, 0 failed.
+
+### Live-model probe: Ollama too slow for sample runs on this host (2026-10-09)
+- **No app change — environment evidence.** `tools/generate-sample.mjs`
+  (qwen3:8b, 400 words) died with undici `HeadersTimeoutError`: the resident
+  model runs 64% CPU / 36% GPU and a 60-token probe took 26.5 s (~2.3 tok/s),
+  so a full non-streamed scene exceeds the client's headers timeout. Same
+  class as the documented GPU-contention note (UX-AUDIT #69). Retrying with
+  longer timeouts would mask the behavior, not fix it — the production app
+  streams. Offline `eval-snapshot --validate-all` passes 3/3 on the stored
+  critic snapshots. Live sample + critic probes stay owed to a faster host.
+- Controller count corrected to 39 (`ARCHITECTURE.md`) after the
+  antiforgery-controller removal; `TESTING.md` counts to 331 files / 307
+  unit.
+
 ### Judge-calibration metrics, executable before labels exist (2026-10-09)
 - **P0-A acceptance numbers are now pinned code, not prose.**
   `src/evaluation/judgeMetrics.ts` (strict types, zero `any`) implements
