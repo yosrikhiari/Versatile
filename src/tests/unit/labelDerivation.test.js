@@ -218,6 +218,14 @@ describe('detectMappingReview', () => {
     expect(detectMappingReview('rewrite', 'the Polish dialogue sings')).toBe(false)
   })
 
+  it('documents sentence-initial "Polish" as an accepted miss (capitalized verb)', () => {
+    expect(detectMappingReview('rewrite', 'Polish the transitions in act two')).toBe(false)
+  })
+
+  it('flags negated rebuild language for human disposal (scan proposes, human disposes)', () => {
+    expect(detectMappingReview('revise', 'there is no need to rewrite this scene')).toBe(true)
+  })
+
   it('flags the lowercase polish verb on derived-rewrite (fix-class contradicts rewrite, not revise)', () => {
     expect(detectMappingReview('rewrite', 'needs a polish in act two')).toBe(true)
     expect(detectMappingReview('revise', 'needs a polish in act two')).toBe(false)
