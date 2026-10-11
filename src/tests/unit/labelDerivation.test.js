@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { deriveLabel, detectMappingReview } from '../../evaluation/labelDerivation'
+import {
+  deriveLabel,
+  detectMappingReview,
+  splitHeldOut,
+  wholeSceneScoreLabel
+} from '../../evaluation/labelDerivation'
 import sample from './fixtures/p0a-calibration-sample.json'
 
 // P0-A judge calibration: derive pass/revise/rewrite from the frozen v1
@@ -233,5 +238,59 @@ describe('detectMappingReview', () => {
 
   it('flags multi-hit fix language with word boundaries on derived-rewrite', () => {
     expect(detectMappingReview('rewrite', 'Trade talks need polish and trim')).toBe(true)
+  })
+})
+
+describe('splitHeldOut', () => {
+  it('is deterministic (same input twice yields identical output)', () => {
+    const scenes = sample.entries.map((e) => ({ sceneId: e.sceneId }))
+    expect(splitHeldOut(scenes)).toEqual(splitHeldOut(scenes))
+  })
+
+  it('covers all 6 fixture sceneIds with disjoint sets and no duplicates', () => {
+    const scenes = sample.entries.map((e) => ({ sceneId: e.sceneId }))
+    const { setA, setB } = splitHeldOut(scenes)
+    const all = [...setA, ...setB]
+    expect(all).toHaveLength(6)
+    expect(new Set(all).size).toBe(6)
+    for (const e of sample.entries) {
+      expect(all).toContain(e.sceneId)
+    }
+    for (const id of setA) {
+      expect(setB).not.toContain(id)
+    }
+  })
+
+  // Pinned SHA-256 first-byte parity assignments.
+  // Worked example: echo -n "p0a-sample-02" | sha256sum
+  // → a47a1ba666a94f43d1305801751d387e1325858c5f859235eb95f02923ff7a79
+  // → first byte 0xa4 = 164, even → SET-A.
+  it('pins the frozen SET-A/SET-B fixture assignment', () => {
+    const scenes = sample.entries.map((e) => ({ sceneId: e.sceneId }))
+    const { setA, setB } = splitHeldOut(scenes)
+    expect([...setA].sort()).toEqual(['p0a-sample-02', 'p0a-sample-05'])
+    expect([...setB].sort()).toEqual([
+      'p0a-sample-01',
+      'p0a-sample-03',
+      'p0a-sample-04',
+      'p0a-sample-06'
+    ])
+  })
+})
+
+describe('wholeSceneScoreLabel', () => {
+  it.each([
+    [8, 'pass'],
+    [7, 'pass'],
+    [6.9, 'revise'],
+    [5, 'revise'],
+    [4.9, 'rewrite'],
+    [0, 'rewrite']
+  ])('maps score %s to %s', (score, expected) => {
+    expect(wholeSceneScoreLabel(score)).toBe(expected)
+  })
+
+  it.each([[null], [NaN], [undefined]])('maps %s to excluded (never defaulted)', (score) => {
+    expect(wholeSceneScoreLabel(score)).toBe('excluded')
   })
 })
