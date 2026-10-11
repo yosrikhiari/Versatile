@@ -18,7 +18,7 @@
  *   - swap agreement >= 0.85
  *   - |r| < 0.3
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -92,7 +92,15 @@ async function main() {
   const scenesPath = join(LAB, 'scenes.json')
   const consensusPath = join(LAB, 'claude-labels', 'consensus.json')
 
-  if (!readFileSync(scenesPath, 'utf-8')) {
+  // Empty-data fast path: must precede any src TypeScript import so the
+  // plain-node dry run exits here without loading judge code. Check the
+  // consensus file first so absent data exits via the "complete labelling
+  // first" path.
+  if (!existsSync(consensusPath)) {
+    console.error('No consensus labels found. Complete labelling first.')
+    process.exit(1)
+  }
+  if (!existsSync(scenesPath)) {
     console.error('No scene pool found. Run tools/labelling/build_pool.py first.')
     process.exit(1)
   }
@@ -107,6 +115,72 @@ async function main() {
     console.error('No consensus labels found. Complete labelling first.')
     process.exit(1)
   }
+
+  // P0-A wiring (I/O shell only): dynamic import AFTER the data-presence
+  // check — vite-node resolves TS for the validation run, while the
+  // plain-node empty-data dry run never reaches here.
+  const {
+    fromConsensusEntry,
+    deriveLabel,
+    detectMappingReview,
+    splitHeldOut,
+    wholeSceneScoreLabel,
+    sampleUnflagged,
+    buildCalibrationReport
+  } = await import(join(ROOT, 'src', 'evaluation', 'labelDerivation.ts'))
+
+  // Pre-run summary over hand labels only (no judge calls).
+  const calibrationInputs = labeledScenes.map((s) => {
+    const raw = consensusMap[s.id]
+    const norm = fromConsensusEntry(raw)
+    return { ...norm, humanOnly: Boolean(raw.humanOnly) }
+  })
+
+  const derivedList = calibrationInputs.map((e) => ({
+    sceneId: e.sceneId,
+    overall: e.overall,
+    note: e.note,
+    result: deriveLabel({ overall: e.overall, dims: e.dims, note: e.note })
+  }))
+
+  const derivedCounts = { pass: 0, revise: 0, rewrite: 0 }
+  const triggerCounts = { 'continuity-only': 0, 'voice-only': 0, both: 0 }
+  const keepWithProblemIds = []
+  for (const d of derivedList) {
+    derivedCounts[d.result.label]++
+    if (d.result.label === 'rewrite' && d.result.trigger) triggerCounts[d.result.trigger]++
+    if (d.result.keepWithProblem) keepWithProblemIds.push(d.sceneId)
+  }
+
+  const reviseSceneIds = calibrationInputs
+    .filter((e) => e.overall === 'Revise')
+    .map((e) => e.sceneId)
+  const mappingHitIds = []
+  for (const d of derivedList) {
+    if (d.overall !== 'Revise') continue
+    if (detectMappingReview(d.result.label, d.note)) mappingHitIds.push(d.sceneId)
+  }
+
+  const heldOut = splitHeldOut(reviseSceneIds.map((sceneId) => ({ sceneId })))
+  const hitSet = new Set(mappingHitIds)
+  const hitFreeIds = calibrationInputs.map((e) => e.sceneId).filter((id) => !hitSet.has(id))
+  const unflaggedSample = sampleUnflagged(hitFreeIds)
+
+  console.log('\n=== Pre-run summary (hand labels only, no judge calls) ===')
+  console.log(
+    `Derived distribution: pass=${derivedCounts.pass} revise=${derivedCounts.revise} rewrite=${derivedCounts.rewrite}`
+  )
+  console.log(
+    `Trigger split: continuity-only=${triggerCounts['continuity-only']} voice-only=${triggerCounts['voice-only']} both=${triggerCounts.both}`
+  )
+  console.log(
+    `Keep-with-Problem: count=${keepWithProblemIds.length}${keepWithProblemIds.length ? ' ids=' + keepWithProblemIds.join(',') : ''}`
+  )
+  console.log(
+    `Mapping-review hits: count=${mappingHitIds.length}${mappingHitIds.length ? ' ids=' + mappingHitIds.join(',') : ''}`
+  )
+  console.log(`SET-A/SET-B (Revise split): SET-A=${heldOut.setA.length} SET-B=${heldOut.setB.length}`)
+  console.log(`Unflagged sample: size=${unflaggedSample.length}`)
 
   console.log(`Calibrating judge on ${labeledScenes.length} labelled scenes`)
   console.log(`Model: ${MODEL}, Repeat: ${REPEAT}`)
@@ -238,6 +312,60 @@ async function main() {
   const reportPath = join(CACHE, `calibration-report-${Date.now()}.json`)
   writeFileSync(reportPath, JSON.stringify(report, null, 2))
   console.log(`\nReport: ${reportPath}`)
+
+  // P0-A report-builder wiring: feed the judge loop's outputs into the pure
+  // builder. The harness records a single avg score per scene, so both
+  // shadow arms share it until separate focused/combined scores are logged;
+  // authoritativeLabel is the whole-scene label of that score (with a
+  // pass/fail fallback when the score is missing, never a silent default).
+  const normById = new Map(calibrationInputs.map((e) => [e.sceneId, e]))
+  const calibrationScenes = []
+  const judgeRecord = {}
+  for (const res of results) {
+    const sceneId = res.scene.id
+    const norm = normById.get(sceneId)
+    if (!norm) continue
+    calibrationScenes.push({
+      sceneId,
+      overall: norm.overall,
+      dims: norm.dims,
+      note: norm.note,
+      humanOnly: norm.humanOnly
+    })
+    const avgScore = res.judge.score
+    const shadowLabel = wholeSceneScoreLabel(avgScore)
+    judgeRecord[sceneId] = {
+      authoritativeLabel:
+        shadowLabel === 'excluded' ? (res.judge.pass ? 'pass' : 'revise') : shadowLabel,
+      focusedScore: avgScore,
+      combinedScore: avgScore
+    }
+  }
+  const calibrationReport = buildCalibrationReport(calibrationScenes, judgeRecord)
+
+  console.log('\n=== Calibration report (report builder) ===')
+  console.log(
+    `Dual reviewer: n=${calibrationReport.dual.reviewer.n} weightedKappa=${Number(calibrationReport.dual.reviewer.weightedKappa).toFixed(3)} agreement95=[${calibrationReport.dual.reviewer.agreement95.map((v) => Number(v).toFixed(3)).join(',')}]`
+  )
+  console.log(
+    `Dual humanOnly: n=${calibrationReport.dual.humanOnly.n} weightedKappa=${Number(calibrationReport.dual.humanOnly.weightedKappa).toFixed(3)} descriptiveOnly=${calibrationReport.dual.humanOnly.descriptiveOnly}`
+  )
+  console.log(
+    `Shadow focused: n=${calibrationReport.shadow.focused.n} matches=${calibrationReport.shadow.focused.matches} agreement=${Number(calibrationReport.shadow.focused.agreement).toFixed(3)} excluded=${calibrationReport.shadow.focused.excluded}`
+  )
+  console.log(
+    `Shadow combined: n=${calibrationReport.shadow.combined.n} matches=${calibrationReport.shadow.combined.matches} agreement=${Number(calibrationReport.shadow.combined.agreement).toFixed(3)} excluded=${calibrationReport.shadow.combined.excluded}`
+  )
+  for (const trigger of ['continuity-only', 'voice-only', 'both']) {
+    const row = calibrationReport.rewriteByTrigger[trigger]
+    console.log(
+      `Rewrite-by-trigger ${trigger}: rate=${Number(row.rate).toFixed(3)} support=${row.support} ci=[${row.ci.map((v) => Number(v).toFixed(3)).join(',')}]`
+    )
+  }
+
+  const builderReportPath = join(CACHE, `calibration-report-builder-${Date.now()}.json`)
+  writeFileSync(builderReportPath, JSON.stringify(calibrationReport, null, 2))
+  console.log(`Builder report: ${builderReportPath}`)
   process.exit(allPass ? 0 : 1)
 }
 
