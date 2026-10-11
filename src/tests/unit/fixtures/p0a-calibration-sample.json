@@ -12,7 +12,13 @@
         "pacing": "Fine",
         "emotional_goal": "Fine"
       },
-      "note": "Clean keep with no problems flagged."
+      "note": "Clean keep with no problems flagged.",
+      "humanOnly": true,
+      "judge": {
+        "authoritativeLabel": "pass",
+        "focusedScore": 8,
+        "combinedScore": 8
+      }
     },
     {
       "sceneId": "p0a-sample-02",
@@ -25,7 +31,13 @@
         "pacing": "Fine",
         "emotional_goal": "Fine"
       },
-      "note": "Minor continuity problem noted, but reviewer judged the scene shippable."
+      "note": "Minor continuity problem noted, but reviewer judged the scene shippable.",
+      "humanOnly": false,
+      "judge": {
+        "authoritativeLabel": "pass",
+        "focusedScore": 8,
+        "combinedScore": 8
+      }
     },
     {
       "sceneId": "p0a-sample-03",
@@ -38,7 +50,13 @@
         "pacing": "Fine",
         "emotional_goal": "Fine"
       },
-      "note": "Structural continuity break needs rebuilding."
+      "note": "Structural continuity break needs rebuilding.",
+      "humanOnly": false,
+      "judge": {
+        "authoritativeLabel": "rewrite",
+        "focusedScore": 4,
+        "combinedScore": 4
+      }
     },
     {
       "sceneId": "p0a-sample-04",
@@ -51,7 +69,13 @@
         "pacing": "Fine",
         "emotional_goal": "Fine"
       },
-      "note": "Voice break needs rebuilding."
+      "note": "Voice break needs rebuilding.",
+      "humanOnly": false,
+      "judge": {
+        "authoritativeLabel": "rewrite",
+        "focusedScore": null,
+        "combinedScore": 3
+      }
     },
     {
       "sceneId": "p0a-sample-05",
@@ -64,7 +88,13 @@
         "pacing": "Fine",
         "emotional_goal": "Fine"
       },
-      "note": "Both load-bearing dimensions broken."
+      "note": "Both load-bearing dimensions broken.",
+      "humanOnly": false,
+      "judge": {
+        "authoritativeLabel": "rewrite",
+        "focusedScore": 2,
+        "combinedScore": 2
+      }
     },
     {
       "sceneId": "p0a-sample-06",
@@ -77,7 +107,13 @@
         "pacing": "Fine",
         "emotional_goal": "Fine"
       },
-      "note": "Telling summary fixable in place."
+      "note": "Telling summary needs rebuilding from scratch.",
+      "humanOnly": false,
+      "judge": {
+        "authoritativeLabel": "revise",
+        "focusedScore": 6,
+        "combinedScore": 6
+      }
     }
   ]
 }

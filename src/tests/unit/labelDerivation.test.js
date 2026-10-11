@@ -3,7 +3,10 @@ import {
   deriveLabel,
   detectMappingReview,
   splitHeldOut,
-  wholeSceneScoreLabel
+  wholeSceneScoreLabel,
+  fromConsensusEntry,
+  sampleUnflagged,
+  buildCalibrationReport
 } from '../../evaluation/labelDerivation'
 import sample from './fixtures/p0a-calibration-sample.json'
 
@@ -292,5 +295,180 @@ describe('wholeSceneScoreLabel', () => {
 
   it.each([[null], [NaN], [undefined]])('maps %s to excluded (never defaulted)', (score) => {
     expect(wholeSceneScoreLabel(score)).toBe('excluded')
+  })
+})
+
+describe('fromConsensusEntry', () => {
+  it('throws naming overall when overall is absent', () => {
+    expect(() =>
+      fromConsensusEntry({
+        sceneId: 'p0a-sample-01',
+        dims: {
+          continuity: 'Fine',
+          voice: 'Fine',
+          show_tell: 'Fine',
+          pacing: 'Fine',
+          emotional_goal: 'Fine'
+        }
+      })
+    ).toThrow(/overall/)
+  })
+
+  it('throws naming dims.continuity when continuity is absent', () => {
+    expect(() =>
+      fromConsensusEntry({
+        sceneId: 'p0a-sample-01',
+        overall: 'Keep',
+        dims: {
+          voice: 'Fine',
+          show_tell: 'Fine',
+          pacing: 'Fine',
+          emotional_goal: 'Fine'
+        }
+      })
+    ).toThrow(/continuity/)
+  })
+
+  it('normalizes a valid fixture entry', () => {
+    const entry = sample.entries[0]
+    expect(fromConsensusEntry(entry)).toEqual({
+      sceneId: entry.sceneId,
+      overall: entry.overall,
+      dims: entry.dims,
+      note: entry.note
+    })
+  })
+})
+
+describe('sampleUnflagged', () => {
+  it('is deterministic across calls with the default seed', () => {
+    const ids = ['p0a-sample-03', 'p0a-sample-01', 'p0a-sample-02']
+    expect(sampleUnflagged(ids)).toEqual(sampleUnflagged(ids))
+  })
+
+  it('is order-independent (ascending sort before the PRNG)', () => {
+    expect(sampleUnflagged(['b', 'a', 'c'])).toEqual(sampleUnflagged(['c', 'b', 'a']))
+  })
+
+  it('returns a subset of the unflagged ids and caps at len', () => {
+    const ids = sample.entries.map((e) => e.sceneId)
+    const out = sampleUnflagged(ids, 20261011, 10)
+    expect(out).toHaveLength(Math.min(10, ids.length))
+    for (const id of out) {
+      expect(ids).toContain(id)
+    }
+    expect(sampleUnflagged(['a', 'b'], 20261011, 10)).toHaveLength(2)
+    expect(sampleUnflagged(['b', 'a', 'c'], 7, 2)).toHaveLength(2)
+  })
+})
+
+const FROZEN_CONTINUITY_NOTE =
+  'Judge continuity is binary (8 = clean, 3 = verified contradiction); it cannot produce a continuity-driven revise — shadow-arm revises come from other dimensions or the mean.'
+
+function loadCalibrationReport() {
+  const scenes = sample.entries.map((e) => ({
+    ...fromConsensusEntry(e),
+    humanOnly: Boolean(e.humanOnly)
+  }))
+  const judge = Object.fromEntries(sample.entries.map((e) => [e.sceneId, e.judge]))
+  return buildCalibrationReport(scenes, judge)
+}
+
+describe('buildCalibrationReport', () => {
+  it('reports exact distribution, trigger, and Keep-with-Problem counts on the fixture', () => {
+    const report = loadCalibrationReport()
+    expect(report.distribution).toEqual({
+      pass: 2,
+      revise: 1,
+      rewrite: 3,
+      lowConfidence: 0,
+      missingLoadBearing: 0
+    })
+    expect(report.triggers).toEqual({
+      'continuity-only': 1,
+      'voice-only': 1,
+      both: 1
+    })
+    expect(report.keepWithProblem).toEqual({
+      count: 1,
+      sceneIds: ['p0a-sample-02']
+    })
+  })
+
+  it('lists the single mapping-review hit with direction and phrase', () => {
+    const report = loadCalibrationReport()
+    expect(report.mappingReview.hits).toHaveLength(1)
+    const hit = report.mappingReview.hits[0]
+    expect(hit.sceneId).toBe('p0a-sample-06')
+    expect(hit.direction).toBe('rebuild-on-revise')
+    expect(hit.phrase.toLowerCase()).toContain('rebuild')
+    const hitIds = new Set(report.mappingReview.hits.map((h) => h.sceneId))
+    expect(report.mappingReview.unflaggedSample).toHaveLength(5)
+    for (const s of report.mappingReview.unflaggedSample) {
+      expect(hitIds.has(s.sceneId)).toBe(false)
+    }
+  })
+
+  it('reports dual arms with descriptiveOnly on humanOnly and no verdict field', () => {
+    const report = loadCalibrationReport()
+    expect(report.dual.reviewer.n).toBe(6)
+    expect(report.dual.humanOnly.n).toBe(1)
+    expect(report.dual.humanOnly.descriptiveOnly).toBe(true)
+    expect(Object.keys(report.dual.reviewer).sort()).toEqual([
+      'agreement95',
+      'n',
+      'perClass',
+      'weightedKappa'
+    ])
+    expect(Object.keys(report.dual.humanOnly).sort()).toEqual([
+      'agreement95',
+      'descriptiveOnly',
+      'n',
+      'perClass',
+      'weightedKappa'
+    ])
+    for (const arm of [report.dual.reviewer, report.dual.humanOnly]) {
+      expect('verdict' in arm).toBe(false)
+      expect('pass' in arm).toBe(false)
+      expect('fail' in arm).toBe(false)
+      expect(Array.isArray(arm.agreement95)).toBe(true)
+      expect(arm.agreement95).toHaveLength(2)
+      expect(Object.keys(arm.perClass).sort()).toEqual(['pass', 'revise', 'rewrite'])
+    }
+  })
+
+  it('keeps shadow arms separate with independent per-arm exclusion (never pooled)', () => {
+    const report = loadCalibrationReport()
+    expect(report.shadow.focused.n).toBe(5)
+    expect(report.shadow.focused.excluded).toBe(1)
+    expect(report.shadow.combined.n).toBe(6)
+    expect(report.shadow.combined.excluded).toBe(0)
+    expect(report.shadow.focused.n).not.toBe(report.shadow.combined.n)
+    for (const arm of [report.shadow.focused, report.shadow.combined]) {
+      expect(typeof arm.matches).toBe('number')
+      expect(typeof arm.agreement).toBe('number')
+      expect(Array.isArray(arm.agreement95)).toBe(true)
+    }
+  })
+
+  it('reports rewriteByTrigger for all three triggers with rate, support, and CI', () => {
+    const report = loadCalibrationReport()
+    expect(Object.keys(report.rewriteByTrigger).sort()).toEqual([
+      'both',
+      'continuity-only',
+      'voice-only'
+    ])
+    for (const trigger of ['continuity-only', 'voice-only', 'both']) {
+      const row = report.rewriteByTrigger[trigger]
+      expect(row.support).toBe(1)
+      expect(row.rate).toBe(1)
+      expect(Array.isArray(row.ci)).toBe(true)
+      expect(row.ci).toHaveLength(2)
+    }
+  })
+
+  it('includes the frozen continuity note verbatim', () => {
+    const report = loadCalibrationReport()
+    expect(report.notes).toContain(FROZEN_CONTINUITY_NOTE)
   })
 })

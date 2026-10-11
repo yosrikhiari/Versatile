@@ -23,6 +23,8 @@
  *   counted separately, never silently mapped from partial data.
  */
 
+import { weightedKappa, wilsonCI, perClassAgreement } from './judgeMetrics'
+
 export type OverallMark = 'Keep' | 'Revise'
 
 export type DimensionMark = 'Problem' | 'Fine' | 'Unsure'
@@ -334,4 +336,447 @@ export function wholeSceneScoreLabel(score: number | null | undefined): DerivedL
     return 'revise'
   }
   return 'rewrite'
+}
+
+/**
+ * Task 5 — schema gate for consensus.json entries.
+ *
+ * The `overall` field name is VERIFY-AGAINST-DATA: real consensus.json is
+ * absent from this tree, so the gate enforces presence loudly rather than
+ * defaulting. Throws naming the missing key when `overall` or any of the
+ * five dimension keys is absent from `entry.dims`.
+ */
+export interface NormalizedConsensusEntry {
+  sceneId: string
+  overall: OverallMark
+  dims: Record<DimensionKey, DimensionMark>
+  note: string
+}
+
+const REQUIRED_CONSENSUS_DIMS: DimensionKey[] = [
+  'continuity',
+  'voice',
+  'show_tell',
+  'pacing',
+  'emotional_goal'
+]
+
+export function fromConsensusEntry(entry: unknown): NormalizedConsensusEntry {
+  if (typeof entry !== 'object' || entry === null) {
+    throw new Error('fromConsensusEntry: missing key "entry" (expected an object).')
+  }
+  const record = entry as Record<string, unknown>
+  if (record['overall'] === undefined) {
+    throw new Error('fromConsensusEntry: missing key "overall".')
+  }
+  const overall = record['overall']
+  if (overall !== 'Keep' && overall !== 'Revise') {
+    throw new Error(
+      'fromConsensusEntry: missing or invalid key "overall" (expected "Keep" or "Revise").'
+    )
+  }
+  const dimsRaw = record['dims']
+  if (typeof dimsRaw !== 'object' || dimsRaw === null) {
+    throw new Error('fromConsensusEntry: missing key "dims".')
+  }
+  const dimsRecord = dimsRaw as Record<string, unknown>
+  for (const key of REQUIRED_CONSENSUS_DIMS) {
+    if (dimsRecord[key] === undefined) {
+      throw new Error(`fromConsensusEntry: missing key "dims.${key}".`)
+    }
+    const value = dimsRecord[key]
+    if (value !== 'Problem' && value !== 'Fine' && value !== 'Unsure') {
+      throw new Error(
+        `fromConsensusEntry: missing or invalid key "dims.${key}" (expected Problem/Fine/Unsure).`
+      )
+    }
+  }
+  const sceneIdRaw = record['sceneId']
+  if (typeof sceneIdRaw !== 'string' || sceneIdRaw.length === 0) {
+    throw new Error('fromConsensusEntry: missing key "sceneId".')
+  }
+  const noteRaw = record['note']
+  const note = typeof noteRaw === 'string' ? noteRaw : ''
+  return {
+    sceneId: sceneIdRaw,
+    overall: overall as OverallMark,
+    dims: {
+      continuity: dimsRecord['continuity'] as DimensionMark,
+      voice: dimsRecord['voice'] as DimensionMark,
+      show_tell: dimsRecord['show_tell'] as DimensionMark,
+      pacing: dimsRecord['pacing'] as DimensionMark,
+      emotional_goal: dimsRecord['emotional_goal'] as DimensionMark
+    },
+    note
+  }
+}
+
+/** Deterministic mulberry32 PRNG (seeded; pure, no global state). */
+function mulberry32(seed: number): () => number {
+  let state = seed | 0
+  return () => {
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Task 5 — deterministic blind-control sample over hit-free scene ids.
+ *
+ * Ascending-sorts the ids (so input order cannot bias the draw), shuffles
+ * with a seeded mulberry32 PRNG (Fisher-Yates), and returns the first
+ * min(k, len) ids. Pure and deterministic across calls for the same
+ * (ids, seed, k).
+ */
+export function sampleUnflagged(sceneIds: string[], seed = 20261011, k = 10): string[] {
+  const sorted = [...sceneIds].sort()
+  const shuffled = [...sorted]
+  const rand = mulberry32(seed)
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    const tmp = shuffled[i] as string
+    shuffled[i] = shuffled[j] as string
+    shuffled[j] = tmp
+  }
+  return shuffled.slice(0, Math.min(k, shuffled.length))
+}
+
+/**
+ * Task 5 — pure calibration-report builder (dual arms, split shadow,
+ * seeded sample, schema gate above).
+ *
+ * Inputs:
+ * - scenes: normalized consensus entries plus a `humanOnly` flag each.
+ * - judge: record sceneId -> judge outputs (authoritative Option-2 label
+ *   plus the two whole-scene scores for the Option-3 shadow arms).
+ *
+ * Pure: no models, no I/O, deterministic (the unflagged sample uses the
+ * seeded PRNG above). Metric helpers (weightedKappa / wilsonCI /
+ * perClassAgreement) are imported from judgeMetrics, never reimplemented.
+ */
+
+export interface CalibrationScene {
+  sceneId: string
+  overall: OverallMark
+  dims: Record<DimensionKey, DimensionMark>
+  note: string
+  humanOnly: boolean
+}
+
+export interface JudgeOutput {
+  authoritativeLabel: DerivedLabel
+  focusedScore: number | null
+  combinedScore: number | null
+}
+
+export type JudgeRecord = Record<string, JudgeOutput>
+
+export interface CalibrationDistribution {
+  pass: number
+  revise: number
+  rewrite: number
+  lowConfidence: number
+  missingLoadBearing: number
+}
+
+export type TriggerCounts = Record<RewriteTrigger, number>
+
+export interface KeepWithProblemReport {
+  count: number
+  sceneIds: string[]
+}
+
+export type MappingDirection = 'rebuild-on-revise' | 'fix-on-rewrite'
+
+export interface MappingHit {
+  sceneId: string
+  direction: MappingDirection
+  phrase: string
+}
+
+export interface MappingReviewReport {
+  hits: MappingHit[]
+  unflaggedSample: Array<{ sceneId: string }>
+}
+
+export interface DualArmReport {
+  n: number
+  weightedKappa: number
+  agreement95: [number, number]
+  perClass: Record<string, { agreement: number; support: number }>
+}
+
+export interface DualHumanOnlyReport extends DualArmReport {
+  descriptiveOnly: true
+}
+
+export interface DualReport {
+  reviewer: DualArmReport
+  humanOnly: DualHumanOnlyReport
+}
+
+export interface ShadowArmReport {
+  n: number
+  matches: number
+  agreement: number
+  agreement95: [number, number]
+  excluded: number
+}
+
+export interface ShadowReport {
+  focused: ShadowArmReport
+  combined: ShadowArmReport
+}
+
+export interface TriggerAgreement {
+  rate: number
+  support: number
+  ci: [number, number]
+}
+
+export type RewriteByTriggerReport = Record<RewriteTrigger, TriggerAgreement>
+
+export interface CalibrationReport {
+  distribution: CalibrationDistribution
+  triggers: TriggerCounts
+  keepWithProblem: KeepWithProblemReport
+  mappingReview: MappingReviewReport
+  dual: DualReport
+  shadow: ShadowReport
+  rewriteByTrigger: RewriteByTriggerReport
+  notes: string[]
+}
+
+const CALIBRATION_CLASSES: [string, string, string] = ['pass', 'revise', 'rewrite']
+
+const CALIBRATION_TRIGGERS: RewriteTrigger[] = ['continuity-only', 'voice-only', 'both']
+
+export const CALIBRATION_NOTES: string[] = [
+  'Judge continuity is binary (8 = clean, 3 = verified contradiction); it cannot produce a continuity-driven revise — shadow-arm revises come from other dimensions or the mean.',
+  'Human-only arm is descriptive only with Wilson 95% CIs; it carries no pass/fail claims (n is too small for a powered claim).',
+  'Shadow comparison is pass/not-pass only; null scores are excluded per arm independently, never pooled.'
+]
+
+function findHitPhrase(
+  derived: DerivedLabel,
+  note: string
+): { direction: MappingDirection; phrase: string } | null {
+  if (derived === 'revise') {
+    const match = REBUILD_RE.exec(note)
+    if (match) {
+      return { direction: 'rebuild-on-revise', phrase: match[0] }
+    }
+    return null
+  }
+  if (derived === 'rewrite') {
+    const fixMatch = FIX_RE.exec(note)
+    if (fixMatch) {
+      return { direction: 'fix-on-rewrite', phrase: fixMatch[0] }
+    }
+    const polishMatch = POLISH_VERB_RE.exec(note)
+    if (polishMatch) {
+      return { direction: 'fix-on-rewrite', phrase: polishMatch[0] }
+    }
+    return null
+  }
+  return null
+}
+
+function buildDualArm(
+  derivedLabels: string[],
+  judgeLabels: string[]
+): {
+  n: number
+  weightedKappa: number
+  agreement95: [number, number]
+  perClass: Record<string, { agreement: number; support: number }>
+} {
+  const n = derivedLabels.length
+  if (n === 0) {
+    return {
+      n: 0,
+      weightedKappa: NaN,
+      agreement95: wilsonCI(0, 0),
+      perClass: {
+        pass: { agreement: NaN, support: 0 },
+        revise: { agreement: NaN, support: 0 },
+        rewrite: { agreement: NaN, support: 0 }
+      }
+    }
+  }
+  let matches = 0
+  for (let i = 0; i < n; i++) {
+    if (derivedLabels[i] === judgeLabels[i]) {
+      matches++
+    }
+  }
+  return {
+    n,
+    weightedKappa: weightedKappa(derivedLabels, judgeLabels, CALIBRATION_CLASSES),
+    agreement95: wilsonCI(matches, n),
+    perClass: perClassAgreement(derivedLabels, judgeLabels, [...CALIBRATION_CLASSES])
+  }
+}
+
+function buildShadowArm(
+  scenes: CalibrationScene[],
+  judge: JudgeRecord,
+  pickScore: (output: JudgeOutput) => number | null
+): ShadowArmReport {
+  let n = 0
+  let matches = 0
+  let excluded = 0
+  for (const scene of scenes) {
+    const output = judge[scene.sceneId]
+    if (output === undefined) {
+      excluded++
+      continue
+    }
+    const shadowLabel = wholeSceneScoreLabel(pickScore(output))
+    if (shadowLabel === 'excluded') {
+      excluded++
+      continue
+    }
+    n++
+    const authoritativePass = output.authoritativeLabel === 'pass'
+    const shadowPass = shadowLabel === 'pass'
+    if (authoritativePass === shadowPass) {
+      matches++
+    }
+  }
+  return {
+    n,
+    matches,
+    agreement: n === 0 ? NaN : matches / n,
+    agreement95: wilsonCI(matches, n),
+    excluded
+  }
+}
+
+export function buildCalibrationReport(
+  scenes: CalibrationScene[],
+  judge: JudgeRecord
+): CalibrationReport {
+  const derivedByScene = scenes.map((scene) => ({
+    sceneId: scene.sceneId,
+    note: scene.note,
+    humanOnly: scene.humanOnly,
+    result: deriveLabel({ overall: scene.overall, dims: scene.dims, note: scene.note })
+  }))
+
+  const distribution: CalibrationDistribution = {
+    pass: 0,
+    revise: 0,
+    rewrite: 0,
+    lowConfidence: 0,
+    missingLoadBearing: 0
+  }
+  const triggers: TriggerCounts = {
+    'continuity-only': 0,
+    'voice-only': 0,
+    both: 0
+  }
+  const keepSceneIds: string[] = []
+  for (const entry of derivedByScene) {
+    distribution[entry.result.label]++
+    if (entry.result.lowConfidence) {
+      distribution.lowConfidence++
+    }
+    if (entry.result.missingLoadBearing) {
+      distribution.missingLoadBearing++
+    }
+    if (entry.result.label === 'rewrite' && entry.result.trigger !== undefined) {
+      triggers[entry.result.trigger]++
+    }
+    if (entry.result.keepWithProblem) {
+      keepSceneIds.push(entry.sceneId)
+    }
+  }
+
+  const hits: MappingHit[] = []
+  for (const entry of derivedByScene) {
+    if (detectMappingReview(entry.result.label, entry.note)) {
+      const found = findHitPhrase(entry.result.label, entry.note)
+      hits.push({
+        sceneId: entry.sceneId,
+        direction: entry.result.label === 'revise' ? 'rebuild-on-revise' : 'fix-on-rewrite',
+        phrase: found !== null ? found.phrase : ''
+      })
+    }
+  }
+  const hitIds = new Set(hits.map((hit) => hit.sceneId))
+  const hitFreeIds = scenes.map((scene) => scene.sceneId).filter((sceneId) => !hitIds.has(sceneId))
+  const mappingReview: MappingReviewReport = {
+    hits,
+    unflaggedSample: sampleUnflagged(hitFreeIds).map((sceneId) => ({ sceneId }))
+  }
+
+  const derivedLabels = derivedByScene.map((entry) => entry.result.label)
+  const judgeLabels = scenes.map((scene) => {
+    const output = judge[scene.sceneId]
+    if (output === undefined) {
+      throw new Error(`buildCalibrationReport: missing judge output for "${scene.sceneId}".`)
+    }
+    return output.authoritativeLabel
+  })
+  const reviewer = buildDualArm(derivedLabels, judgeLabels)
+
+  const humanScenes = scenes.filter((scene) => scene.humanOnly)
+  const humanDerived = derivedByScene
+    .filter((entry) => humanScenes.some((scene) => scene.sceneId === entry.sceneId))
+    .map((entry) => entry.result.label)
+  const humanJudge = humanScenes.map((scene) => {
+    const output = judge[scene.sceneId]
+    if (output === undefined) {
+      throw new Error(`buildCalibrationReport: missing judge output for "${scene.sceneId}".`)
+    }
+    return output.authoritativeLabel
+  })
+  const humanArm = buildDualArm(humanDerived, humanJudge)
+  const dual: DualReport = {
+    reviewer,
+    humanOnly: { ...humanArm, descriptiveOnly: true as const }
+  }
+
+  const shadow: ShadowReport = {
+    focused: buildShadowArm(scenes, judge, (output) => output.focusedScore),
+    combined: buildShadowArm(scenes, judge, (output) => output.combinedScore)
+  }
+
+  const rewriteByTrigger: RewriteByTriggerReport = {
+    'continuity-only': { rate: NaN, support: 0, ci: wilsonCI(0, 0) },
+    'voice-only': { rate: NaN, support: 0, ci: wilsonCI(0, 0) },
+    both: { rate: NaN, support: 0, ci: wilsonCI(0, 0) }
+  }
+  for (const trigger of CALIBRATION_TRIGGERS) {
+    const triggerScenes = derivedByScene.filter(
+      (entry) => entry.result.label === 'rewrite' && entry.result.trigger === trigger
+    )
+    const support = triggerScenes.length
+    let matches = 0
+    for (const entry of triggerScenes) {
+      const output = judge[entry.sceneId]
+      if (output !== undefined && output.authoritativeLabel === 'rewrite') {
+        matches++
+      }
+    }
+    rewriteByTrigger[trigger] = {
+      rate: support === 0 ? NaN : matches / support,
+      support,
+      ci: wilsonCI(matches, support)
+    }
+  }
+
+  return {
+    distribution,
+    triggers,
+    keepWithProblem: { count: keepSceneIds.length, sceneIds: keepSceneIds },
+    mappingReview,
+    dual,
+    shadow,
+    rewriteByTrigger,
+    notes: [...CALIBRATION_NOTES]
+  }
 }
