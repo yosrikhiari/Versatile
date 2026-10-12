@@ -449,8 +449,10 @@ export class SyncTransport {
     fallbackStoryApiId: string | null,
     db: any,
     findSyncConfig: FindSyncConfig
-  ): Promise<void> {
+  ): Promise<{ deleted: number; failed: number }> {
     const deletions = await db.pendingDeletions.toArray()
+    let deleted = 0
+    let failed = 0
     for (const del of deletions) {
       const config = findSyncConfig(del.table)
       if (!config) continue
@@ -460,13 +462,19 @@ export class SyncTransport {
         const resolved = this.resolveEndpoint(config, storyApiId!)
         await this.withRetry(() => this._api(`${resolved}/${del.apiId}`, { method: 'DELETE' }))
         await db.pendingDeletions.where('id').equals(del.id).delete()
+        deleted++
       } catch (err) {
+        // A rejected delete stays queued and counts as failed: swallowing it
+        // here retries every cycle forever with nothing visible (F11). The
+        // row is never dropped — only a confirmed DELETE removes it.
         console.warn(
           `[SyncTransport] Delete failed ${del.table}:${del.apiId}`,
           (err as Error).message
         )
+        failed++
       }
     }
+    return { deleted, failed }
   }
 
   /**

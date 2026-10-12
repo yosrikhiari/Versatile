@@ -268,7 +268,14 @@ class SyncEngine {
 
     try {
       const fallback = await this._idMap.resolveStoryApiId()
-      await this._transport.pushDeletions(fallback, db, findSyncConfig)
+      const { failed } = await this._transport.pushDeletions(fallback, db, findSyncConfig)
+      if (failed > 0) {
+        anyFailed = true
+        this._failedTables.add('deletions')
+        syncStatus.lastError = `Push deletions failed — ${failed} row(s) still queued`
+      } else {
+        this._failedTables.delete('deletions')
+      }
     } catch (err) {
       anyFailed = true
       console.error('[SyncEngine] Push deletions failed:', (err as Error).message)
@@ -379,6 +386,12 @@ class SyncEngine {
       const tables = [...this._failedTables]
       for (const tableName of tables) {
         try {
+          if (tableName === 'deletions') {
+            const fallback = await this._idMap.resolveStoryApiId()
+            const { failed } = await this._transport.pushDeletions(fallback, db, findSyncConfig)
+            if (failed === 0) this._failedTables.delete(tableName)
+            continue
+          }
           const { failed } = await this._transport.pushTable(
             tableName,
             this._idMap,

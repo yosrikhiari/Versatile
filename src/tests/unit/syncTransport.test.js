@@ -456,6 +456,32 @@ describe('SyncTransport fail-loud failure semantics (F9/F10)', () => {
     expect(rows).toEqual([{ id: 'a' }, { id: 'b' }])
   })
 
+  it('F11: pushDeletions reports counts and drops only confirmed deletes', async () => {
+    const queued = new Map([
+      ['d1', { id: 'd1', table: 'characters', apiId: 'srv-gone', storyApiId: 'story-1' }],
+      ['d2', { id: 'd2', table: 'characters', apiId: 'srv-stuck', storyApiId: 'story-1' }]
+    ])
+    const db = new Proxy(
+      {},
+      {
+        get: () => ({
+          toArray: async () => [...queued.values()],
+          where: () => ({ equals: (id) => ({ delete: async () => void queued.delete(id) }) })
+        })
+      }
+    )
+    const api = async (url) => {
+      if (url.endsWith('/srv-gone')) return {}
+      throw Object.assign(new Error('gone'), { status: 404 })
+    }
+    const result = await new SyncTransport(api).pushDeletions('story-1', db, () => CONFIG)
+
+    // The confirmed delete leaves the queue; the 404 stays queued and is
+    // counted — never swallowed by console.warn alone.
+    expect(result).toEqual({ deleted: 1, failed: 1 })
+    expect([...queued.keys()]).toEqual(['d2'])
+  })
+
   it('F10: fetchAll warns loudly when it hits the page cap', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
