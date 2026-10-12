@@ -3,7 +3,7 @@ import { db } from '@/services/db-core'
 
 vi.mock('@/services/api', () => ({
   api: async () => {
-    throw Object.assign(new Error('gone'), { status: 404 })
+    throw Object.assign(new Error('forbidden'), { status: 403 })
   },
   hasToken: () => true
 }))

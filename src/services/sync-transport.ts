@@ -464,9 +464,21 @@ export class SyncTransport {
         await db.pendingDeletions.where('id').equals(del.id).delete()
         deleted++
       } catch (err) {
-        // A rejected delete stays queued and counts as failed: swallowing it
-        // here retries every cycle forever with nothing visible (F11). The
-        // row is never dropped — only a confirmed DELETE removes it.
+        const { status } = err as { status?: number }
+        if (status === 404) {
+          // DELETE is idempotent: a 404 certifies the server lacks the row,
+          // which is the delete's desired end state — drop it instead of
+          // failing visibly forever for a row no user action can repair
+          // (mapping-loss phantoms).
+          console.warn(
+            `[SyncTransport] Delete already gone server-side ${del.table}:${del.apiId}, dropping`
+          )
+          await db.pendingDeletions.where('id').equals(del.id).delete()
+          deleted++
+          continue
+        }
+        // Any other rejection stays queued and counts as failed: swallowing
+        // it retries every cycle forever with nothing visible (F11).
         console.warn(
           `[SyncTransport] Delete failed ${del.table}:${del.apiId}`,
           (err as Error).message

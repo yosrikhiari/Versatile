@@ -476,10 +476,59 @@ describe('SyncTransport fail-loud failure semantics (F9/F10)', () => {
     }
     const result = await new SyncTransport(api).pushDeletions('story-1', db, () => CONFIG)
 
-    // The confirmed delete leaves the queue; the 404 stays queued and is
-    // counted — never swallowed by console.warn alone.
-    expect(result).toEqual({ deleted: 1, failed: 1 })
-    expect([...queued.keys()]).toEqual(['d2'])
+    // The confirmed delete and the already-gone delete both leave the queue;
+    // neither is swallowed, neither is left stuck.
+    expect(result).toEqual({ deleted: 2, failed: 0 })
+    expect(queued.size).toBe(0)
+  })
+
+  it('F11: pushDeletions treats a 404 as the delete end-state and drops it', async () => {
+    const queued = new Map([
+      ['d1', { id: 'd1', table: 'characters', apiId: 'srv-phantom', storyApiId: 'story-1' }]
+    ])
+    const db = new Proxy(
+      {},
+      {
+        get: () => ({
+          toArray: async () => [...queued.values()],
+          where: () => ({ equals: (id) => ({ delete: async () => void queued.delete(id) }) })
+        })
+      }
+    )
+    // DELETE is idempotent: 404 certifies the server lacks the row, which is
+    // the desired end state. Dropping avoids a visible-forever failure no
+    // user action can repair (mapping-loss phantoms). Server handlers look
+    // rows up by id under the row's own story, so a wrong-story URL with a
+    // valid apiId still deletes the right row — no guard needed.
+    const api = async () => {
+      throw Object.assign(new Error('not found'), { status: 404 })
+    }
+    const result = await new SyncTransport(api).pushDeletions('story-1', db, () => CONFIG)
+
+    expect(result).toEqual({ deleted: 1, failed: 0 })
+    expect(queued.size).toBe(0)
+  })
+
+  it('F11: pushDeletions keeps queueing genuine failures visibly', async () => {
+    const queued = new Map([
+      ['d1', { id: 'd1', table: 'characters', apiId: 'srv-denied', storyApiId: 'story-1' }]
+    ])
+    const db = new Proxy(
+      {},
+      {
+        get: () => ({
+          toArray: async () => [...queued.values()],
+          where: () => ({ equals: (id) => ({ delete: async () => void queued.delete(id) }) })
+        })
+      }
+    )
+    const api = async () => {
+      throw Object.assign(new Error('forbidden'), { status: 403 })
+    }
+    const result = await new SyncTransport(api).pushDeletions('story-1', db, () => CONFIG)
+
+    expect(result).toEqual({ deleted: 0, failed: 1 })
+    expect(queued.size).toBe(1)
   })
 
   it('F10: fetchAll warns loudly when it hits the page cap', async () => {
