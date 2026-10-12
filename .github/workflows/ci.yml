@@ -99,7 +99,9 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [lint]
+    # E2E serves the built app: running it on a tree whose unit tests or
+    # production build failed wastes 20 minutes proving nothing (F11).
+    needs: [lint, test]
 
     steps:
       - uses: actions/checkout@v4
