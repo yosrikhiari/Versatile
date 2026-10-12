@@ -10,6 +10,7 @@ import { db } from '@/services/db-core'
 const EXPECTED = {
   agentDecisions: '++id | [projectId+ts], [runId+ts], projectId, runId, ts',
   aiResponseCache: 'hash | [provider+model+temperature+feature], createdAt',
+  // v46: +analysisQueue — persistent idle-priority work queue for analysis tasks.
   analysisQueue:
     '++id | [projectId+status], createdAt, payload, projectId, status, taskType, updatedAt',
   annotations: '++id | original, paragraphIndex, projectId, reason, status, suggestion, type',
@@ -66,9 +67,6 @@ const EXPECTED = {
   // queried without it ever having been declared).
   entityStates:
     '++id | &[projectId+entityType+entityId+sceneId], [projectId+chapterNumber], [projectId+entityType+entityId], [projectId+sceneId], entityId, entityType, projectId, sceneId, stateHash, updatedAt',
-  // v46: +analysisQueue — persistent idle-priority work queue for analysis tasks.
-  analysisQueue:
-    '++id | [projectId+status], createdAt, payload, projectId, status, taskType, updatedAt',
   projects:
     '++id | apiId, createdAt, genre, lastSyncedAt, name, syncStatus, synopsis, updatedAt, userId',
   researchChunks:
@@ -98,9 +96,7 @@ const EXPECTED = {
   volumeEntities:
     '++id | &[volumeId+entityType+entityId], apiId, assignedAt, entityId, entityType, isPrimary, lastSyncedAt, syncStatus, volumeId',
   volumes:
-    '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title',
-  volumeDigests:
-    '++id | &[projectId+branchId+volumeId], [projectId+volumeId], branchId, contentHash, projectId, updatedAt, volumeId'
+    '++id | apiId, chapterIds, color, description, lastSyncedAt, projectId, syncStatus, title'
 }
 
 describe('resolved Dexie schema', () => {
