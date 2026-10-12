@@ -26,6 +26,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -38,6 +39,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   api:
     build:
@@ -95,7 +97,7 @@ services:
     profiles: ['frontend']
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     ports:
       - '8080:80'
     restart: unless-stopped
@@ -111,6 +113,14 @@ services:
     ports:
       - '11434:11434'
     restart: unless-stopped
+    # Nothing gates on ollama health; this only surfaces daemon state in
+    # `docker ps` (model loads are slow, hence the long start period).
+    healthcheck:
+      test: ['CMD', 'ollama', 'list']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   pgdata:
