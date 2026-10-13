@@ -7,6 +7,22 @@ was verified.
 
 ## [Unreleased]
 
+### P2-F11 hygiene round (2026-10-13)
+- **Delete tracking**: `pushDeletions` returns `{deleted, failed}`; engine
+  mirrors the table pattern with a `'deletions'` failedTables entry (badge
+  error state, 5s retry, auto-clear, stamp blocked). 404 on DELETE drops the
+  queue row as the idempotent end-state — server handlers scope by the row's
+  own story, so the fallback guard is unnecessary (investigated, cut).
+- **EXPECTED dedupe** in dbSchema.test (identical values, no behavior change).
+- **Compose**: `restart: unless-stopped` on postgres/redis, frontend gates on
+  api `service_healthy`, ollama healthcheck (`docker compose config` green).
+- **CI**: e2e now `needs: [lint, test]` (YAML parsed, gate verified).
+- **Docs counts** refreshed to measured 335 files / ≈3,590 tests.
+- Deferred with rationale: per-endpoint auth limiter (WAF partition flake
+  risk; global 100/min + PBKDF2 stand), retry-order (transient, self-heals).
+- Verified: 41/41 sync tests; typecheck/policy/lint clean; full suites green
+  (backend 1,094/0, frontend 3,581/0).
+
 ### Sync fail-loud fixes F9/F10 (2026-10-11)
 - **F9**: mapping-less `pending-update` rows now fail visibly (`pushOne`
   returns `false`; batched path excludes them from server chunks and counts
