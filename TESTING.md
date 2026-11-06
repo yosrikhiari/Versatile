@@ -74,14 +74,17 @@ Config: `playwright.config.js` (Chromium only; CI installs it with
 `npx playwright install --with-deps chromium`). Specs in `e2e/`: `smoke`,
 `auth`, `responsive`, `panel-dock` (right-docked panels, canvas dominant),
 `generator-survives-panels` (run options set in the Generator panel survive
-a trip to another panel), `generator-reskin` and `agents-panel` (the Agents
+a trip to another panel), `generator-reskin`, `agents-panel` (the Agents
 panel: orchestrator switch reveals the empty state, the tracing switch
 toggles, a second GPU model shows the eviction error while editing and the
-CPU device clears it — skipped when Ollama serves only one model). Latest
-verified run: 11 passed / 1 skipped after installing Chromium; the
-`agents-panel` eviction case self-skips without a second local model. Full
-user journeys are covered by mocked pipeline tests in
-`src/tests/unit/e2ePipelineIntegration.test.js` instead.
+CPU device clears it — skipped when Ollama serves only one model) and
+`human-review` (import a generated 12-scene pack, complete two anonymous
+rater sessions and verify both exported JSON files). Latest verified run:
+**13 passed** with `--workers=1` after installing Chromium; the `agents-panel`
+eviction case self-skips without a second local model. The project-creation
+specs collide when run fully parallel against one browser origin, so use one
+worker locally as CI does. Full user journeys are covered by mocked pipeline
+tests in `src/tests/unit/e2ePipelineIntegration.test.js` instead.
 
 ## Real-model runs (manual QA)
 
