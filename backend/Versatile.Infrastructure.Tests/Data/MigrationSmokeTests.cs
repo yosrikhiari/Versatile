@@ -30,7 +30,9 @@ public class MigrationSmokeTests
         "AddSyncTombstones",
         "AddMissingTenantPolicies",
         "AddTenantEnableRls",
-        "AddSceneLabels"
+        "AddSceneLabels",
+        "ProtectSceneLabelsWithRls",
+        "AddSceneLabelSubsectionId"
     ];
 
     /// <summary>
@@ -52,7 +54,9 @@ public class MigrationSmokeTests
         "20261009100214_AddSyncTombstones",
         "20261011092950_AddMissingTenantPolicies",
         "20261011093725_AddTenantEnableRls",
-        "20261011102400_AddSceneLabels"
+        "20261011102400_AddSceneLabels",
+        "20261105160000_ProtectSceneLabelsWithRls",
+        "20261106064742_AddSceneLabelSubsectionId"
     ];
 
     [Fact]
@@ -106,6 +110,45 @@ public class MigrationSmokeTests
         tables.Should().Contain("Branches");
         tables.Should().NotContain("SyncTombstones");
         tables.Should().NotContain("ResearchNotes");
+    }
+
+    [Fact]
+    public void SceneLabelsRlsMigration_EnablesForcesAndScopesTheTenantPolicy()
+    {
+        var migrationType = GetMigrationTypes().Single(t => t.Name == "ProtectSceneLabelsWithRls");
+        var migration = (Migration)Activator.CreateInstance(migrationType)!;
+        var up = migrationType.GetMethod("Up", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var builder = new MigrationBuilder("Npgsql.EntityFrameworkCore.PostgreSQL");
+
+        up.Invoke(migration, [builder]);
+
+        var sql = string.Join("\n", builder.Operations
+            .OfType<Microsoft.EntityFrameworkCore.Migrations.Operations.SqlOperation>()
+            .Select(operation => operation.Sql));
+        sql.Should().Contain("ALTER TABLE \"SceneLabels\" ENABLE ROW LEVEL SECURITY");
+        sql.Should().Contain("ALTER TABLE \"SceneLabels\" FORCE ROW LEVEL SECURITY");
+        sql.Should().Contain("CREATE POLICY tenant_isolation ON \"SceneLabels\"");
+        sql.Should().Contain("current_setting('app.organization_id', true)::uuid");
+    }
+
+    [Fact]
+    public void AddSceneLabelSubsectionId_AddsANullableStableSceneColumn()
+    {
+        var migrationType = GetMigrationTypes().Single(t => t.Name == "AddSceneLabelSubsectionId");
+        var migration = (Migration)Activator.CreateInstance(migrationType)!;
+        var up = migrationType.GetMethod("Up", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var builder = new MigrationBuilder("Npgsql.EntityFrameworkCore.PostgreSQL");
+
+        up.Invoke(migration, [builder]);
+
+        var column = builder.Operations
+            .OfType<Microsoft.EntityFrameworkCore.Migrations.Operations.AddColumnOperation>()
+            .Single();
+        column.Name.Should().Be("SubsectionId");
+        column.Table.Should().Be("SceneLabels");
+        // AddColumn<Guid>(nullable: true): the CLR type is Guid, the column is nullable.
+        column.ClrType.Should().Be(typeof(Guid));
+        column.IsNullable.Should().BeTrue("legacy title-labelled rows have no subsection id");
     }
 
     [Fact]

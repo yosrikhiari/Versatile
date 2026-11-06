@@ -6,6 +6,7 @@ namespace Versatile.Application.SceneLabels.Commands;
 
 public record UpsertSceneLabelCommand(
     Guid StoryId,
+    Guid? SubsectionId,
     string SceneTitle,
     string ReviewerName,
     string OverallLabel,

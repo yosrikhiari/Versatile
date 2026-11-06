@@ -242,7 +242,7 @@ function sha256Rotr(x: number, n: number): number {
 }
 
 /** SHA-256 hex digest (FIPS 180-4) over the UTF-8 bytes of `message`. */
-function sha256Hex(message: string): string {
+export function sha256Hex(message: string): string {
   const data = new TextEncoder().encode(message)
   const bitLengthHigh = Math.floor(data.length / 0x20000000)
   const bitLengthLow = (data.length << 3) >>> 0
@@ -497,6 +497,11 @@ export interface MappingHit {
 }
 
 export interface MappingReviewReport {
+  /** Revise-labeled v1 scenes hashed into SET-A (the detection set). */
+  setASceneIds: string[]
+  /** Revise-labeled v1 scenes hashed into SET-B (reserved for validation). */
+  setBSceneIds: string[]
+  setAReviseCount: number
   hits: MappingHit[]
   unflaggedSample: Array<{ sceneId: string }>
 }
@@ -688,6 +693,7 @@ export function buildCalibrationReport(
 
   const derivedByScene = normalized.map((entry) => ({
     sceneId: entry.sceneId,
+    overall: entry.passA.overall,
     note: entry.passA.note,
     humanOnly: entry.humanOnly,
     result: deriveLabel({
@@ -726,8 +732,17 @@ export function buildCalibrationReport(
     }
   }
 
+  // The mapping trigger and blind-control sample are confined to SET-A, the
+  // pre-registered detection split. SET-B is disclosed only as a reserved
+  // scene-ID list; it must not be inspected to motivate a mapping change.
+  const reviseIds = normalized
+    .filter((entry) => entry.passA.overall === 'Revise')
+    .map((entry) => entry.sceneId)
+  const heldOut = splitHeldOut(reviseIds.map((sceneId) => ({ sceneId })))
+  const setAIds = new Set(heldOut.setA)
   const hits: MappingHit[] = []
   for (const entry of derivedByScene) {
+    if (entry.overall !== 'Revise' || !setAIds.has(entry.sceneId)) continue
     if (detectMappingReview(entry.result.label, entry.note)) {
       const found = findHitPhrase(entry.result.label, entry.note)
       hits.push({
@@ -738,8 +753,11 @@ export function buildCalibrationReport(
     }
   }
   const hitIds = new Set(hits.map((hit) => hit.sceneId))
-  const hitFreeIds = scenes.map((scene) => scene.sceneId).filter((sceneId) => !hitIds.has(sceneId))
+  const hitFreeIds = heldOut.setA.filter((sceneId) => !hitIds.has(sceneId))
   const mappingReview: MappingReviewReport = {
+    setASceneIds: heldOut.setA,
+    setBSceneIds: heldOut.setB,
+    setAReviseCount: heldOut.setA.length,
     hits,
     unflaggedSample: sampleUnflagged(hitFreeIds).map((sceneId) => ({ sceneId }))
   }

@@ -1095,6 +1095,9 @@ namespace Versatile.Infrastructure.Migrations
                     b.Property<Guid>("StoryId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SubsectionId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 

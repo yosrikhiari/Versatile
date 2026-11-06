@@ -2,21 +2,19 @@
 /**
  * P0-A judge calibration harness.
  *
- *   node tools/judge-bench/calibrate.mjs [--model qwen3:8b] [--repeat 3] [--swap]
+ *   node tools/judge-bench/calibrate.mjs                         # safe dry run
+ *   node tools/judge-bench/calibrate.mjs --run --approved \
+ *     --adjudicator-a "Name A" --adjudicator-b "Name B"
  *
  * Loads hand labels from reports/live/labelling/ (consensus.json + scenes.json),
  * runs the app's critic on each scene, and reports:
  *   - precision/recall/F1 of gate verdicts vs hand labels
- *   - Cohen's kappa between reviewer A and reviewer B
- *   - swap agreement (position consistency across presentation orders)
- *   - verbosity bias (Pearson r between score and response length)
- *
- * Acceptance criteria (from roadmap):
- *   - >=80% planted fail detection
- *   - <=10% false alarm rate
- *   - non-constant scores
- *   - swap agreement >= 0.85
- *   - |r| < 0.3
+ * The run is deliberately opt-in and requires two named human adjudicators.
+ * The consensus input must retain separate passA/passB labels; merged labels
+ * are not sufficient for the preregistered comparison. This harness reports
+ * descriptive results only: the preregistered 80% figure is a hypothesis, not
+ * an acceptance gate. It does not measure raw response verbosity because the
+ * critic API returns parsed JSON, not the provider's original response text.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
@@ -28,9 +26,38 @@ const ROOT = join(__dirname, '..', '..')
 const LAB = join(ROOT, 'reports', 'live', 'labelling')
 const CACHE = join(ROOT, 'reports', 'live', 'judge-bench')
 
-const MODEL = process.env.LIVE_MODEL || 'qwen3:8b'
-const REPEAT = Number(process.env.CALIB_REPEAT || 3)
-const RUN_SWAP = process.env.CALIB_SWAP === '1'
+const ARGS = process.argv.slice(2)
+const MODEL = optionValue('--model') || process.env.LIVE_MODEL || 'qwen3:8b'
+const REPEAT = Number(optionValue('--repeat') || process.env.CALIB_REPEAT || 3)
+
+function optionValue(name) {
+  const prefix = `${name}=`
+  const inline = ARGS.find((arg) => arg.startsWith(prefix))
+  if (inline) return inline.slice(prefix.length)
+  const index = ARGS.indexOf(name)
+  return index >= 0 ? ARGS[index + 1] : null
+}
+
+function adjudicators() {
+  return [optionValue('--adjudicator-a'), optionValue('--adjudicator-b')]
+    .map((name) => name?.trim())
+    .filter(Boolean)
+}
+
+function assertRunApproval() {
+  if (!ARGS.includes('--run')) return false
+  const names = adjudicators()
+  if (
+    !ARGS.includes('--approved') ||
+    names.length !== 2 ||
+    names[0].toLowerCase() === names[1].toLowerCase()
+  ) {
+    throw new Error(
+      'Calibration is gated: pass --approved and two distinct named human adjudicators via --adjudicator-a/--adjudicator-b only after the preregistered blinded review is complete.'
+    )
+  }
+  return true
+}
 
 function loadJson(path) {
   return JSON.parse(readFileSync(path, 'utf-8'))
@@ -62,25 +89,11 @@ function cohensKappa(a, b) {
   return (po - pe) / (1 - pe)
 }
 
-function pearsonR(xs, ys) {
-  const n = xs.length
-  const meanX = xs.reduce((s, x) => s + x, 0) / n
-  const meanY = ys.reduce((s, y) => s + y, 0) / n
-  let cov = 0, varX = 0, varY = 0
-  for (let i = 0; i < n; i++) {
-    cov += (xs[i] - meanX) * (ys[i] - meanY)
-    varX += (xs[i] - meanX) ** 2
-    varY += (ys[i] - meanY) ** 2
-  }
-  if (varX === 0 || varY === 0) return NaN
-  return cov / Math.sqrt(varX * varY)
-}
-
 async function runCritic(scene, brief, facts) {
   const { useStoryCritic } = await import(join(ROOT, 'src', 'composables', 'useStoryCritic.ts'))
   const critic = useStoryCritic()
   const result = await critic.evaluateScene({
-    scene,
+    draft: scene,
     sceneBrief: brief,
     storyBible: facts.join('\n'),
     workspaceType: 'creative'
@@ -88,7 +101,36 @@ async function runCritic(scene, brief, facts) {
   return result
 }
 
+const LOAD_BEARING_SCORE_FLOOR = 7
+
+function judgeClass(result) {
+  if (!result || result.evalUnavailable || typeof result.pass !== 'boolean') return null
+  if (result.pass) return 'pass'
+
+  const scores = result.dimensionScores || {}
+  const failedLoadBearingScore = ['continuity', 'voice'].some(
+    (dimension) =>
+      Number.isFinite(scores[dimension]) && scores[dimension] < LOAD_BEARING_SCORE_FLOOR
+  )
+  const majorLoadBearingIssue = (result.majorIssueTypes || []).some((type) =>
+    ['continuity', 'voice'].includes(type)
+  )
+  return failedLoadBearingScore || majorLoadBearingIssue ? 'rewrite' : 'revise'
+}
+
 async function main() {
+  if (ARGS.includes('--help')) {
+    console.log(
+      'Safe dry run by default. To execute a preregistered run, pass --run --approved --adjudicator-a NAME --adjudicator-b NAME.'
+    )
+    return
+  }
+  if (!assertRunApproval()) {
+    console.log('Calibration dry run only: no labels loaded and no model calls made.')
+    console.log('A live run requires explicit approval and two distinct named human adjudicators.')
+    return
+  }
+
   const scenesPath = join(LAB, 'scenes.json')
   const consensusPath = join(LAB, 'claude-labels', 'consensus.json')
 
@@ -116,6 +158,17 @@ async function main() {
     process.exit(1)
   }
 
+  const missingPasses = labeledScenes.filter((scene) => {
+    const entry = consensusMap[scene.id]
+    return !entry?.passA || !entry?.passB
+  })
+  if (missingPasses.length > 0) {
+    throw new Error(
+      `Calibration blocked: ${missingPasses.length} labeled scenes lack separate passA/passB annotations. ` +
+        'Do not analyze merged consensus as independent reviewer evidence.'
+    )
+  }
+
   // P0-A wiring (I/O shell only): dynamic import AFTER the data-presence
   // check — vite-node resolves TS for the validation run, while the
   // plain-node empty-data dry run never reaches here.
@@ -124,23 +177,42 @@ async function main() {
     deriveLabel,
     detectMappingReview,
     splitHeldOut,
-    wholeSceneScoreLabel,
     sampleUnflagged,
     buildCalibrationReport
   } = await import(join(ROOT, 'src', 'evaluation', 'labelDerivation.ts'))
 
   // Pre-run summary over hand labels only (no judge calls).
-  const calibrationInputs = labeledScenes.map((s) => {
-    const raw = consensusMap[s.id]
-    const norm = fromConsensusEntry(raw)
-    return { ...norm, humanOnly: Boolean(raw.humanOnly) }
+  const normalizePass = (sceneId, pass) => fromConsensusEntry({ ...pass, sceneId })
+  const calibrationInputs = labeledScenes.map((scene) => {
+    const raw = consensusMap[scene.id]
+    const passA = normalizePass(scene.id, raw.passA)
+    const passB = normalizePass(scene.id, raw.passB)
+    const adjudicated = raw.adjudicated ? normalizePass(scene.id, raw.adjudicated) : null
+    return {
+      sceneId: scene.id,
+      overall: passA.overall,
+      dims: passA.dims,
+      note: passA.note,
+      humanOnly: Boolean(raw.humanOnly),
+      passA: { overall: passA.overall, dims: passA.dims, note: passA.note },
+      passB: { overall: passB.overall, dims: passB.dims, note: passB.note },
+      ...(adjudicated
+        ? {
+            adjudicated: {
+              overall: adjudicated.overall,
+              dims: adjudicated.dims,
+              note: adjudicated.note
+            }
+          }
+        : {})
+    }
   })
 
   const derivedList = calibrationInputs.map((e) => ({
     sceneId: e.sceneId,
     overall: e.overall,
     note: e.note,
-    result: deriveLabel({ overall: e.overall, dims: e.dims, note: e.note })
+    result: deriveLabel({ overall: e.passA.overall, dims: e.passA.dims, note: e.passA.note })
   }))
 
   const derivedCounts = { pass: 0, revise: 0, rewrite: 0 }
@@ -153,17 +225,18 @@ async function main() {
   }
 
   const reviseSceneIds = calibrationInputs
-    .filter((e) => e.overall === 'Revise')
+    .filter((e) => e.passA.overall === 'Revise')
     .map((e) => e.sceneId)
+  const heldOut = splitHeldOut(reviseSceneIds.map((sceneId) => ({ sceneId })))
+  const setAIds = new Set(heldOut.setA)
   const mappingHitIds = []
   for (const d of derivedList) {
-    if (d.overall !== 'Revise') continue
+    if (d.overall !== 'Revise' || !setAIds.has(d.sceneId)) continue
     if (detectMappingReview(d.result.label, d.note)) mappingHitIds.push(d.sceneId)
   }
 
-  const heldOut = splitHeldOut(reviseSceneIds.map((sceneId) => ({ sceneId })))
   const hitSet = new Set(mappingHitIds)
-  const hitFreeIds = calibrationInputs.map((e) => e.sceneId).filter((id) => !hitSet.has(id))
+  const hitFreeIds = heldOut.setA.filter((id) => !hitSet.has(id))
   const unflaggedSample = sampleUnflagged(hitFreeIds)
 
   console.log('\n=== Pre-run summary (hand labels only, no judge calls) ===')
@@ -177,25 +250,28 @@ async function main() {
     `Keep-with-Problem: count=${keepWithProblemIds.length}${keepWithProblemIds.length ? ' ids=' + keepWithProblemIds.join(',') : ''}`
   )
   console.log(
-    `Mapping-review hits: count=${mappingHitIds.length}${mappingHitIds.length ? ' ids=' + mappingHitIds.join(',') : ''}`
+    `Mapping-review SET-A candidates: count=${mappingHitIds.length}${mappingHitIds.length ? ' ids=' + mappingHitIds.join(',') : ''}`
   )
-  console.log(`SET-A/SET-B (Revise split): SET-A=${heldOut.setA.length} SET-B=${heldOut.setB.length}`)
-  console.log(`Unflagged sample: size=${unflaggedSample.length}`)
+  console.log(
+    `SET-A/SET-B (Revise split): SET-A=${heldOut.setA.length} SET-B=${heldOut.setB.length}`
+  )
+  console.log(`Unflagged SET-A sample: size=${unflaggedSample.length}`)
 
   console.log(`Calibrating judge on ${labeledScenes.length} labelled scenes`)
   console.log(`Model: ${MODEL}, Repeat: ${REPEAT}`)
 
   mkdirSync(CACHE, { recursive: true })
-  const cachePath = join(CACHE, `calibrate-${MODEL.replace(/:/g, '-')}.json`)
+  const cachePath = join(CACHE, `calibrate-p0a-v2-${MODEL.replace(/:/g, '-')}.json`)
   let cache = {}
   try {
     cache = loadJson(cachePath)
   } catch {}
 
   const results = []
+  let excludedJudgeResults = 0
   for (const scene of labeledScenes) {
-    const label = consensusMap[scene.id]
-    const cacheKey = `${scene.id}-${MODEL}`
+    const label = calibrationInputs.find((entry) => entry.sceneId === scene.id)
+    const cacheKey = `p0a-v2-${scene.id}-${MODEL}`
 
     if (cache[cacheKey]) {
       results.push({ scene, label, judge: cache[cacheKey] })
@@ -206,36 +282,91 @@ async function main() {
     for (let i = 0; i < REPEAT; i++) {
       try {
         const result = await runCritic(scene.prose, scene.brief, scene.facts)
-        judgeResults.push(result)
+        if (
+          result &&
+          !result.evalUnavailable &&
+          typeof result.pass === 'boolean' &&
+          Number.isFinite(result.score) &&
+          Object.values(result.dimensionScores || {}).some(Number.isFinite)
+        ) {
+          judgeResults.push(result)
+        } else {
+          console.warn(`  [${scene.id}] attempt ${i} excluded: critic returned no usable verdict`)
+        }
       } catch (e) {
         console.error(`  [${scene.id}] attempt ${i} failed: ${e.message}`)
       }
     }
 
-    if (judgeResults.length === 0) continue
+    if (judgeResults.length === 0) {
+      excludedJudgeResults++
+      continue
+    }
 
-    const avgScore =
-      judgeResults.reduce((s, r) => s + (r.score || 0), 0) / judgeResults.length
-    const anyFail = judgeResults.some((r) => r.pass === false)
-    const responseLength = judgeResults.reduce(
-      (s, r) => s + (r.issues?.length || 0),
-      0
+    const focusedModes = new Set(
+      judgeResults.map((result) => Array.isArray(result.advisoryDimensions))
     )
+    if (focusedModes.size !== 1) {
+      excludedJudgeResults++
+      console.warn(`  [${scene.id}] excluded: focused/combined critic mode changed between repeats`)
+      continue
+    }
 
-    const judge = { score: avgScore, pass: !anyFail, responseLength }
+    const avgScore = judgeResults.reduce((s, r) => s + r.score, 0) / judgeResults.length
+    const anyFail = judgeResults.some((r) => r.pass === false)
+    const dimensions = [
+      ...new Set(judgeResults.flatMap((r) => Object.keys(r.dimensionScores || {})))
+    ]
+    const dimensionScores = Object.fromEntries(
+      dimensions.map((dimension) => {
+        const values = judgeResults
+          .map((r) => r.dimensionScores?.[dimension])
+          .filter((value) => Number.isFinite(value))
+        return [
+          dimension,
+          values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
+        ]
+      })
+    )
+    const majorIssueTypes = [
+      ...new Set(
+        judgeResults.flatMap((r) =>
+          (r.issues || []).filter((issue) => issue?.severity === 'major').map((issue) => issue.type)
+        )
+      )
+    ]
+    const focused = focusedModes.has(true)
+
+    const judge = {
+      score: avgScore,
+      pass: !anyFail,
+      dimensionScores,
+      majorIssueTypes,
+      focused
+    }
     cache[cacheKey] = judge
     writeFileSync(cachePath, JSON.stringify(cache, null, 2))
     results.push({ scene, label, judge })
     console.log(
-      `  [${scene.id}] score=${avgScore.toFixed(1)} pass=${!anyFail} label=${label.overall}`
+      `  [${scene.id}] score=${avgScore.toFixed(1)} pass=${!anyFail} label=${label.passA.overall}`
     )
   }
 
-  // Compute metrics
-  const predicted = results.map((r) => !r.judge.pass)
-  const actual = results.map((r) => r.label.overall !== 'pass')
+  if (results.length === 0 || excludedJudgeResults > 0) {
+    throw new Error(
+      `Calibration incomplete: ${results.length} usable scene(s), ${excludedJudgeResults} excluded/unavailable; no report was written.`
+    )
+  }
 
-  let tp = 0, fp = 0, fn = 0
+  // Compare the production gate boundary to the first independent reviewer
+  // pass. Keep adjudication-label derivation separate: a binary gate cannot be
+  // described as a three-class label without the explicit mapping below.
+  const predicted = results.map((r) => !r.judge.pass)
+  const actual = results.map((r) => r.label.passA.overall === 'Revise')
+
+  let tp = 0,
+    fp = 0,
+    fn = 0
   for (let i = 0; i < predicted.length; i++) {
     if (predicted[i] && actual[i]) tp++
     else if (predicted[i]) fp++
@@ -244,101 +375,83 @@ async function main() {
   const precision = tp + fp === 0 ? 0 : tp / (tp + fp)
   const recall = tp + fn === 0 ? 0 : tp / (tp + fn)
   const f1 = precision + recall === 0 ? 0 : (2 * precision * recall) / (precision + recall)
-
+  const tn = results.length - tp - fp - fn
+  const falseAlarmRate = fp + tn === 0 ? NaN : fp / (fp + tn)
   const scores = results.map((r) => r.judge.score)
-  const responseLengths = results.map((r) => r.judge.responseLength)
-  const r = pearsonR(scores, responseLengths)
+  const meanScore = scores.reduce((sum, score) => sum + score, 0) / scores.length
+  const scoreStdDev = Math.sqrt(
+    scores.reduce((sum, score) => sum + (score - meanScore) ** 2, 0) / scores.length
+  )
 
-  const scoreVariance = scores.every((s) => s === scores[0])
-    ? 0
-    : Math.sqrt(scores.reduce((s, x) => s + (x - scores[0]) ** 2, 0) / scores.length)
-
-  // Kappa between reviewers (if individual labels available)
+  // Agreement is computed only from the two independent passes, never by
+  // falling back to the same consensus label on both sides.
   let kappa = NaN
-  const labelsA = results.map((r) => r.label.reviewerA || r.label.overall)
-  const labelsB = results.map((r) => r.label.reviewerB || r.label.overall)
-  if (labelsA.some((x) => x) && labelsB.some((x) => x)) {
+  const labelsA = results.map((r) => deriveLabel(r.label.passA).label)
+  const labelsB = results.map((r) => deriveLabel(r.label.passB).label)
+  if (labelsA.length > 0 && labelsB.length > 0) {
     kappa = cohensKappa(labelsA, labelsB)
   }
 
-  const [pLo, pHi] = wilson(tp, tp + fn)
-  const [fLo, fHi] = wilson(fp, fp + tp)
+  const [precisionLo, precisionHi] = wilson(tp, tp + fp)
+  const [recallLo, recallHi] = wilson(tp, tp + fn)
+  const [falseAlarmLo, falseAlarmHi] = wilson(fp, fp + tn)
 
   console.log('\n=== Calibration Report ===')
-  console.log(`Scenes: ${results.length}`)
-  console.log(`Precision: ${(precision * 100).toFixed(1)}% [${pLo.toFixed(1)}-${pHi.toFixed(1)}%]`)
-  console.log(`Recall:    ${(recall * 100).toFixed(1)}%`)
+  console.log(`Usable scenes: ${results.length}; excluded/unavailable: ${excludedJudgeResults}`)
+  console.log(
+    `Precision: ${(precision * 100).toFixed(1)}% [${precisionLo.toFixed(1)}-${precisionHi.toFixed(1)}%]`
+  )
+  console.log(
+    `Recall:    ${(recall * 100).toFixed(1)}% [${recallLo.toFixed(1)}-${recallHi.toFixed(1)}%]`
+  )
   console.log(`F1:        ${(f1 * 100).toFixed(1)}%`)
-  console.log(`False alarm rate: ${(fp / (fp + (results.length - tp - fn - fp))).toFixed(1)}% [${fLo.toFixed(1)}-${fHi.toFixed(1)}%]`)
-  console.log(`Score variance: ${scoreVariance.toFixed(2)} ${scoreVariance > 0 ? '(non-constant)' : '(CONSTANT - FAIL)'}`)
-  console.log(`Pearson r (score vs response length): ${r.toFixed(3)} ${Math.abs(r) < 0.3 ? '(OK)' : '(verbosity bias - FAIL)'}`)
+  console.log(
+    `False alarm rate: ${(falseAlarmRate * 100).toFixed(1)}% [${falseAlarmLo.toFixed(1)}-${falseAlarmHi.toFixed(1)}%]`
+  )
+  console.log(`Score standard deviation: ${scoreStdDev.toFixed(2)} (descriptive only)`)
   if (!isNaN(kappa)) console.log(`Cohen's kappa (reviewer A vs B): ${kappa.toFixed(3)}`)
-
-  // Acceptance checks
-  const checks = [
-    { name: 'Recall >= 80%', pass: recall >= 0.8 },
-    { name: 'False alarm <= 10%', pass: fp / Math.max(1, results.length - tp - fn) <= 0.1 },
-    { name: 'Non-constant scores', pass: scoreVariance > 0 },
-    { name: '|r| < 0.3', pass: Math.abs(r) < 0.3 }
-  ]
-  if (RUN_SWAP) {
-    checks.push({ name: 'Swap agreement >= 0.85', pass: false, note: 'Run with --swap' })
-  }
-
-  console.log('\n=== Acceptance ===')
-  let allPass = true
-  for (const c of checks) {
-    const status = c.pass ? 'PASS' : 'FAIL'
-    if (!c.pass) allPass = false
-    console.log(`  ${status}: ${c.name}${c.note ? ' (' + c.note + ')' : ''}`)
-  }
 
   const report = {
     timestamp: new Date().toISOString(),
     model: MODEL,
     repeat: REPEAT,
+    adjudicators: adjudicators(),
+    gateToClassMapping: 'pass; rewrite if continuity/voice fails; otherwise revise',
     scenes: results.length,
+    excludedJudgeResults,
     precision,
+    precisionCI95: [precisionLo, precisionHi],
     recall,
+    recallCI95: [recallLo, recallHi],
     f1,
-    falseAlarmRate: fp / Math.max(1, results.length - tp - fn),
-    scoreVariance,
-    pearsonR: r,
-    kappa,
-    checks,
-    allPass
+    falseAlarmRate,
+    falseAlarmCI95: [falseAlarmLo, falseAlarmHi],
+    scoreStdDev,
+    kappa
   }
 
   const reportPath = join(CACHE, `calibration-report-${Date.now()}.json`)
   writeFileSync(reportPath, JSON.stringify(report, null, 2))
   console.log(`\nReport: ${reportPath}`)
 
-  // P0-A report-builder wiring: feed the judge loop's outputs into the pure
-  // builder. The harness records a single avg score per scene, so both
-  // shadow arms share it until separate focused/combined scores are logged;
-  // authoritativeLabel is the whole-scene label of that score (with a
-  // pass/fail fallback when the score is missing, never a silent default).
-  const normById = new Map(calibrationInputs.map((e) => [e.sceneId, e]))
+  // Preserve pass A/B and adjudicated records for the preregistered dual arms.
   const calibrationScenes = []
   const judgeRecord = {}
   for (const res of results) {
     const sceneId = res.scene.id
-    const norm = normById.get(sceneId)
+    const norm = calibrationInputs.find((entry) => entry.sceneId === sceneId)
     if (!norm) continue
     calibrationScenes.push({
       sceneId,
-      overall: norm.overall,
-      dims: norm.dims,
-      note: norm.note,
-      humanOnly: norm.humanOnly
+      humanOnly: norm.humanOnly,
+      passA: norm.passA,
+      passB: norm.passB,
+      ...(norm.adjudicated ? { adjudicated: norm.adjudicated } : {})
     })
-    const avgScore = res.judge.score
-    const shadowLabel = wholeSceneScoreLabel(avgScore)
     judgeRecord[sceneId] = {
-      authoritativeLabel:
-        shadowLabel === 'excluded' ? (res.judge.pass ? 'pass' : 'revise') : shadowLabel,
-      focusedScore: avgScore,
-      combinedScore: avgScore
+      authoritativeLabel: judgeClass(res.judge),
+      focusedScore: res.judge.focused ? res.judge.score : null,
+      combinedScore: res.judge.focused ? null : res.judge.score
     }
   }
   const calibrationReport = buildCalibrationReport(calibrationScenes, judgeRecord)
@@ -364,9 +477,22 @@ async function main() {
   }
 
   const builderReportPath = join(CACHE, `calibration-report-builder-${Date.now()}.json`)
-  writeFileSync(builderReportPath, JSON.stringify(calibrationReport, null, 2))
+  writeFileSync(
+    builderReportPath,
+    JSON.stringify(
+      {
+        timestamp: report.timestamp,
+        model: MODEL,
+        repeat: REPEAT,
+        adjudicators: adjudicators(),
+        preregistration: 'tools/judge-bench/PREREGISTRATION.md — Amendment 2',
+        report: calibrationReport
+      },
+      null,
+      2
+    )
+  )
   console.log(`Builder report: ${builderReportPath}`)
-  process.exit(allPass ? 0 : 1)
 }
 
 main().catch((e) => {

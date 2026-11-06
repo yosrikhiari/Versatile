@@ -512,10 +512,23 @@ export const SCHEMA_VERSIONS = [
         '++id, projectId, branchId, volumeId, contentHash, updatedAt, [projectId+volumeId], &[projectId+branchId+volumeId]'
     }
   },
+  // v56 (2026-10-11): local scene labels for the P0-A human-reference set —
+  // overall pass/revise/rewrite plus per-dimension marks, scores and notes.
+  // New table only; no backfill.
   {
     version: 56,
     stores: {
       sceneLabels: '++id, storyId, reviewerName, overallLabel, createdAt, [storyId+reviewerName]'
+    }
+  },
+  // v57 (2026-11-05): stable scene identity for labels. sceneId (local
+  // subsection/scene id) is preferred over sceneTitle when present; title
+  // remains for display and backward-compatible matching. No backfill.
+  {
+    version: 57,
+    stores: {
+      sceneLabels:
+        '++id, storyId, sceneId, reviewerName, overallLabel, createdAt, [storyId+reviewerName]'
     }
   }
 ]

@@ -12,6 +12,13 @@ public class SceneLabel : UserOwnedEntity
     [ForeignKey(nameof(StoryId))]
     public Story? Story { get; set; }
 
+    /// <summary>
+    /// Stable scene/subsection identity when known. Preferred over
+    /// <see cref="SceneTitle"/> for upsert matching; title remains for display
+    /// and backward-compatible matching of legacy labels.
+    /// </summary>
+    public Guid? SubsectionId { get; set; }
+
     [Required]
     [MaxLength(200)]
     public string SceneTitle { get; set; } = string.Empty;

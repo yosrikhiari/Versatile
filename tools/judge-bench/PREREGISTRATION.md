@@ -181,3 +181,84 @@ analysis (consensus data absent from this tree).
 - No merge rule found in-tree: all consumers load consensus.json pre-merged;
   cite `tools/judge-bench/bench.py:37`
   (`cons = {r["sceneId"]: r for r in json.load(open(...consensus.json...))}`).
+
+## Amendment 2 — execution safety and judge-label semantics (2026-11-05)
+
+This amendment is recorded before any P0-A calibration run. It corrects the
+previous runner's silent defaults and metric wiring. It does **not** authorize
+a run; the required label shape is not currently present in the checked-in
+consensus artifact.
+
+- `calibrate.mjs` is a dry run by default. A live run requires `--run`,
+  `--approved`, and two distinct names via `--adjudicator-a` and
+  `--adjudicator-b`. The script rejects consensus entries without distinct
+  `passA` and `passB` records before importing the critic or making a model
+  call.
+- The primary binary gate comparison is `judge.pass` vs. reviewer A's frozen
+  `Keep` / `Revise` decision. It is not `overall !== "pass"` (the original
+  labels are `Keep` / `Revise`), and reviewer agreement is computed from the
+  separate pass A/B labels only.
+- The judge's three-way class used in the report builder is mapped as follows:
+  gate pass → `pass`; gate failure with continuity or voice below the configured
+  floor (or a major issue of either type) → `rewrite`; other gate failure →
+  `revise`. Unavailable/malformed judge results are excluded, never converted
+  to score zero or a passing verdict. If any scene has no usable verdict or
+  changes focused/combined mode across repeats, the run aborts before writing a
+  calibration report instead of silently changing the denominator. This is a
+  harness mapping, not a new production gate.
+- Focused and combined score arms remain separate: the runner records the
+  available mode's score and leaves the other arm null. It no longer copies a
+  single score into both arms.
+- Mapping-review candidates and the unflagged-note sample are restricted to
+  SET-A Revise scenes. SET-B IDs are reserved for validation and are not
+  inspected to motivate a mapping change. The scanner's hits remain candidates
+  for human disposition; it does not itself assert the 15% trigger.
+- The old 80% / 10% thresholds are not emitted as pass/fail acceptance checks;
+  the design spec labels 80% an unvalidated hypothesis. The runner also no
+  longer claims to measure response verbosity from an issue count.
+
+**Run status remains blocked:** the local consensus file inspected during the
+code review contains merged `sceneId`, `dims`, and `overall` fields, not the
+required `passA` / `passB` records. No calibration run was performed. The run
+still requires the adjudication exercise and explicit approval specified in
+the design; recording adjudicator names at the CLI is an audit affordance, not
+proof that the exercise was performed.
+
+## Amendment 3 — evidence snapshot and reviewer-agreement tooling (2026-11-05)
+
+Recorded before any P0-A calibration run. This amendment adds repository-level
+evidence provenance and a two-rater agreement utility. It does **not** authorize
+or perform a run, and it does not create human labels.
+
+- `tools/judge-bench/evidence-register.json` is the curated claim register:
+  21 claims (10 active, 2 blocked, 2 exploratory, 2 historical, 1 invalid,
+  1 retracted, 3 superseded) and 5 corpora, each with a `labelSource` and
+  status. The 78-scene corpus is recorded as `claude-reviewer`, not human.
+  `human-pilot-12` is `incomplete`; its current `main-12.json` is a Claude read.
+- `tools/judge-bench/evidence-snapshot.json` freezes that register and whole-file
+  SHA-256 fingerprints of 8 gate sources and 4 prompt sources. On 2026-11-05 the
+  combined gate hash is
+  `a63f16bafa3f9aaae9e8d69ea9ffa351e2ea202176183caf6bb2be4cd51d1f45`
+  and the prompt hash is
+  `fbbbbfaa933ba97657125c41a2711c6aa80025dfd22da348e10c31993375c91a`.
+  `npm run evidence:check` fails on source, prompt or register drift and runs
+  in the CI lint job; `vite-node@6.0.0` is pinned in `devDependencies` so the
+  step does not rely on an on-demand `npx` install. Line endings and a BOM are
+  normalized before hashing so a Windows checkout and a Linux CI checkout
+  agree. `generatedAt` and git metadata are recorded for context but ignored by
+  the drift check.
+- `tools/labelling/agreement.py` (11 unittest cases in `test_agreement.py`)
+  reports two-rater overlap, percent agreement, Cohen's kappa, unsure/missing/
+  invalid counts and disagreements for each dimension and for the overall
+  Keep/Revise decision. `--require-human` refuses files whose labeller metadata
+  is AI/model or missing; this is a metadata check, not proof of identity.
+- Dry run on the two existing Claude passes (78-scene overlap): continuity
+  kappa .75 (n=66), voice .66 (n=46; 30/32 unsure), show_tell .68 (n=77),
+  pacing .85 (n=76), emotional_goal .89 (n=57), overall Keep/Revise .59
+  (n=78; 82.0% raw agreement). These are same-model agreement statistics.
+  They are **not** the preregistered human calibration and must not be entered
+  as `passA` / `passB` human labels.
+- Run status remains blocked: no separate human `passA` / `passB` records exist,
+  no calibration run was performed, and the two named human adjudicators
+  required by Amendment 2 have not been recorded. The merged `consensus.json`
+  remains unusable for the preregistered comparison.

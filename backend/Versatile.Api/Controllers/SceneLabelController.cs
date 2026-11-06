@@ -30,12 +30,12 @@ public class SceneLabelController : ApiControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<SceneLabelDto>> Upsert(Guid storyId, UpsertSceneLabelRequest request)
+    public async Task<ActionResult<SceneLabelDto>> Upsert([FromQuery] Guid storyId, UpsertSceneLabelRequest request)
     {
         try
         {
             var dto = await _mediator.Send(new UpsertSceneLabelCommand(
-                storyId, request.SceneTitle, request.ReviewerName, request.OverallLabel,
+                storyId, request.SubsectionId, request.SceneTitle, request.ReviewerName, request.OverallLabel,
                 request.DimensionLabels, request.DimensionScores, request.Notes,
                 request.WordCount, request.SceneExcerpt, OrganizationId, UserId));
             return Ok(dto);
@@ -59,5 +59,6 @@ public record UpsertSceneLabelRequest(
     Dictionary<string, int> DimensionScores,
     string? Notes,
     int WordCount,
-    string? SceneExcerpt
+    string? SceneExcerpt,
+    Guid? SubsectionId = null
 );

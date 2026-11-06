@@ -397,16 +397,69 @@ describe('buildCalibrationReport', () => {
 
   it('lists the single mapping-review hit with direction and phrase', () => {
     const report = loadCalibrationReport()
-    expect(report.mappingReview.hits).toHaveLength(1)
-    const hit = report.mappingReview.hits[0]
-    expect(hit.sceneId).toBe('p0a-sample-06')
-    expect(hit.direction).toBe('rebuild-on-revise')
-    expect(hit.phrase.toLowerCase()).toContain('rebuild')
+    const reviseIds = sample.entries.filter((e) => e.overall === 'Revise').map((e) => e.sceneId)
+    const { setA, setB } = splitHeldOut(reviseIds.map((sceneId) => ({ sceneId })))
+    expect(report.mappingReview.setASceneIds).toEqual(setA)
+    expect(report.mappingReview.setBSceneIds).toEqual(setB)
+    expect(report.mappingReview.setAReviseCount).toBe(setA.length)
+    const hitIdsExpected = setA.includes('p0a-sample-06') ? ['p0a-sample-06'] : []
+    expect(report.mappingReview.hits.map((hit) => hit.sceneId)).toEqual(hitIdsExpected)
+    if (hitIdsExpected.length) {
+      const hit = report.mappingReview.hits[0]
+      expect(hit.direction).toBe('rebuild-on-revise')
+      expect(hit.phrase.toLowerCase()).toContain('rebuild')
+    }
     const hitIds = new Set(report.mappingReview.hits.map((h) => h.sceneId))
-    expect(report.mappingReview.unflaggedSample).toHaveLength(5)
+    expect(report.mappingReview.unflaggedSample).toHaveLength(
+      Math.min(5, setA.length - hitIdsExpected.length)
+    )
     for (const s of report.mappingReview.unflaggedSample) {
       expect(hitIds.has(s.sceneId)).toBe(false)
+      expect(setA).toContain(s.sceneId)
     }
+  })
+
+  it('limits mapping candidates and blind controls to revise scenes in SET-A', () => {
+    const candidates = Array.from({ length: 100 }, (_, i) => `split-scene-${i}`)
+    const split = splitHeldOut(candidates.map((sceneId) => ({ sceneId })))
+    const sceneA = split.setA[0]
+    const sceneB = split.setB[0]
+    const passScene = 'kept-scene-with-rebuild-note'
+    const makeEntry = (sceneId, overall, note) => ({
+      sceneId,
+      overall,
+      dims: {
+        continuity: 'Fine',
+        voice: 'Fine',
+        show_tell: 'Fine',
+        pacing: 'Fine',
+        emotional_goal: 'Fine'
+      },
+      note,
+      humanOnly: false
+    })
+    const scenes = [
+      makeEntry(sceneA, 'Revise', 'The scene needs rebuilding.'),
+      makeEntry(sceneB, 'Revise', 'The scene needs rebuilding.'),
+      makeEntry(passScene, 'Keep', 'The scene needs rebuilding.')
+    ]
+    const judge = Object.fromEntries(
+      scenes.map((scene) => [
+        scene.sceneId,
+        {
+          authoritativeLabel: 'revise',
+          focusedScore: 6,
+          combinedScore: 6
+        }
+      ])
+    )
+
+    const report = buildCalibrationReport(scenes, judge)
+
+    expect(report.mappingReview.setASceneIds).toEqual([sceneA])
+    expect(report.mappingReview.setBSceneIds).toEqual([sceneB])
+    expect(report.mappingReview.hits.map((hit) => hit.sceneId)).toEqual([sceneA])
+    expect(report.mappingReview.unflaggedSample).toEqual([])
   })
 
   it('reports dual arms with descriptiveOnly on humanOnly and no verdict field', () => {

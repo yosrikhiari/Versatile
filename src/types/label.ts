@@ -3,6 +3,7 @@ export type OverallLabel = 'pass' | 'revise' | 'rewrite'
 export interface SceneLabel {
   id: string
   storyId: string
+  sceneId?: string | null
   sceneTitle: string
   reviewerName: string
   overallLabel: OverallLabel
@@ -16,6 +17,7 @@ export interface SceneLabel {
 
 export interface SceneLabelInput {
   storyId: string
+  sceneId?: string | null
   sceneTitle: string
   reviewerName: string
   overallLabel: OverallLabel

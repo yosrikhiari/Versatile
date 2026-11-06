@@ -26,13 +26,32 @@ public class UpsertSceneLabelHandler : IRequestHandler<UpsertSceneLabelCommand, 
             s => s.Id == request.StoryId && s.UserId == request.UserId && s.OrganizationId == request.OrganizationId, ct);
         if (stories.Count == 0) throw new KeyNotFoundException("Story not found");
 
-        var existing = await _repo.GetAllAsync(
-            l => l.StoryId == request.StoryId && l.ReviewerName == request.ReviewerName, ct);
+        var candidates = await _repo.GetAllAsync(
+            l => l.StoryId == request.StoryId
+                && l.ReviewerName == request.ReviewerName
+                && l.UserId == request.UserId
+                && l.OrganizationId == request.OrganizationId, ct);
+
+        SceneLabel? existing = null;
+        if (request.SubsectionId.HasValue)
+        {
+            // Prefer the stable identity. Only unbound legacy labels may be
+            // adopted by title: a title fallback must never steal a label that
+            // already belongs to a different subsection.
+            existing = candidates.FirstOrDefault(l => l.SubsectionId == request.SubsectionId.Value);
+            existing ??= candidates.FirstOrDefault(
+                l => l.SceneTitle == request.SceneTitle && l.SubsectionId == null);
+        }
+        else
+        {
+            existing = candidates.FirstOrDefault(l => l.SceneTitle == request.SceneTitle);
+        }
 
         SceneLabel label;
-        if (existing.Count > 0)
+        if (existing is not null)
         {
-            label = existing[0];
+            label = existing;
+            label.SubsectionId = request.SubsectionId ?? label.SubsectionId;
             label.SceneTitle = request.SceneTitle;
             label.OverallLabel = request.OverallLabel;
             label.DimensionLabels = request.DimensionLabels;
@@ -48,6 +67,7 @@ public class UpsertSceneLabelHandler : IRequestHandler<UpsertSceneLabelCommand, 
             label = new SceneLabel
             {
                 StoryId = request.StoryId,
+                SubsectionId = request.SubsectionId,
                 SceneTitle = request.SceneTitle,
                 ReviewerName = request.ReviewerName,
                 OverallLabel = request.OverallLabel,
@@ -67,7 +87,7 @@ public class UpsertSceneLabelHandler : IRequestHandler<UpsertSceneLabelCommand, 
     }
 
     public static SceneLabelDto ToDto(SceneLabel l) => new(
-        l.Id, l.StoryId, l.SceneTitle, l.ReviewerName, l.OverallLabel,
+        l.Id, l.StoryId, l.SubsectionId, l.SceneTitle, l.ReviewerName, l.OverallLabel,
         l.DimensionLabels, l.DimensionScores, l.Notes, l.WordCount, l.SceneExcerpt, l.CreatedAt);
 }
 
@@ -103,6 +123,7 @@ public class GetSceneLabelsHandler : IRequestHandler<GetSceneLabelsQuery, List<S
     {
         var labels = await _repo.GetAllAsync(
             l => l.OrganizationId == request.OrganizationId
+                && l.UserId == request.UserId
                 && (request.StoryId == null || l.StoryId == request.StoryId)
                 && (request.ReviewerName == null || l.ReviewerName == request.ReviewerName), ct);
         return labels.Select(UpsertSceneLabelHandler.ToDto).ToList();
@@ -118,7 +139,9 @@ public class GetSceneLabelByIdHandler : IRequestHandler<GetSceneLabelByIdQuery, 
     public async Task<SceneLabelDto> Handle(GetSceneLabelByIdQuery request, CancellationToken ct)
     {
         var labels = await _repo.GetAllAsync(
-            l => l.Id == request.Id && l.OrganizationId == request.OrganizationId, ct);
+            l => l.Id == request.Id
+                && l.OrganizationId == request.OrganizationId
+                && l.UserId == request.UserId, ct);
         if (labels.Count == 0) throw new KeyNotFoundException("Label not found");
         return UpsertSceneLabelHandler.ToDto(labels[0]);
     }

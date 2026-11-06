@@ -3,6 +3,7 @@ namespace Versatile.Application.DTOs;
 public record SceneLabelDto(
     Guid Id,
     Guid StoryId,
+    Guid? SubsectionId,
     string SceneTitle,
     string ReviewerName,
     string OverallLabel,

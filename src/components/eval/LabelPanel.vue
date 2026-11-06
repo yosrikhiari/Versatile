@@ -10,6 +10,11 @@ import { OVERALL_LABELS, DIMENSION_LABEL_VALUES } from '../../types/label'
 
 const props = defineProps({
   storyId: { type: String, required: true },
+  /**
+   * Stable scene identity (the subsection's local id). Passed through to the
+   * label row so a title rename does not create a second label for one scene.
+   */
+  sceneId: { type: String, default: '' },
   sceneTitle: { type: String, default: '' },
   sceneExcerpt: { type: String, default: '' },
   wordCount: { type: Number, default: 0 },
@@ -41,7 +46,7 @@ const dimensionLabelsForDisplay = computed(() =>
 )
 
 watch(
-  () => props.sceneTitle,
+  () => [props.sceneId, props.sceneTitle],
   () => {
     overallLabel.value = 'pass'
     dimensionLabels.value = {}
@@ -60,6 +65,7 @@ async function save() {
   try {
     await store.upsert({
       storyId: props.storyId,
+      sceneId: props.sceneId || null,
       sceneTitle: props.sceneTitle,
       reviewerName: props.reviewerName,
       overallLabel: overallLabel.value,
