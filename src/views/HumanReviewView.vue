@@ -11,6 +11,11 @@ import BaseSpinner from '../components/ui/BaseSpinner.vue'
 import { useHumanReviewStore } from '../stores/humanReviewStore'
 import { RUBRIC_DIMENSIONS } from '../services/humanReviewPack'
 import { downloadHumanReviewExport } from '../services/humanReviewExport'
+import {
+  CONSENT_CHECKBOX_LABEL,
+  CONSENT_POINTS,
+  CONSENT_VERSION
+} from '../config/humanReviewConsent'
 
 const router = useRouter()
 const store = useHumanReviewStore()
@@ -23,6 +28,8 @@ const importing = ref(false)
 const saving = ref(false)
 const exportedNotice = ref('')
 const draft = ref({ overall: null, dims: {}, note: '' })
+const pendingStart = ref(null)
+const consentChecked = ref(false)
 
 const OVERALL_OPTIONS = [
   { value: 'Keep', label: 'Keep' },
@@ -120,29 +127,57 @@ function resetDraft() {
   draft.value = { overall: null, dims: {}, note: '' }
 }
 
-async function startSession() {
+function startSession() {
   if (!selectedStudyId.value || !raterId.value.trim()) return
   exportedNotice.value = ''
+  store.clearError()
+  consentChecked.value = false
+  pendingStart.value = {
+    studyRecordId: selectedStudyId.value,
+    raterId: raterId.value,
+    passLabel: passLabel.value
+  }
+}
+
+async function confirmConsent() {
+  if (!consentChecked.value) return
   try {
-    await store.startSession({
-      studyRecordId: selectedStudyId.value,
-      raterId: raterId.value,
-      passLabel: passLabel.value
-    })
-    resetDraft()
+    if (pendingStart.value) {
+      await store.startSession({ ...pendingStart.value, consentGiven: true })
+      pendingStart.value = null
+      consentChecked.value = false
+      resetDraft()
+    } else if (store.needsConsent) {
+      await store.acceptConsent()
+      consentChecked.value = false
+      resetDraft()
+    }
   } catch {
     // Store error is rendered.
   }
+}
+
+function cancelConsent() {
+  pendingStart.value = null
+  consentChecked.value = false
+  if (store.needsConsent) store.leaveSession()
 }
 
 async function resumeSession(sessionId) {
   exportedNotice.value = ''
   try {
     await store.resumeSession(sessionId)
+    consentChecked.value = false
     resetDraft()
   } catch {
     // Store error is rendered.
   }
+}
+
+function leaveSession() {
+  pendingStart.value = null
+  consentChecked.value = false
+  store.leaveSession()
 }
 
 async function saveAndNext() {
@@ -205,11 +240,14 @@ onMounted(() => {
             </p>
           </div>
         </div>
-        <div v-if="store.activeSession" class="flex items-center gap-2">
-          <span class="label-micro text-text-hint"> {{ currentNumber }} / {{ totalScenes }} </span>
-          <BaseButton variant="secondary" size="sm" @click="store.leaveSession()">
-            Sessions
-          </BaseButton>
+        <div v-if="store.activeSession || pendingStart" class="flex items-center gap-2">
+          <span
+            v-if="store.activeSession && !store.needsConsent"
+            class="label-micro text-text-hint"
+          >
+            {{ currentNumber }} / {{ totalScenes }}
+          </span>
+          <BaseButton variant="secondary" size="sm" @click="leaveSession"> Sessions </BaseButton>
         </div>
       </div>
     </header>
@@ -229,7 +267,52 @@ onMounted(() => {
         </div>
 
         <template v-else-if="store.activeSession">
-          <template v-if="store.isComplete">
+          <template v-if="store.needsConsent">
+            <BaseSection title="Informed consent" first>
+              <div class="space-y-4">
+                <BaseAlert variant="warning" title="Before you begin">
+                  Read this and decide whether to take part. No scenes are shown until you consent.
+                  Consent version {{ CONSENT_VERSION }}.
+                </BaseAlert>
+
+                <div class="space-y-3">
+                  <div
+                    v-for="point in CONSENT_POINTS"
+                    :key="point.title"
+                    class="border-t border-border-subtle pt-3 first:border-t-0 first:pt-0"
+                  >
+                    <p class="text-xs font-medium text-text-primary">{{ point.title }}</p>
+                    <p class="mt-0.5 text-11px leading-relaxed text-text-secondary">
+                      {{ point.body }}
+                    </p>
+                  </div>
+                </div>
+
+                <label class="flex items-start gap-2.5 pt-1 text-xs text-text-primary">
+                  <input
+                    v-model="consentChecked"
+                    type="checkbox"
+                    class="mt-0.5 h-3.5 w-3.5 shrink-0 accent-accent"
+                  />
+                  <span>{{ CONSENT_CHECKBOX_LABEL }}</span>
+                </label>
+
+                <div class="flex flex-wrap gap-2">
+                  <BaseButton
+                    variant="primary"
+                    icon="check"
+                    :disabled="!consentChecked"
+                    @click="confirmConsent"
+                  >
+                    I consent, continue
+                  </BaseButton>
+                  <BaseButton variant="secondary" @click="cancelConsent">Cancel</BaseButton>
+                </div>
+              </div>
+            </BaseSection>
+          </template>
+
+          <template v-else-if="store.isComplete">
             <BaseSection title="Study complete" first>
               <div class="space-y-3">
                 <BaseAlert variant="success" title="All scenes labelled">
@@ -245,7 +328,7 @@ onMounted(() => {
                   >
                     Export rater labels
                   </BaseButton>
-                  <BaseButton variant="secondary" @click="store.leaveSession()">
+                  <BaseButton variant="secondary" @click="leaveSession">
                     Back to sessions
                   </BaseButton>
                 </div>
@@ -349,7 +432,56 @@ onMounted(() => {
         </template>
 
         <template v-else>
-          <BaseSection title="Import the frozen pack" first>
+          <BaseSection v-if="pendingStart" title="Informed consent" first>
+            <div class="space-y-4">
+              <BaseAlert variant="warning" title="Before you begin">
+                Read this and decide whether to take part. No scenes are shown until you consent.
+                Consent version {{ CONSENT_VERSION }}.
+              </BaseAlert>
+
+              <p class="text-11px text-text-hint">
+                Starting as <strong class="text-text-primary">{{ pendingStart.raterId }}</strong> ·
+                {{ pendingStart.passLabel }}. Your rater ID is an anonymous code, not a name.
+              </p>
+
+              <div class="space-y-3">
+                <div
+                  v-for="point in CONSENT_POINTS"
+                  :key="point.title"
+                  class="border-t border-border-subtle pt-3 first:border-t-0 first:pt-0"
+                >
+                  <p class="text-xs font-medium text-text-primary">{{ point.title }}</p>
+                  <p class="mt-0.5 text-11px leading-relaxed text-text-secondary">
+                    {{ point.body }}
+                  </p>
+                </div>
+              </div>
+
+              <label class="flex items-start gap-2.5 pt-1 text-xs text-text-primary">
+                <input
+                  v-model="consentChecked"
+                  type="checkbox"
+                  class="mt-0.5 h-3.5 w-3.5 shrink-0 accent-accent"
+                  aria-label="Consent to take part"
+                />
+                <span>{{ CONSENT_CHECKBOX_LABEL }}</span>
+              </label>
+
+              <div class="flex flex-wrap gap-2">
+                <BaseButton
+                  variant="primary"
+                  icon="check"
+                  :disabled="!consentChecked"
+                  @click="confirmConsent"
+                >
+                  I consent, start review
+                </BaseButton>
+                <BaseButton variant="secondary" @click="cancelConsent">Cancel</BaseButton>
+              </div>
+            </div>
+          </BaseSection>
+
+          <BaseSection v-if="!pendingStart" title="Import the frozen pack" first>
             <div class="space-y-4">
               <BaseAlert variant="warning" title="Local-only pilot">
                 Use an anonymous participant code, not a name. The pack is refused if it contains
@@ -398,7 +530,7 @@ onMounted(() => {
           </BaseSection>
 
           <BaseSection
-            v-if="store.studies.length"
+            v-if="!pendingStart && store.studies.length"
             title="Start a session"
             description="One session is one rater and one pass. Start the same rater/pass again to resume it."
           >
@@ -436,7 +568,7 @@ onMounted(() => {
           </BaseSection>
 
           <BaseSection
-            v-if="sessionsView.length"
+            v-if="!pendingStart && sessionsView.length"
             title="Sessions"
             :meta="`${sessionsView.length} local`"
           >

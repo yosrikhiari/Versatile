@@ -4,8 +4,8 @@ import { join } from 'node:path'
 
 /**
  * End-to-end human-review pilot:
- * login -> /study -> import a 12-scene pack -> complete two anonymous rater
- * sessions -> export both raw rater files.
+ * login -> /study -> import a 12-scene pack -> give informed consent ->
+ * complete two anonymous rater sessions -> export both raw rater files.
  *
  * The pack is generated in the test, so this spec does not depend on the
  * gitignored local corpus. The exports are checked for provenance and shape;
@@ -50,6 +50,12 @@ async function importPack(page) {
 async function startRater(page, raterId) {
   await page.getByLabel('Rater ID').fill(raterId)
   await page.getByRole('button', { name: 'Start review' }).click()
+  await expect(page.getByText('Informed consent', { exact: true })).toBeVisible()
+  const consent = page.getByRole('button', { name: 'I consent, start review' })
+  await expect(consent).toBeDisabled()
+  await page.getByLabel('Consent to take part').check()
+  await expect(consent).toBeEnabled()
+  await consent.click()
   await expect(page.getByText('1 of 12', { exact: true })).toBeVisible()
 }
 

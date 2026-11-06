@@ -113,6 +113,20 @@ export async function completeSession(sessionId: number): Promise<HumanReviewSes
   return getSession(sessionId)
 }
 
+/** Record that the participant accepted this consent version, and when. */
+export async function markSessionConsented(
+  sessionId: number,
+  consentVersion: string
+): Promise<HumanReviewSession | undefined> {
+  const now = new Date().toISOString()
+  await db.humanReviewSessions.update(sessionId, {
+    consentVersion,
+    consentedAt: now,
+    updatedAt: now
+  })
+  return getSession(sessionId)
+}
+
 export async function deleteSession(sessionId: number): Promise<void> {
   await db.transaction('rw', db.humanReviewSessions, db.humanReviewResponses, async () => {
     await db.humanReviewResponses.where('sessionId').equals(sessionId).delete()

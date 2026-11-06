@@ -46,6 +46,13 @@ export interface HumanReviewSession {
   startedAt: string
   updatedAt: string
   completedAt?: string
+  /**
+   * Consent is recorded as a version plus a timestamp — never a name,
+   * signature or free text. A session created before this field exists has
+   * none and is asked again before it can resume.
+   */
+  consentVersion?: string
+  consentedAt?: string
 }
 
 export interface HumanReviewResponse {

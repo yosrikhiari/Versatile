@@ -10,6 +10,7 @@ import {
   getSessions,
   getStudies,
   getStudy,
+  markSessionConsented,
   saveResponse as persistResponse,
   saveStudy
 } from '../services/db-human-review'
@@ -21,6 +22,7 @@ import {
   validateRaterId
 } from '../services/humanReviewPack'
 import { buildHumanReviewExport } from '../services/humanReviewExport'
+import { CONSENT_VERSION } from '../config/humanReviewConsent'
 import type {
   HumanReviewExport,
   HumanReviewResponse,
@@ -57,7 +59,9 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
     return sceneOrder.value.findIndex((scene) => !answered.has(scene.sceneId))
   })
   const currentScene = computed(() =>
-    currentSceneIndex.value >= 0 ? sceneOrder.value[currentSceneIndex.value] : null
+    needsConsent.value || currentSceneIndex.value < 0
+      ? null
+      : sceneOrder.value[currentSceneIndex.value]
   )
   const progress = computed(() =>
     sceneOrder.value.length ? responses.value.length / sceneOrder.value.length : 0
@@ -73,6 +77,8 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
   const completedSessions = computed(() =>
     sessions.value.filter((session) => session.status === 'complete')
   )
+  /** A resumed session from before the consent field must be consented again. */
+  const needsConsent = computed(() => !!activeSession.value && !activeSession.value.consentedAt)
 
   function setError(err: unknown, fallback = 'Review study failed.'): void {
     error.value = err instanceof Error ? err.message : String(err || fallback)
@@ -138,25 +144,34 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
     studyRecordId: number
     raterId: string
     passLabel: string
+    consentGiven: boolean
   }): Promise<HumanReviewSession> {
     loading.value = true
     clearError()
     try {
+      if (input.consentGiven !== true) {
+        throw new Error('Consent is required before a scene can be shown.')
+      }
       const raterId = validateRaterId(input.raterId)
       const passLabel = validatePassLabel(input.passLabel)
       const study = await getStudy(input.studyRecordId)
       if (!study) throw new Error('Study pack not found.')
+      const consentedAt = new Date().toISOString()
 
       const existing = await findSession(study.studyId, study.packHash, raterId, passLabel)
-      const session =
-        existing ||
-        (await createSession({
-          studyRecordId: study.id!,
-          studyId: study.studyId,
-          packHash: study.packHash,
-          raterId,
-          passLabel
-        }))
+      const session = existing
+        ? existing.consentedAt
+          ? existing
+          : ((await markSessionConsented(existing.id!, CONSENT_VERSION)) ?? existing)
+        : await createSession({
+            studyRecordId: study.id!,
+            studyId: study.studyId,
+            packHash: study.packHash,
+            raterId,
+            passLabel,
+            consentVersion: CONSENT_VERSION,
+            consentedAt
+          })
 
       activeStudy.value = study
       activeSession.value = session
@@ -170,6 +185,22 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
       throw err
     } finally {
       loading.value = false
+    }
+  }
+
+  /** Consent a resumed legacy session that predates the consent field. */
+  async function acceptConsent(): Promise<HumanReviewSession> {
+    clearError()
+    if (!activeSession.value?.id) throw new Error('No review session to consent.')
+    try {
+      const session = await markSessionConsented(activeSession.value.id, CONSENT_VERSION)
+      if (!session) throw new Error('Review session not found.')
+      activeSession.value = session
+      sessions.value = await getSessions()
+      return session
+    } catch (err) {
+      setError(err, 'Could not record consent.')
+      throw err
     }
   }
 
@@ -284,6 +315,7 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
     currentScene,
     progress,
     isComplete,
+    needsConsent,
     inProgressSessions,
     completedSessions,
     setError,
@@ -291,6 +323,7 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
     load,
     importStudy,
     startSession,
+    acceptConsent,
     resumeSession,
     leaveSession,
     saveDraft,

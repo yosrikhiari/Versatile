@@ -34,7 +34,8 @@ async function openStudy(store, raterId = 'Rater A') {
   const session = await store.startSession({
     studyRecordId: study.id,
     raterId,
-    passLabel: 'Pass 1'
+    passLabel: 'Pass 1',
+    consentGiven: true
   })
   return { study, session }
 }
@@ -54,11 +55,14 @@ describe('humanReviewStore', () => {
     store = useHumanReviewStore()
   })
 
-  it('imports a pack and starts a session with a private rater id', async () => {
+  it('imports a pack and starts a session with a private rater id and consent', async () => {
     const { study, session } = await openStudy(store)
     expect(study.id).toBeTruthy()
     expect(session.raterId).toBe('Rater A')
     expect(session.status).toBe('in-progress')
+    expect(session.consentVersion).toBe('v1')
+    expect(session.consentedAt).toBeTruthy()
+    expect(store.needsConsent).toBe(false)
     expect(store.sceneOrder).toHaveLength(12)
     expect(store.currentSceneIndex).toBe(0)
   })
@@ -69,7 +73,8 @@ describe('humanReviewStore', () => {
     const again = await store.startSession({
       studyRecordId: study.id,
       raterId: 'Rater A',
-      passLabel: 'Pass 1'
+      passLabel: 'Pass 1',
+      consentGiven: true
     })
     expect(again.id).toBe(session.id)
     expect(store.sessions.filter((s) => s.id === session.id)).toHaveLength(1)
@@ -139,6 +144,44 @@ describe('humanReviewStore', () => {
     await store.removeSession(session.id)
     expect(await db.humanReviewSessions.count()).toBe(0)
     expect(await db.humanReviewResponses.count()).toBe(0)
+  })
+
+  it('refuses to start a session without consent', async () => {
+    const study = await store.importStudy(studyPack())
+    await expect(
+      store.startSession({
+        studyRecordId: study.id,
+        raterId: 'Rater A',
+        passLabel: 'Pass 1',
+        consentGiven: false
+      })
+    ).rejects.toThrow(/consent/i)
+    expect(await db.humanReviewSessions.count()).toBe(0)
+  })
+
+  it('asks a resumed legacy session for consent again', async () => {
+    const study = await store.importStudy(studyPack())
+    // Simulate a pre-consent session row.
+    const sessionId = await db.humanReviewSessions.add({
+      studyRecordId: study.id,
+      studyId: study.studyId,
+      packHash: study.packHash,
+      raterId: 'Rater A',
+      passLabel: 'Pass 1',
+      status: 'in-progress',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    })
+    await store.load()
+    await store.resumeSession(sessionId)
+    expect(store.needsConsent).toBe(true)
+    expect(store.currentScene).toBeNull() // view must not show scenes while needsConsent
+
+    const consented = await store.acceptConsent()
+    expect(consented.consentVersion).toBe('v1')
+    expect(consented.consentedAt).toBeTruthy()
+    expect(store.needsConsent).toBe(false)
+    expect(store.currentScene?.sceneId).toBeTruthy()
   })
 })
 
