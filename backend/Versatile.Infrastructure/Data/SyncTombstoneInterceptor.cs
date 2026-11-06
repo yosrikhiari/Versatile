@@ -83,9 +83,11 @@ public sealed class SyncTombstoneInterceptor : SaveChangesInterceptor
             }
 
             Guid storyId;
+            Guid ownerUserId;
             if (entry.Entity is Story story)
             {
                 storyId = story.Id;
+                ownerUserId = story.UserId;
             }
             else
             {
@@ -93,6 +95,9 @@ public sealed class SyncTombstoneInterceptor : SaveChangesInterceptor
                 if (storyProp?.OriginalValue is not Guid id || id == Guid.Empty)
                     continue;
                 storyId = id;
+                var userProp = entry.Metadata.FindProperty("UserId");
+                ownerUserId = userProp is null ? Guid.Empty
+                    : entry.Property("UserId").OriginalValue is Guid userId ? userId : Guid.Empty;
             }
 
             var key = entry.Metadata.FindPrimaryKey();
@@ -106,9 +111,9 @@ public sealed class SyncTombstoneInterceptor : SaveChangesInterceptor
             tombstones.Add(new SyncTombstone
             {
                 Id = Guid.NewGuid(),
-                // The deleter is not tracked here (no HttpContext dependency for
-                // a field nothing reads); tenancy rides on OrganizationId.
-                UserId = Guid.Empty,
+                // Record the row owner so a deleted story's tombstones stay
+                // fetchable and owner-scoped; legacy rows used Guid.Empty.
+                UserId = ownerUserId,
                 OrganizationId = _orgContext.OrganizationId,
                 StoryId = storyId,
                 Table = table,

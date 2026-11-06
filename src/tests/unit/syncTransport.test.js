@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { SyncTransport } from '../../services/sync-transport'
 import { findSyncConfig } from '../../services/sync-mapper'
 
@@ -21,7 +21,9 @@ function makeMockDb() {
     add: async (row) => {
       rows.set(row.id, row)
       return row.id
-    }
+    },
+    get: async (id) => rows.get(id),
+    toArray: async () => [...rows.values()]
   }
   return { rows, db: new Proxy({}, { get: () => table }) }
 }
@@ -303,6 +305,17 @@ describe('SyncTransport.pullTable', () => {
     expect(urls).toEqual(['/story?page=1&pageSize=100', '/story?page=2&pageSize=100'])
   })
 
+  it('fails the pull instead of accepting a truncated result at the page cap', async () => {
+    let calls = 0
+    const transport = new SyncTransport(async () => {
+      calls++
+      return { items: [{ id: `story-${calls}` }], hasNextPage: true }
+    })
+
+    await expect(transport.fetchAll('/story')).rejects.toThrow(/1000-page limit/)
+    expect(calls).toBe(1000)
+  })
+
   it('keeps characters and locations apart on the shared entity endpoint', async () => {
     const { db, rows } = pullDb()
     const api = async () => [
@@ -394,6 +407,117 @@ describe('SyncTransport.pullTombstones', () => {
     expect(result).toEqual({ applied: 0, skipped: 3 })
     expect(rows.has('c1')).toBe(true)
     expect(idMap.suppressed).toEqual([])
+  })
+
+  it('deletes a clean project subtree when the root project tombstone arrives', async () => {
+    const projects = new Map([
+      ['p1', { id: 'p1', apiId: 'story-1', syncStatus: 'synced', name: 'Doomed' }]
+    ])
+    const sections = new Map([
+      ['s1', { id: 's1', projectId: 'p1', apiId: 'sec-1', syncStatus: 'synced' }],
+      ['s2', { id: 's2', projectId: 'p9', apiId: 'sec-9', syncStatus: 'synced' }]
+    ])
+    const subsections = new Map([
+      ['u1', { id: 'u1', projectId: 'p1', apiId: 'sub-1', syncStatus: 'synced' }]
+    ])
+    const manuscripts = new Map([['m1', { id: 'm1', projectId: 'p1', syncStatus: 'synced' }]])
+    const tableFor = (rows) => ({
+      get: async (id) => rows.get(id),
+      delete: async (id) => void rows.delete(id),
+      toArray: async () => [...rows.values()],
+      where: (field) => ({
+        equals: (value) => ({
+          first: async () => [...rows.values()].find((r) => r[field] === value),
+          toArray: async () => [...rows.values()].filter((r) => r[field] === value),
+          modify: async (patch) => {
+            for (const r of rows.values()) if (r[field] === value) Object.assign(r, patch)
+          }
+        })
+      })
+    })
+    const db = {
+      projects: tableFor(projects),
+      sections: tableFor(sections),
+      subsections: tableFor(subsections),
+      manuscripts: tableFor(manuscripts),
+      characters: tableFor(new Map()),
+      locations: tableFor(new Map()),
+      plotThreads: tableFor(new Map()),
+      branches: tableFor(new Map()),
+      volumes: tableFor(new Map()),
+      characterRelationships: tableFor(new Map()),
+      volumeEntities: tableFor(new Map()),
+      researchDocuments: tableFor(new Map()),
+      researchChunks: tableFor(new Map()),
+      researchTags: tableFor(new Map())
+    }
+    const idMap = {
+      ...tombIdMap(),
+      getLocalId: (t, apiId) => (t === 'projects' && apiId === 'story-1' ? 'p1' : null),
+      suppressNextDelete: () => {},
+      removeMapping: () => {}
+    }
+    const api = async () => [{ table: 'projects', rowId: 'story-1', storyId: 'story-1' }]
+
+    const result = await new SyncTransport(api).pullTombstones('story-1', idMap, findSyncConfig, db)
+
+    expect(result.applied).toBe(1)
+    expect(projects.has('p1')).toBe(false)
+    expect(sections.has('s1')).toBe(false)
+    expect(subsections.has('u1')).toBe(false)
+    expect(manuscripts.has('m1')).toBe(false)
+    expect(sections.has('s2')).toBe(true)
+  })
+
+  it('preserves a project subtree when any local row is dirty', async () => {
+    const projects = new Map([
+      ['p1', { id: 'p1', apiId: 'story-1', syncStatus: 'synced', name: 'Conflict' }]
+    ])
+    const sections = new Map([
+      ['s1', { id: 's1', projectId: 'p1', apiId: 'sec-1', syncStatus: 'pending-update' }]
+    ])
+    const tableFor = (rows) => ({
+      get: async (id) => rows.get(id),
+      delete: async (id) => void rows.delete(id),
+      toArray: async () => [...rows.values()],
+      where: (field) => ({
+        equals: (value) => ({
+          first: async () => [...rows.values()].find((r) => r[field] === value),
+          toArray: async () => [...rows.values()].filter((r) => r[field] === value),
+          modify: async () => {}
+        })
+      })
+    })
+    const db = {
+      projects: tableFor(projects),
+      sections: tableFor(sections),
+      subsections: tableFor(new Map()),
+      manuscripts: tableFor(new Map()),
+      characters: tableFor(new Map()),
+      locations: tableFor(new Map()),
+      plotThreads: tableFor(new Map()),
+      branches: tableFor(new Map()),
+      volumes: tableFor(new Map()),
+      characterRelationships: tableFor(new Map()),
+      volumeEntities: tableFor(new Map()),
+      researchDocuments: tableFor(new Map()),
+      researchChunks: tableFor(new Map()),
+      researchTags: tableFor(new Map())
+    }
+    const idMap = {
+      ...tombIdMap(),
+      getLocalId: (t, apiId) => (t === 'projects' && apiId === 'story-1' ? 'p1' : null),
+      suppressNextDelete: () => {},
+      removeMapping: () => {}
+    }
+    const api = async () => [{ table: 'projects', rowId: 'story-1', storyId: 'story-1' }]
+
+    const result = await new SyncTransport(api).pullTombstones('story-1', idMap, findSyncConfig, db)
+
+    expect(result.applied).toBe(0)
+    expect(result.skipped).toBe(1)
+    expect(projects.has('p1')).toBe(true)
+    expect(sections.has('s1')).toBe(true)
   })
 })
 
@@ -531,15 +655,11 @@ describe('SyncTransport fail-loud failure semantics (F9/F10)', () => {
     expect(queued.size).toBe(1)
   })
 
-  it('F10: fetchAll warns loudly when it hits the page cap', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      const api = async () => ({ items: [{ id: 'x' }], hasNextPage: true })
-      const rows = await new SyncTransport(api).fetchAll('/story/x/entity')
-      expect(rows).toHaveLength(1000)
-      expect(warn).toHaveBeenCalled()
-    } finally {
-      warn.mockRestore()
-    }
+  it('F10: fetchAll rejects at the page cap instead of returning a truncated success', async () => {
+    const api = async () => ({ items: [{ id: 'x' }], hasNextPage: true })
+
+    await expect(new SyncTransport(api).fetchAll('/story/x/entity')).rejects.toThrow(
+      /1000-page limit/
+    )
   })
 })

@@ -238,7 +238,7 @@ export async function importProject(data: Record<string, any>) {
 
 // The row's identity and its link to a server record stay behind: a copy
 // that kept `apiId` would sync over the project it was exported from.
-const NOT_IMPORTED = ['id', 'apiId', 'syncStatus', 'lastSyncedAt', 'userId']
+const NOT_IMPORTED = ['id', 'apiId', 'syncStatus', 'lastSyncedAt', 'userId', '_syncRevision']
 
 function fresh(row: any) {
   const out: any = {}

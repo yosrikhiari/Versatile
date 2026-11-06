@@ -1,5 +1,6 @@
 import { guardSyncPush } from '../guardrails/integration/storageGuardrails'
 import type { VersatileDB } from './db-core'
+import { SYNC_ENTITIES } from './sync-mapper'
 
 type ApiFn = (url: string, options?: { method?: string; body?: unknown }) => Promise<unknown>
 type FindSyncConfig = (tableName: string) => SyncEntityConfig | undefined
@@ -41,11 +42,13 @@ interface SyncTable {
     equals(value: unknown): {
       modify(patch: Row): Promise<unknown>
       first(): Promise<Row | undefined>
+      toArray(): Promise<Row[]>
     }
     anyOf(...values: string[]): { toArray(): Promise<Row[]> }
   }
   get(id: unknown): Promise<Row | undefined>
   delete(id: unknown): Promise<void>
+  toArray?(): Promise<Row[]>
 }
 
 interface BatchResultItem {
@@ -218,6 +221,7 @@ export class SyncTransport {
       action: string
       apiId: string | null
       body: unknown
+      revision: unknown
     }
     const built: Built[] = []
     let deferred = 0
@@ -250,7 +254,7 @@ export class SyncTransport {
         if ((body as Row).storyId === undefined && storyApiId) {
           ;(body as Row).storyId = storyApiId
         }
-        built.push({ local, storyApiId, action, apiId, body })
+        built.push({ local, storyApiId, action, apiId, body, revision: local._syncRevision })
       } catch {
         buildFailed++
       }
@@ -287,7 +291,13 @@ export class SyncTransport {
   private async pushBatchChunk(
     tableName: string,
     storyApiId: string,
-    chunk: Array<{ local: Row; action: string; apiId: string | null; body: unknown }>,
+    chunk: Array<{
+      local: Row
+      action: string
+      apiId: string | null
+      body: unknown
+      revision: unknown
+    }>,
     idMap: IdMap,
     db: VersatileDB
   ): Promise<{ pushed: number; failed: number } | null> {
@@ -338,12 +348,19 @@ export class SyncTransport {
           failed++
           continue
         }
-        await tables[tableName].where('id').equals(item.local.id).modify({
-          apiId,
-          syncStatus: 'synced',
-          lastSyncedAt: new Date().toISOString(),
-          _suppressHooks: true
-        })
+        const changed = await this.changedSince(db, tableName, item.local.id, item.revision)
+        await tables[tableName]
+          .where('id')
+          .equals(item.local.id)
+          .modify({
+            apiId,
+            // A row edited while the batch was in flight must stay pending:
+            // marking it synced would leave the server holding the old body.
+            ...(changed
+              ? { syncStatus: 'pending-update', lastSyncedAt: null }
+              : { syncStatus: 'synced', lastSyncedAt: new Date().toISOString() }),
+            _suppressHooks: true
+          })
         idMap.setMapping(tableName, String(item.local.id), apiId)
         pushed++
       } else {
@@ -359,6 +376,31 @@ export class SyncTransport {
     return { pushed, failed }
   }
 
+  /**
+   * Whether the row's revision moved while its request was in flight. Sync
+   * snapshots the row before the call; a local edit bumps `_syncRevision`
+   * (the table hook in sync-engine.ts), so a mismatch means the body on the
+   * server is already stale. Missing `get` in a minimal test double is treated
+   * as unchanged, preserving the old behaviour there.
+   */
+  private async changedSince(
+    db: object,
+    table: string,
+    localId: unknown,
+    revision: unknown
+  ): Promise<boolean> {
+    try {
+      const handle = (
+        db as Record<string, { get?: (id: unknown) => Promise<unknown> } | undefined>
+      )[table]
+      if (typeof handle?.get !== 'function') return false
+      const current = (await handle.get(localId)) as { _syncRevision?: unknown } | undefined
+      return (current?._syncRevision ?? undefined) !== (revision ?? undefined)
+    } catch {
+      return false
+    }
+  }
+
   async pushOne(
     config: SyncEntityConfig,
     local: any,
@@ -368,6 +410,7 @@ export class SyncTransport {
   ): Promise<boolean> {
     const { table, isTopLevel, toApi } = config
     const resolved = this.resolveEndpoint(config, storyApiId!)
+    const revision = local._syncRevision
 
     try {
       const body: any = await toApi(local)
@@ -387,12 +430,17 @@ export class SyncTransport {
             this._api(`${resolved}/${knownApiId}`, { method: 'PUT', body })
           )
 
-          await db[table].where('id').equals(local.id).modify({
-            apiId: knownApiId,
-            syncStatus: 'synced',
-            lastSyncedAt: new Date().toISOString(),
-            _suppressHooks: true
-          })
+          const changed = await this.changedSince(db, table, local.id, revision)
+          await db[table]
+            .where('id')
+            .equals(local.id)
+            .modify({
+              apiId: knownApiId,
+              ...(changed
+                ? { syncStatus: 'pending-update', lastSyncedAt: null }
+                : { syncStatus: 'synced', lastSyncedAt: new Date().toISOString() }),
+              _suppressHooks: true
+            })
           return true
         }
 
@@ -403,12 +451,19 @@ export class SyncTransport {
         // and every later edit would PUT nowhere. Leave it pending instead.
         if (!result?.id) throw new Error('server returned no id')
 
-        await db[table].where('id').equals(local.id).modify({
-          apiId: result.id,
-          syncStatus: 'synced',
-          lastSyncedAt: new Date().toISOString(),
-          _suppressHooks: true
-        })
+        const changed = await this.changedSince(db, table, local.id, revision)
+        await db[table]
+          .where('id')
+          .equals(local.id)
+          .modify({
+            apiId: result.id,
+            // The POST created the old body. If the author edited while it
+            // was in flight, keep the row pending so the next cycle PUTs it.
+            ...(changed
+              ? { syncStatus: 'pending-update', lastSyncedAt: null }
+              : { syncStatus: 'synced', lastSyncedAt: new Date().toISOString() }),
+            _suppressHooks: true
+          })
 
         idMap.setMapping(table, local.id, result.id)
 
@@ -426,11 +481,16 @@ export class SyncTransport {
 
         await this.withRetry(() => this._api(`${resolved}/${apiId}`, { method: 'PUT', body }))
 
-        await db[table].where('id').equals(local.id).modify({
-          syncStatus: 'synced',
-          lastSyncedAt: new Date().toISOString(),
-          _suppressHooks: true
-        })
+        const changed = await this.changedSince(db, table, local.id, revision)
+        if (!changed) {
+          await db[table].where('id').equals(local.id).modify({
+            syncStatus: 'synced',
+            lastSyncedAt: new Date().toISOString(),
+            _suppressHooks: true
+          })
+        }
+        // Changed: leave it pending-update. The hook already cleared
+        // lastSyncedAt, and the new body goes out on the next push.
         return true
       }
       // Unknown syncStatus: no-op, counted as pushed (nothing pending).
@@ -511,12 +571,12 @@ export class SyncTransport {
       all.push(...res.items)
       if (!res.hasNextPage || res.items.length === 0) return all
     }
-    // Practically unreachable (100k rows/table) but loud if ever hit: the
-    // pull continues truncated and must not look clean.
-    console.warn(
-      `[SyncTransport] fetchAll hit the 1000-page cap at ${url}: returning ${all.length} rows truncated`
+    // Returning a truncated list would let the caller stamp the pull as
+    // complete and permanently strand rows past this cap. Fail the table pull
+    // so sync status stays failed and a later cycle can retry it.
+    throw new Error(
+      `[SyncTransport] fetchAll exceeded the 1000-page limit at ${url}; refusing a truncated pull`
     )
-    return all
   }
 
   /**
@@ -525,6 +585,12 @@ export class SyncTransport {
    * with unpushed local edits keeps local-wins, like everywhere else. The
    * delete is hook-suppressed so it is not queued back to a server that
    * already deleted it (that DELETE would 404 and retry forever).
+   *
+   * A root `projects` tombstone means the story was deleted remotely. Applying
+   * it deletes the local project and its synced child rows, but only when the
+   * entire subtree is clean; any locally dirty row preserves the whole subtree
+   * as a conflict (local wins) and the tombstone stays skipped for a later
+   * cycle, so unpushed edits are never discarded.
    */
   async pullTombstones(
     storyApiId: string,
@@ -564,6 +630,20 @@ export class SyncTransport {
         skipped++
         continue
       }
+
+      if (table === 'projects') {
+        const outcome = await this.applyProjectTombstone(
+          localId as string | number,
+          rowId,
+          localRec,
+          idMap,
+          tables
+        )
+        if (outcome === 'applied') applied++
+        else skipped++
+        continue
+      }
+
       if (localRec.syncStatus && localRec.syncStatus !== 'synced') {
         skipped++
         continue
@@ -574,6 +654,77 @@ export class SyncTransport {
       applied++
     }
     return { applied, skipped }
+  }
+
+  private isDirtySyncRow(row: Row | undefined): boolean {
+    return !!row?.syncStatus && row.syncStatus !== 'synced'
+  }
+
+  private async applyProjectTombstone(
+    localProjectId: string | number,
+    storyApiId: string,
+    project: Row,
+    idMap: IdMap,
+    tables: Record<string, SyncTable>
+  ): Promise<'applied' | 'skipped'> {
+    if (this.isDirtySyncRow(project)) return 'skipped'
+
+    const localProjectKey = String(localProjectId)
+    const childTables = SYNC_ENTITIES.filter(
+      (entity) => entity.parentField === 'projectId' && entity.table !== 'projects'
+    )
+    // Rows under a child, not the project: `volumeEntities` hangs off the
+    // volume (`parentField: volumeId`). The direct-project pass used to delete
+    // the volume and leave its memberships behind as orphans.
+    const nested: Array<{ table: string; rows: Row[] }> = []
+    const volumes = tables.volumes
+    if (volumes?.where) {
+      const volumeRows = await volumes.where('projectId').equals(localProjectId).toArray()
+      const links = tables.volumeEntities
+      if (links?.where) {
+        const linkRows: Row[] = []
+        for (const volume of volumeRows) {
+          linkRows.push(...(await links.where('volumeId').equals(volume.id).toArray()))
+        }
+        nested.push({ table: 'volumeEntities', rows: linkRows })
+      }
+    }
+
+    for (const entity of childTables) {
+      const table = tables[entity.table]
+      if (!table?.where) continue
+      const rows = await table.where('projectId').equals(localProjectId).toArray()
+      if (rows.some((row) => this.isDirtySyncRow(row))) return 'skipped'
+    }
+    if (nested.some(({ rows }) => rows.some((row) => this.isDirtySyncRow(row)))) return 'skipped'
+
+    for (const entry of nested) {
+      const table = tables[entry.table]
+      if (!table) continue
+      for (const row of entry.rows) {
+        const rowKey = String(row.id)
+        idMap.suppressNextDelete(entry.table, rowKey)
+        await table.delete(row.id)
+        if (row.apiId != null) idMap.removeMapping(entry.table, rowKey, String(row.apiId))
+      }
+    }
+
+    for (const entity of childTables) {
+      const table = tables[entity.table]
+      if (!table?.where) continue
+      const rows = await table.where('projectId').equals(localProjectId).toArray()
+      for (const row of rows) {
+        const rowKey = String(row.id)
+        idMap.suppressNextDelete(entity.table, rowKey)
+        await table.delete(row.id)
+        if (row.apiId != null) idMap.removeMapping(entity.table, rowKey, String(row.apiId))
+      }
+    }
+
+    idMap.suppressNextDelete('projects', localProjectKey)
+    await tables.projects.delete(localProjectId)
+    idMap.removeMapping('projects', localProjectKey, storyApiId)
+    return 'applied'
   }
 
   /**
@@ -600,11 +751,13 @@ export class SyncTransport {
       for (const apiItem of items) {
         if (!apiItem?.id) continue
         const existingLocalId = idMap.getLocalId(table, apiItem.id)
+        let revision: unknown
         if (existingLocalId) {
           const localRec = await db[table].get(existingLocalId)
           if (localRec && localRec.syncStatus && localRec.syncStatus !== 'synced') {
             continue
           }
+          revision = localRec?._syncRevision
         }
 
         const localData: any = await fromApi(apiItem)
@@ -615,6 +768,12 @@ export class SyncTransport {
         }
 
         if (existingLocalId) {
+          // `fromApi` awaits link lookups; the author can edit meanwhile. Check
+          // again after it resolves so a pull never overwrites that edit.
+          const current = await db[table].get(existingLocalId)
+          if (!current) continue
+          if (current.syncStatus && current.syncStatus !== 'synced') continue
+          if ((current._syncRevision ?? undefined) !== (revision ?? undefined)) continue
           await db[table]
             .where('id')
             .equals(existingLocalId)

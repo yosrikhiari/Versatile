@@ -149,4 +149,18 @@ public sealed class SyncBatchControllerIntegrationTests : ControllerTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Tombstones_RemainFetchableAfterStoryDeleted()
+    {
+        var deleteStory = await DeleteAsync($"/api/story/{StoryId}");
+        deleteStory.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var response = await GetAsync($"/api/story/{StoryId}/sync/tombstones");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var tombstones = await ReadBodyAsync<List<SyncTombstoneDto>>(response);
+        tombstones.Should().ContainSingle(t =>
+            t.Table == "projects" && t.RowId == StoryId && t.StoryId == StoryId);
+    }
 }

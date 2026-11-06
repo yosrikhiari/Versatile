@@ -21,11 +21,25 @@ public class GetSyncTombstonesHandler : IRequestHandler<GetSyncTombstonesQuery, 
 
     public async Task<List<SyncTombstoneDto>> Handle(GetSyncTombstonesQuery request, CancellationToken ct)
     {
-        var story = await _storyRepo.GetByIdForOrganizationAsync(request.StoryId, request.OrganizationId!.Value, ct);
-        if (story is null || story.UserId != request.UserId)
+        var organizationId = request.OrganizationId!.Value;
+        var story = await _storyRepo.GetByIdForOrganizationAsync(request.StoryId, organizationId, ct);
+        if (story is not null && story.UserId != request.UserId)
             throw new KeyNotFoundException("Story not found");
 
-        var tombstones = await _tombstoneRepo.GetAllAsync(t => t.StoryId == request.StoryId, ct);
+        var tombstones = await _tombstoneRepo.GetAllAsync(
+            t => t.StoryId == request.StoryId && t.OrganizationId == organizationId, ct);
+
+        if (story is null)
+        {
+            // The story row is gone (root deletion) but its tombstones remain.
+            // Authorize from tombstone ownership: current records carry the row's
+            // UserId; legacy interceptor rows used Guid.Empty, so accept ownerless
+            // tombstones only within the same organization context.
+            if (tombstones.Count == 0 ||
+                !tombstones.Any(t => t.UserId == request.UserId || t.UserId == Guid.Empty))
+                throw new KeyNotFoundException("Story not found");
+        }
+
         return tombstones
             .OrderBy(t => t.DeletedAt)
             .Select(t => new SyncTombstoneDto(t.StoryId, t.Table, t.RowId, t.DeletedAt))

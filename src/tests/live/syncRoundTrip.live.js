@@ -23,13 +23,21 @@ const realFetch = globalThis.fetch
 let token = ''
 
 /** Raw server read, envelope stripped, for checking what actually landed. */
-async function server(path) {
-  const res = await realFetch(`${BASE}/api${path}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  expect(res.status, path).toBe(200)
-  const body = await res.json()
-  return body.data
+async function server(path, options = {}) {
+  for (let i = 0; i < 6; i++) {
+    const res = await realFetch(`${BASE}/api${path}`, {
+      ...options,
+      headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+    })
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, (Number(res.headers.get('retry-after')) || 5) * 1000))
+      continue
+    }
+    expect(res.status, path).toBe(200)
+    const body = await res.json()
+    return body.data
+  }
+  throw new Error(`server ${path} remained rate limited`)
 }
 
 const TABLES = [
@@ -235,5 +243,74 @@ describe('sync round trip (live API)', () => {
     expect(section.volumeId).toBeNull()
     const entities = await server(`/story/${s1}/entity`)
     expect(entities.map((e) => e.name)).toEqual(['The Docks'])
+  })
+
+  it('device B: a remotely deleted story converges as a root tombstone', async () => {
+    const doomed = await db.projects.get(ids.b1)
+    expect(doomed?.apiId).toMatch(/^[0-9a-f-]{36}$/)
+    const surviving =
+      (ids.b2 ? await db.projects.get(ids.b2) : null) ??
+      (await db.projects.where({ name: 'Second Book' }).first())
+
+    const del = await realFetch(`${BASE}/api/story/${doomed.apiId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    expect([204, 404]).toContain(del.status)
+
+    const tombstones = await server(`/story/${doomed.apiId}/sync/tombstones`)
+    expect(tombstones).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ table: 'projects', rowId: doomed.apiId, storyId: doomed.apiId })
+      ])
+    )
+
+    // the engine's own pull path must apply the root tombstone
+
+    await engine.pull()
+    expect(syncStatus.lastError).toBeNull()
+
+    expect(await db.projects.get(ids.b1)).toBeUndefined()
+    expect(await db.sections.where({ projectId: ids.b1 }).count()).toBe(0)
+    expect(await db.subsections.where({ projectId: ids.b1 }).count()).toBe(0)
+    expect(await db.branches.where({ projectId: ids.b1 }).count()).toBe(0)
+    expect(await db.volumes.where({ projectId: ids.b1 }).count()).toBe(0)
+    expect(await db.researchDocuments.where({ projectId: ids.b1 }).count()).toBe(0)
+    expect(await db.manuscripts.where({ projectId: ids.b1 }).count()).toBe(0)
+
+    const kept = await db.projects.where({ name: 'Second Book' }).first()
+    expect(kept?.id).toBe(surviving?.id ?? kept?.id)
+    expect(await db.characters.where({ projectId: kept.id }).count()).toBe(1)
+  })
+
+  it('device B: a remote root delete preserves a dirty local subtree', async () => {
+    const project = await db.projects.where({ name: 'Second Book' }).first()
+    expect(project?.apiId).toMatch(/^[0-9a-f-]{36}$/)
+
+    await db.characters
+      .where({ projectId: project.id })
+      .modify({ name: 'Only In Book Two (local)' })
+    const localChar = await db.characters.where({ projectId: project.id }).first()
+    expect(localChar.syncStatus).toBe('pending-update')
+
+    const del = await realFetch(`${BASE}/api/story/${project.apiId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    expect([204, 404]).toContain(del.status)
+
+    const tombstones = await server(`/story/${project.apiId}/sync/tombstones`)
+    expect(tombstones).toEqual(
+      expect.arrayContaining([expect.objectContaining({ table: 'projects', rowId: project.apiId })])
+    )
+
+    await engine.pull()
+
+    expect(await db.projects.get(project.id)).toBeDefined()
+    expect(await db.characters.where({ projectId: project.id }).count()).toBe(1)
+    expect((await db.characters.where({ projectId: project.id }).first()).name).toBe(
+      'Only In Book Two (local)'
+    )
+    expect(syncStatus.lastError).toMatch(/local edits prevent cleanup/i)
   })
 })

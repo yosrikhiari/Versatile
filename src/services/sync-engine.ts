@@ -42,6 +42,16 @@ export function destroySyncEngine(): void {
   }
 }
 
+/**
+ * A push may stamp `lastSync` only when nothing failed AND nothing was
+ * deferred. Deferred rows are waiting for a parent (a project without a server
+ * story yet); stamping "everything known pushed" while they sit pending is the
+ * same lie a partial failure used to tell.
+ */
+export function isPushComplete(outcome: { failed: number; deferred: number }): boolean {
+  return outcome.failed === 0 && outcome.deferred === 0
+}
+
 class SyncEngine {
   initialized = false
   private _hooksInstalled = false
@@ -105,6 +115,10 @@ class SyncEngine {
         obj.syncStatus = 'pending-create'
         obj.lastSyncedAt = null
         obj.apiId = null
+        // Lets a push prove the row did not change while its request was in
+        // flight. Without it a local edit made during the request was marked
+        // synced with the server still holding the old body.
+        obj._syncRevision = 1
       }
 
       const updating = (
@@ -114,8 +128,13 @@ class SyncEngine {
       ) => {
         if (modifications._suppressHooks) return { _suppressHooks: undefined }
         if (obj.syncStatus !== 'pending-create') {
-          return { syncStatus: 'pending-update', lastSyncedAt: null }
+          return {
+            syncStatus: 'pending-update',
+            lastSyncedAt: null,
+            _syncRevision: (Number(obj._syncRevision) || 0) + 1
+          }
         }
+        return { _syncRevision: (Number(obj._syncRevision) || 0) + 1 }
       }
 
       // The hook runs inside the delete's own transaction, which does not
@@ -243,18 +262,26 @@ class SyncEngine {
     // row can find its story; a row whose project has no story yet is
     // deferred to the next cycle, not counted as a failure.
     let anyFailed = false
+    let failedTotal = 0
+    let deferredTotal = 0
     for (const tableName of SYNC_ORDER) {
       try {
-        const { failed } = await this._transport.pushTable(
+        const { failed, deferred } = await this._transport.pushTable(
           tableName,
           this._idMap,
           findSyncConfig,
           db
         )
+        failedTotal += failed
+        deferredTotal += deferred
         if (failed > 0) {
           anyFailed = true
           this._failedTables.add(tableName)
           syncStatus.lastError = `Push failed — ${tableName}: ${failed} row(s) still pending`
+        } else if (deferred > 0) {
+          // Waiting on a parent is not a failure, but it is not "pushed"
+          // either: keep it visible without spinning the retry queue.
+          syncStatus.lastError = `Push deferred — ${tableName}: ${deferred} row(s) waiting for their story`
         } else {
           this._failedTables.delete(tableName)
         }
@@ -266,11 +293,13 @@ class SyncEngine {
       }
     }
 
+    let deletionsFailed = false
     try {
       const fallback = await this._idMap.resolveStoryApiId()
       const { failed } = await this._transport.pushDeletions(fallback, db, findSyncConfig)
       if (failed > 0) {
         anyFailed = true
+        deletionsFailed = true
         this._failedTables.add('deletions')
         syncStatus.lastError = `Push deletions failed — ${failed} row(s) still queued`
       } else {
@@ -278,13 +307,21 @@ class SyncEngine {
       }
     } catch (err) {
       anyFailed = true
+      deletionsFailed = true
       console.error('[SyncEngine] Push deletions failed:', (err as Error).message)
       syncStatus.lastError = `Push deletions failed — ${(err as Error).message}`
     }
 
     // lastSync means "everything known pushed" — stamping it after a
-    // partial failure is what made failed rows read as synced.
-    if (!anyFailed) {
+    // partial failure or with rows deferred behind a parent is what made
+    // unsent rows read as synced. A rejected delete is a failure too: it
+    // was not part of `failedTotal` before, so the stamp hid it.
+    if (
+      isPushComplete({
+        failed: failedTotal + (deletionsFailed ? 1 : 0),
+        deferred: deferredTotal
+      })
+    ) {
       syncStatus.lastSync = new Date().toISOString()
     }
     this._updateSyncStatus()
@@ -301,9 +338,14 @@ class SyncEngine {
     }
     syncStatus.state = 'syncing'
     let anyFailed = false
+    const isStoryGoneError = (err: unknown) => {
+      const status = (err as { status?: number } | null)?.status
+      const message = (err as Error | null)?.message || ''
+      return status === 404 || /story not found/i.test(message)
+    }
     const pullOne = async (table: string, storyApiId: string | null, localProjectId: unknown) => {
       const config = findSyncConfig(table)
-      if (!config) return
+      if (!config) return null as Error | null
       try {
         await this._transport.pullTable(
           config as never,
@@ -312,23 +354,31 @@ class SyncEngine {
           this._idMap,
           db
         )
+        return null
       } catch (err) {
-        anyFailed = true
         console.error(`[SyncEngine] Pull failed for ${table}:`, (err as Error).message)
-        syncStatus.lastError = `Pull failed — ${table}: ${(err as Error).message}`
+        return err as Error
       }
     }
 
     // Stories first (new ones from another device become local projects),
     // then every table of every synced project, parents before children so
     // a pulled chapter can find its volume and branch.
-    await pullOne('projects', null, null)
+    {
+      const err = await pullOne('projects', null, null)
+      if (err) {
+        anyFailed = true
+        syncStatus.lastError = `Pull failed — projects: ${err.message}`
+      }
+    }
     const projects: Array<{ id: unknown; apiId?: string | null }> = await db.projects.toArray()
     for (const project of projects) {
       if (!project.apiId) continue
+      const projectErrors: Error[] = []
       for (const table of SYNC_ORDER) {
         if (table === 'projects') continue
-        await pullOne(table, project.apiId, project.id)
+        const err = await pullOne(table, project.apiId, project.id)
+        if (err) projectErrors.push(err)
       }
       // Remote deletes last: a row deleted on another device leaves the
       // local copy only when it carries unpushed local edits (local wins).
@@ -338,6 +388,21 @@ class SyncEngine {
         anyFailed = true
         console.error('[SyncEngine] Tombstone pull failed:', (err as Error).message)
         syncStatus.lastError = `Tombstone pull failed — ${(err as Error).message}`
+      }
+
+      const unresolved = projectErrors.filter((err) => !isStoryGoneError(err))
+      const storyGone = projectErrors.length > 0 && unresolved.length === 0
+      if (unresolved.length > 0) {
+        anyFailed = true
+        syncStatus.lastError = `Pull failed — ${project.apiId}: ${unresolved[0].message}`
+      } else if (storyGone) {
+        // A deleted story 404s child pulls until tombstones converge. If the
+        // root tombstone preserved a dirty subtree, keep the pull honest.
+        const stillLocal = project.id == null ? null : await db.projects.get(project.id)
+        if (stillLocal) {
+          anyFailed = true
+          syncStatus.lastError = `Pull incomplete — story ${project.apiId} was deleted remotely but local edits prevent cleanup`
+        }
       }
     }
 
