@@ -71,7 +71,12 @@ public class UrlFetchGuardTests
     [InlineData("fc00::1", true)]
     [InlineData("::ffff:127.0.0.1", true)]
     [InlineData("::ffff:10.0.0.1", true)]
+    [InlineData("ff02::1", true)] // IPv6 multicast
+    [InlineData("2001:1::1", true)] // IETF protocol assignment
+    [InlineData("2002::1", true)] // 6to4 transition range
+    [InlineData("3fff::1", true)] // IPv6 documentation range
     [InlineData("::ffff:8.8.8.8", false)]
+    [InlineData("2606:4700:4700::1111", false)] // Cloudflare public resolver
     [InlineData("2001:db8::1", true)] // documentation range, never legitimately routable
     public void IsBlockedAddress_ClassifiesIPv6(string ip, bool expectedBlocked)
     {
@@ -93,5 +98,15 @@ public class UrlFetchGuardTests
 
         ok.Should().BeFalse();
         reason.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task ConnectCallback_RejectsBlockedTargetsBeforeOpeningASocket()
+    {
+        var act = () => UrlFetchGuard.ConnectToPublicAddressAsync(
+            new DnsEndPoint("127.0.0.1", 80), CancellationToken.None).AsTask();
+
+        await act.Should().ThrowAsync<HttpRequestException>()
+            .WithMessage("Fetching from that address is not allowed.");
     }
 }

@@ -84,7 +84,16 @@ public class ResearchDocumentController : ApiControllerBase
         {
             // No auto-redirect: HttpClient would otherwise follow a Location
             // header to an internal address without re-validation.
-            using var handler = new SocketsHttpHandler { AllowAutoRedirect = false };
+            // Disable ambient proxies here: a proxy can resolve the target on
+            // the server's behalf and bypass our per-connection IP pinning.
+            // Every socket is connected to an address validated by the guard;
+            // the URI hostname is still retained for Host/TLS SNI.
+            using var handler = new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseProxy = false,
+                ConnectCallback = UrlFetchGuard.ConnectToPublicAddressAsync
+            };
             using var client = new HttpClient(handler);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(

@@ -34,8 +34,9 @@ map a port if you want it locally.
 Database identities: Postgres boots a bootstrap superuser
 (`POSTGRES_USER`/`POSTGRES_PASSWORD`, default `postgres`/`postgres`) and —
 on fresh volumes only, via `backend/postgres-init/01-app-role.sh` — a
-least-privilege runtime role (`POSTGRES_APP_USER`/`POSTGRES_APP_PASSWORD`,
-default `versatile_app` / `versatile_app_local_dev_only`). The API connects
+least-privilege runtime role (`versatile_app`, with password from
+`POSTGRES_APP_PASSWORD`). The role name is fixed because the EF migrations
+create and grant privileges to that name. The API connects
 as the app role (`ConnectionStrings__DefaultConnection`); boot-time
 migrations and role-password provisioning use `MigrationConnection`
 (superuser). Upgrading an existing `pgdata` volume needs no manual step:
@@ -126,7 +127,7 @@ rejects a value shorter than 32 characters or still holding the
 | Variable            | Maps to                                 | Default                          | Description                                                 |
 | ------------------- | --------------------------------------- | -------------------------------- | ----------------------------------------------------------- |
 | `POSTGRES_DB/USER/PASSWORD` | `ConnectionStrings__MigrationConnection` | `versatile` / `postgres` / `postgres` | Bootstrap superuser: boot-time `MigrateAsync` + role provisioning only, never request traffic. Override the password in production |
-| `POSTGRES_APP_USER` / `POSTGRES_APP_PASSWORD` | `ConnectionStrings__DefaultConnection` | `versatile_app` / `versatile_app_local_dev_only` | Runtime role (DML only, no DDL/CREATE, FORCE RLS applies). Override the password in production; changing it is the rotation story (restart applies it) |
+| `POSTGRES_APP_PASSWORD` | `ConnectionStrings__DefaultConnection` | `versatile_app_local_dev_only` | Password for fixed runtime role `versatile_app` (DML only, no DDL/CREATE, FORCE RLS applies). Override in production; changing it is the rotation story (restart applies it) |
 | `JWT_ISSUER`        | `Jwt__Issuer`                           | `Versatile.Api`                  |                                                             |
 | `JWT_AUDIENCE`      | `Jwt__Audience`                         | `Versatile.App`                  |                                                             |
 | `OPENAI_API_KEY`    | `Ai__OpenAi__ApiKey`                    | inert placeholder                | Server-side fallback; users normally store their own keys via the API. Compose maps an empty value to the placeholder; setting `Ai__OpenAi__ApiKey` to an **empty string** directly trips the DI guard, so leave it unset instead |

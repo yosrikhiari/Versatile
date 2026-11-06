@@ -56,13 +56,13 @@ docker compose ps postgres >/dev/null 2>&1 || fail "compose postgres not running
 PSQL="docker compose exec -T postgres psql -U postgres -d ${POSTGRES_DB:-versatile} -v ON_ERROR_STOP=1 -q -tA"
 
 FORCE_OFF=$($PSQL -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE n.nspname='public' AND c.relname IN ('Stories','Branches','Sections','Subsections')
+  WHERE n.nspname='public' AND c.relname IN ('Stories','Branches','Sections','Subsections','SceneLabels')
   AND (NOT c.relforcerowsecurity OR NOT c.relrowsecurity);")
-[ "$FORCE_OFF" = "0" ] || fail "FORCE+ENABLE RLS missing on $FORCE_OFF of Stories/Branches/Sections/Subsections"
-pass "FORCE+ENABLE RLS active on Stories/Branches/Sections/Subsections"
+[ "$FORCE_OFF" = "0" ] || fail "FORCE+ENABLE RLS missing on $FORCE_OFF of Stories/Branches/Sections/Subsections/SceneLabels"
+pass "FORCE+ENABLE RLS active on Stories/Branches/Sections/Subsections/SceneLabels"
 
 POLICIES=$($PSQL -c "SELECT count(DISTINCT tablename) FROM pg_policies WHERE schemaname='public' AND policyname='tenant_isolation';")
-[ "$POLICIES" -ge 35 ] || fail "expected tenant_isolation on >=35 tables, found $POLICIES"
+[ "$POLICIES" -ge 36 ] || fail "expected tenant_isolation on >=36 tables, found $POLICIES"
 pass "tenant_isolation on $POLICIES tables"
 
 # Shared seed for the checks below: temp org + user (FK targets for Stories).
@@ -88,9 +88,9 @@ DELETE FROM \"Organizations\" WHERE \"Slug\" LIKE 'verify-%';"
 # migration identity rightly sees everything. Testing isolation as
 # superuser can only ever prove deny-all or nothing.
 export PGPASSWORD="${POSTGRES_APP_PASSWORD:-versatile_app_local_dev_only}"
-APP_PSQL="docker compose exec -T postgres psql -U ${POSTGRES_APP_USER:-versatile_app} -d ${POSTGRES_DB:-versatile} -v ON_ERROR_STOP=1 -q -tA"
+APP_PSQL="docker compose exec -T postgres psql -U versatile_app -d ${POSTGRES_DB:-versatile} -v ON_ERROR_STOP=1 -q -tA"
 
-NOBYPASS=$($PSQL -c "SELECT count(*) FROM pg_roles WHERE rolname='${POSTGRES_APP_USER:-versatile_app}' AND rolbypassrls;")
+NOBYPASS=$($PSQL -c "SELECT count(*) FROM pg_roles WHERE rolname='versatile_app' AND rolbypassrls;")
 [ "$NOBYPASS" = "0" ] || fail "application role has BYPASSRLS (RLS would never bind)"
 pass "application role has no BYPASSRLS"
 

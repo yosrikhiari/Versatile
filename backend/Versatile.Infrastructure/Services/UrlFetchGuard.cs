@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 
@@ -14,15 +15,74 @@ namespace Versatile.Infrastructure.Services;
 /// loopback/link-local/unique-local and IPv4-mapped private addresses.
 /// Anything unresolvable is rejected (fail-closed).
 ///
-/// Known residual risk (documented, not silently accepted): DNS is checked
-/// before connecting, so a hostile resolver that rebinds between check and
-/// connect (DNS rebinding / TOCTOU) is not stopped here. Closing that needs
-/// connection-level IP pinning (custom <c>SocketsHttpHandler.ConnectCallback</c>)
-/// and is a follow-up.
+/// The URL-fetch client uses <see cref="ConnectToPublicAddressAsync"/> as its
+/// connection callback. The callback resolves and validates the host, then
+/// connects directly to one of those validated IPs, closing the DNS
+/// check/connect rebinding window. Redirects go through the same callback.
 /// </summary>
 public static class UrlFetchGuard
 {
     public const int MaxRedirects = 3;
+
+    /// <summary>
+    /// Resolve and pin the actual socket to a public address. Validating DNS
+    /// separately from HttpClient's own hostname resolution leaves a rebinding
+    /// window; this callback uses the checked IP for the TCP connection while
+    /// HttpClient retains the request hostname for HTTP Host and TLS SNI.
+    /// </summary>
+    public static async ValueTask<Stream> ConnectToPublicAddressAsync(
+        SocketsHttpConnectionContext context,
+        CancellationToken cancellationToken)
+        => await ConnectToPublicAddressAsync(context.DnsEndPoint, cancellationToken);
+
+    public static async ValueTask<Stream> ConnectToPublicAddressAsync(
+        DnsEndPoint endpoint,
+        CancellationToken cancellationToken)
+    {
+        if (IsBlockedHostName(endpoint.Host))
+            throw new HttpRequestException("Fetching from that host is not allowed.");
+
+        IPAddress[] addresses;
+        try
+        {
+            addresses = IPAddress.TryParse(endpoint.Host, out var literal)
+                ? [literal]
+                : await Dns.GetHostAddressesAsync(endpoint.Host, cancellationToken);
+        }
+        catch (SocketException ex)
+        {
+            throw new HttpRequestException("The host could not be resolved.", ex);
+        }
+
+        if (addresses.Length == 0 || addresses.Any(IsBlockedAddress))
+            throw new HttpRequestException("Fetching from that address is not allowed.");
+
+        SocketException? lastError = null;
+        foreach (var address in addresses)
+        {
+            var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true
+            };
+            try
+            {
+                await socket.ConnectAsync(new IPEndPoint(address, endpoint.Port), cancellationToken);
+                return new NetworkStream(socket, ownsSocket: true);
+            }
+            catch (SocketException ex)
+            {
+                lastError = ex;
+                socket.Dispose();
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+        }
+
+        throw new HttpRequestException("Could not connect to the validated public address.", lastError);
+    }
 
     public static bool TryValidateUri(Uri uri, out string reason)
     {
@@ -96,19 +156,22 @@ public static class UrlFetchGuard
             return IsBlockedIPv4(ip);
         }
 
-    // IPv6: unspecified, loopback, link-local (fe80::/10), unique-local (fc00::/7),
-    // documentation (2001:db8::/32, never legitimately routable).
-    if (address.Equals(IPAddress.IPv6None) || address.Equals(IPAddress.IPv6Loopback))
-        return true;
-    var b0 = bytes[0];
-    var b1 = bytes[1];
-    if (b0 == 0xFE && (b1 & 0xC0) == 0x80)
-        return true;
-    if ((b0 & 0xFE) == 0xFC)
-        return true;
-    if (b0 == 0x20 && b1 == 0x01 && bytes[2] == 0x0D && bytes[3] == 0xB8)
-        return true;
-    return false;
+        // Only global-unicast 2000::/3 is allowed. This excludes unspecified,
+        // loopback, link-local, unique-local, multicast, site-local, and other
+        // reserved/non-global ranges before the narrower documentation and
+        // transition-network exclusions below.
+        if (address.Equals(IPAddress.IPv6None) || address.Equals(IPAddress.IPv6Loopback))
+            return true;
+        if ((bytes[0] & 0xE0) != 0x20)
+            return true;
+        if (bytes[0] == 0x20 && bytes[1] == 0x01 &&
+            ((bytes[2] & 0xFE) == 0x00 || (bytes[2] == 0x0D && bytes[3] == 0xB8)))
+            return true; // IETF protocol assignments (2001:0000::/23), documentation.
+        if (bytes[0] == 0x20 && bytes[1] == 0x02)
+            return true; // 6to4 can encode a non-public IPv4 destination.
+        if (bytes[0] == 0x3F && bytes[1] == 0xFF && (bytes[2] & 0xF0) == 0x00)
+            return true;
+        return false;
     }
 
     private static bool IsBlockedIPv4(uint ip)

@@ -32,6 +32,7 @@ public class SignalRHubTests
         var ctx = new Mock<HubCallerContext>();
         ctx.SetupGet(c => c.ConnectionId).Returns(connectionId);
         ctx.SetupGet(c => c.User).Returns(Principal());
+        ctx.SetupGet(c => c.Items).Returns(new Dictionary<object, object?>());
         return ctx;
     }
 
@@ -154,6 +155,50 @@ public class SignalRHubTests
         (await act.Should().ThrowAsync<HubException>()).WithMessage("Story not found.");
         access.Verify(a => a.CanAccessAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         groups.Verify(g => g.AddToGroupAsync(It.IsAny<string>(), It.IsAny<string>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task CollaborationEvents_RequireJoinedStoryAndUseAuthenticatedUserId()
+    {
+        var access = Access(true);
+        var context = HubContext();
+        var harness = new ClientHarness();
+        var hub = new CollaborationHub(access.Object)
+        {
+            Context = context.Object,
+            Clients = harness.Clients.Object,
+            Groups = GroupManager().Object,
+        };
+
+        var unauthorized = () => hub.CursorMoved(StoryId.ToString(), "forged-user", "10,20");
+        await unauthorized.Should().ThrowAsync<HubException>();
+        harness.OthersInGroupProxy.Verify(
+            c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        await hub.JoinStoryGroup(StoryId.ToString());
+        await hub.CursorMoved(StoryId.ToString(), "forged-user", "10,20");
+
+        var sent = harness.OthersInGroupProxy.Invocations
+            .Where(i => i.Method.Name == nameof(IClientProxy.SendCoreAsync))
+            .Select(i => (object?[])i.Arguments[1]!)
+            .Single();
+        sent.Should().Equal(UserId.ToString(), "10,20");
+    }
+
+    [Fact]
+    public async Task CollaborationEvents_CannotBroadcastToAnUnjoinedStory()
+    {
+        var hub = new CollaborationHub(Access(true).Object)
+        {
+            Context = HubContext().Object,
+            Clients = new ClientHarness().Clients.Object,
+            Groups = GroupManager().Object,
+        };
+
+        var act = () => hub.ContentChanged(StoryId.ToString(), "scene-1", "forged content");
+
+        (await act.Should().ThrowAsync<HubException>()).WithMessage("Story not found.");
     }
 
     [Fact]

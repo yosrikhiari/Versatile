@@ -17,6 +17,11 @@ set -eu
 : "${POSTGRES_APP_USER:=versatile_app}"
 : "${POSTGRES_APP_PASSWORD:=versatile_app_local_dev_only}"
 
+if [ "$POSTGRES_APP_USER" != "versatile_app" ]; then
+  echo '01-app-role.sh: the application role name is fixed to versatile_app by the EF migrations' >&2
+  exit 1
+fi
+
 # The init process runs as the bootstrap superuser; $POSTGRES_USER is set by
 # the image.
 #
