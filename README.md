@@ -4,7 +4,7 @@
 
 An offline-first fiction writing environment: a distraction-free editor, a story bible, chapters / scenes / timeline, a story network graph, and a local-AI pipeline that plans, drafts and critiques whole books on your own machine. Built with Vue 3, Pinia and Dexie (IndexedDB); Ollama by default for every model call; an optional .NET 10 backend for accounts, sync and collaboration.
 
-Nothing leaves the device unless you opt in — the cloud tier is per-project and discloses exactly what it sends.
+Nothing leaves the device unless you opt in — the cloud tier is per-project and per-device, and discloses exactly what it sends.
 
 ![Versatile tour: editor, Agents panel, chapters, story bible, network, timeline, story shape](docs/img/tour.gif)
 
@@ -108,10 +108,10 @@ src/
 │   └── sync-engine.ts  — offline-to-server sync (14 synced tables)
 ├── stores/             — 23 Pinia stores (setup syntax)
 ├── config/             — providers, models, prompts, eval rubrics, gate config, workspaces
-└── tests/              — unit (302 files), integration, audit, evaluation, live
+└── tests/              — unit (318 files), integration, audit, evaluation, live
 ```
 
-See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TESTING.md` for every suite, and `docs/GENERATION-PIPELINE-ANALYSIS.md` for how a run behaves.
+See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TESTING.md` for every suite, `docs/GENERATION-PIPELINE-ANALYSIS.md` for how a run behaves, and `docs/ETHICS-AND-LIMITATIONS.md` for evidence status, data flows and scope limits.
 
 ## Getting Started
 
@@ -147,7 +147,7 @@ Run `npm install` again after every pull that touches `package.json`. With a sta
 
 - **AI Providers**: Configured via the Settings modal in-app — supports Ollama (default), OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI (with its account id)
 - **Per-feature models**: Each AI feature can use a different provider/model
-- **Cloud audit**: per-project opt-in (`cloudAuditOptIn`) plus a global `analysisTier` setting; off by default
+- **Cloud audit**: consent is stored on the project row (`cloudAuditOptIn`) and granted per device; a global `analysisTier` setting is only the ceiling. Off by default. Labels and consent are not part of the sync payload.
 - **Portrait generation**: Optional Stable Diffusion integration (proxied to `http://127.0.0.1:7860`)
 
 ### Optional backend
@@ -162,7 +162,7 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run build`            | Production build (pre-compressed `.br`/`.gz` assets)            |
 | `npm run preview`          | Preview production build                                        |
 | `npm test`                 | Run unit tests (watch mode)                                     |
-| `npm run test:run`         | Run unit tests once (≈3,470 tests)                              |
+| `npm run test:run`         | Run unit tests once (latest: 3,657 passed, 2 skipped)            |
 | `npm run test:coverage`    | Run tests with coverage report                                  |
 | `npm run test:e2e`         | Playwright smoke/auth/responsive/panel specs (boots dev server) |
 | `npm run typecheck`        | `tsc --noEmit`                                                  |

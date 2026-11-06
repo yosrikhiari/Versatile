@@ -37,7 +37,7 @@ Entities in `SYNC_ENTITIES` that flow local ⇄ server. `characters` and `locati
 
 ---
 
-## 📍 Local-only (16 entities)
+## 📍 Local-only (17 entities)
 
 Have both backend representation and IndexedDB table but intentionally NOT synced. Each entry explains why.
 
@@ -59,6 +59,7 @@ Have both backend representation and IndexedDB table but intentionally NOT synce
 | `storyElements` | StoryElement | Story-bible canvas elements; derived from synced entity data |
 | `storyStateSnapshots` | StoryStateSnapshot | Pipeline/undo state; throttled, capped at 50/project (v48) |
 | `voiceProfiles` | VoiceProfile | AI voice / narrator profiles; local preferences |
+| `sceneLabels` | SceneLabel | Reviewer labels for calibration. The backend table has an optional `SubsectionId` (stable scene identity) and a migration, but there is no label mapper or sync protocol yet, so labels do not converge across devices and are not evidence of cross-device identity |
 
 Backend `DbSet`s with **no Dexie table any more** (server-side kept for backward compat, nothing writes them from the SPA): `Chapter`, `Scene` (superseded by sections/subsections in v13), `GraphGroup` (removed from Dexie; data lives in `graphGroupsV2`), `NodePosition` (dropped in v39; `graphNodePositions` / `graphNodeInstances` replace it).
 
@@ -101,6 +102,10 @@ the server Entity's `metadata` JSON blob for characters and locations; plot thre
 server-side blob, so their custom fields and tags are local-only. Section/subsection `pov`,
 `location`, `charactersPresent` and `wordCount` are local-only until the backend gains the
 columns.
+
+`projects.cloudAuditOptIn` is also local-only: it is cloud consent for one
+project from one device. Pushing it would opt a second device in without that
+device's user acting. See `docs/ETHICS-AND-LIMITATIONS.md` §3.
 
 **Links between rows (fixed 2026-10-04):** a chapter's `volumeId` and `branchId` and a scene's
 `branchId`, `order` and `sectionId` (a scene moved to another chapter) now go up as server ids and
@@ -180,6 +185,55 @@ local-wins) via a hook-suppressed delete plus id-map removal, so nothing is
 queued back to the server. Backend suite green; frontend sync suites green;
 `src/tests/live/syncRoundTrip.live.js` exercises the same client paths
 (batch-first) but needs the compose stack to run — not executed here.
+
+**Update 2026-11-05 (root story deletion convergence):** deleting a story now
+converges to other devices. `GetSyncTombstonesHandler` returns tombstones even
+after the Story row is gone, authorized by organization context and tombstone
+ownership (current interceptor rows record the row owner; legacy rows with
+`UserId = Guid.Empty` remain fetchable within the same organization). The
+interceptor still records the `projects` root tombstone for the deleted story;
+child rows removed by database cascade do not produce child tombstones.
+
+Client policy for a root `projects` tombstone: if the local project or any
+synced child row in its subtree (`parentField = projectId`) has unpushed local
+edits (`pending-create` / `pending-update`), the tombstone is skipped and the
+whole subtree is preserved (local wins). If the subtree is clean, the client
+deletes the project and its synced child rows with hook-suppressed deletes and
+removes id mappings, so nothing is queued back to the server. A preserved
+dirty subtree is a conflict that remains until the user resolves/pushes those
+local edits; it is not silently discarded.
+
+Verified 2026-11-05: backend unit/integration tombstone tests pass (including
+deleted-story fetchability), `src/tests/unit/syncTransport.test.js` covers
+clean-subtree delete and dirty-subtree preservation (26 tests), live
+`syncRoundTrip.live.js` passes 5/5 against the compose stack (including root
+deletion convergence and dirty-subtree preservation), and
+`scripts/verify-postgres-rls.sh --live` passes 9/9. The two-client matrix above
+adds simultaneous-edit, in-flight-edit, delete-vs-edit and partial-failure
+cases in-memory; the live suite still does not run two clients editing the
+same row at the same instant.
+
+## Two-client conflict matrix (2026-11-06)
+
+The contract is deliberately simple: no CRDT, no ETag/version column, no
+three-way merge. `sync-conflicts.ts` holds timestamp helpers but the transport
+does not use them.
+
+| Scenario | What happens | Where it is pinned |
+|---|---|---|
+| A edits, B is clean and pulls | B receives A's row | existing sync round trip |
+| B has local edits, A's row arrives | B keeps its dirty row; remote is skipped | `syncTwoClientConflict.test.js` |
+| Both edit and push | later push wins the row; no field merge | `syncTwoClientConflict.test.js` |
+| A edits while its push is in flight | row returns to `pending-update`, not `synced`; server holds the old body until the next push | `syncTwoClientConflict.test.js` |
+| A deletes a clean subtree | B deletes the project and clean children via the root tombstone | `syncTransport.test.js`, live `syncRoundTrip.live.js` |
+| A deletes a subtree B has dirty | B preserves the whole subtree (local wins) and reports a conflict | `syncTransport.test.js` |
+| Child arrives before its parent has a server id | child is deferred, not sent with an empty link, and `lastSync` is not stamped | `syncTransport.test.js` |
+| A push partially fails | failed rows stay pending, the table is retried; successful siblings are marked | `syncTransport.test.js` |
+| Two devices edit the same row simultaneously | no conflict UI and no merge; last writer wins. This is a documented limitation, not co-editing | matrix row above |
+
+The tests use `src/tests/helpers/fakeSyncServer.js`, an in-memory server plus
+two clients, so the matrix runs without Docker. The live round trip still
+covers the real API path.
 
 ## Workflow
 

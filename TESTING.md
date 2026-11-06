@@ -6,7 +6,7 @@ How to run every check in this repo, and the conventions new tests must follow.
 
 ```bash
 npm test              # watch mode
-npm run test:run      # single run: 335 files (1 skipped), ≈3,590 tests
+npm run test:run      # latest: 342 files (1 skipped), 3,657 passed / 2 skipped
 npm run test:coverage # what CI runs: v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
 npm run typecheck     # tsc --noEmit, must be zero errors
 npm run lint          # eslint, zero errors (warnings are pre-existing)
@@ -18,7 +18,7 @@ With a model loaded in Ollama, the default worker pool can run out of
 memory; `npx vitest run --maxWorkers=3` is how the suite is run locally.
 
 - Suites live under `src/tests/` (`vitest.config.js` includes
-  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 307 files),
+  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 318 files),
   `integration/` (10 multi-component flows: context pipeline, editor
   population, voice extraction, volume membership, the chapter-tab panel,
   book analysis, novel import, What If branches, branch integrity),
@@ -77,8 +77,10 @@ Config: `playwright.config.js` (Chromium only; CI installs it with
 a trip to another panel), `generator-reskin` and `agents-panel` (the Agents
 panel: orchestrator switch reveals the empty state, the tracing switch
 toggles, a second GPU model shows the eviction error while editing and the
-CPU device clears it — skipped when Ollama serves only one model). Full user journeys are
-covered by mocked pipeline tests in
+CPU device clears it — skipped when Ollama serves only one model). Latest
+verified run: 11 passed / 1 skipped after installing Chromium; the
+`agents-panel` eviction case self-skips without a second local model. Full
+user journeys are covered by mocked pipeline tests in
 `src/tests/unit/e2ePipelineIntegration.test.js` instead.
 
 ## Real-model runs (manual QA)
@@ -107,16 +109,26 @@ npx vitest run --config vitest.live.config.js src/tests/live/syncRoundTrip.live.
 sh scripts/verify-postgres-rls.sh
 ```
 
-Round trip verified 3/3 green and verify script 9/9 green on compose
-2026-10-11. The round trip registers a fresh account, pushes two projects
-from one "device", wipes the local database, pulls them back as a second
-device, edits and deletes, and checks every step against the server's own
-answers (`SYNC_API` overrides `http://localhost:5171`). Run twice inside a
-minute it meets the
-100/min rate limit and waits out `Retry-After`, which takes about a minute.
+Round trip verified 5/5 green (including remote root-story deletion
+convergence via tombstones) and RLS verify script 9/9 green on compose
+2026-11-05 against a rebuilt API. The round trip registers a fresh account,
+pushes two projects from one "device", wipes the local database, pulls them
+back as a second device, edits and deletes, deletes a story on the server
+and verifies root-tombstone convergence, and checks every step against the
+server's own answers (`SYNC_API` overrides `http://localhost:5171`). Run
+twice inside a minute it can meet the 100/min rate limit and wait out
+`Retry-After`.
 The backend integration suite cannot catch what this does: it runs in the
 `Testing` environment, where the response cache is off and the database is
 in memory.
+
+The in-memory two-client matrix runs without Docker:
+`src/tests/unit/syncTwoClientConflict.test.js` uses
+`src/tests/helpers/fakeSyncServer.js` to cover simultaneous edits, a pull that
+arrives while a local row is dirty, an edit during an in-flight push, a
+delete-vs-dirty-subtree conflict and a deferred child; `syncTransport.test.js`
+covers partial push failure. These are contract tests, not a claim that the
+live suite runs two clients editing the same row at the same instant.
 
 The live config is standalone (not merged with `vitest.config.js`) because
 `mergeConfig` concatenates `include` and would pull the unit suite into every
@@ -143,10 +155,57 @@ style on the main screens and diffs two runs (`node tools/style-snap/snap.mjs
 <a> <b>`; Playwright through the installed Edge, output in `reports/tw-snap/`).
 It verified the Tailwind 4 upgrade.
 
+## Evidence and labelling tools
+
+```bash
+npm run smoke:scene        # fixture smoke test — circular, not evidence
+npm run smoke:quality      # fixture smoke test — fixed scores, not evidence
+npm run evidence:check     # fail if gate/prompt sources or the evidence register drifted
+npm run evidence:snapshot  # regenerate tools/judge-bench/evidence-snapshot.json after an intended change
+npx vitest run src/tests/unit/evidenceSnapshot.test.js
+
+python -m unittest discover -s tools/labelling -p "test_*.py" -v
+python tools/labelling/agreement.py <rater-a.json> <rater-b.json>
+python tools/labelling/agreement.py <rater-a.json> <rater-b.json> --require-human
+
+python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v
+python -X utf8 tools/retrieval-eval/fact_retrieval.py
+```
+
+- `tools/retrieval-eval/fact_retrieval.py` is the non-circular retrieval
+  measure. It reads `manifest.json` (multiple books), reports per-book and
+  pooled MRR/hit@k with deterministic bootstrap intervals, derives
+  adjacent-chapter hard negatives from a fact's chapter, and accepts explicit
+  `kind: "noise"` queries with no relevant scene. Its 17 Python tests run
+  offline; the scored run needs Ollama only when a summary cache is missing.
+  The checked-in 0.671 MRR is still the older 40-query, one-book run.
+
+- `smoke:scene` and `smoke:quality` are fixtures, not measurements. The former
+  defines relevance with the same TF-IDF cosine it ranks with (MRR is 1.0 by
+  construction); the latter assigns each score from its own expected minima.
+  Both stamp their output `EVIDENCE_STATUS`, and both are listed under
+  `nonEvidence` in the register. Their old names (`eval:scene`,
+  `pipeline:quality`) remain as deprecated aliases. The measured retrieval claim
+  comes from `tools/retrieval-eval/fact_retrieval.py`, not from these scripts.
+- The snapshot is about identity, not model behaviour: it hashes whole gate and
+  prompt source files plus the curated claim register. `evidence:check` ignores
+  `generatedAt` and git metadata but fails on any source hash or register change.
+  It runs in the CI lint job, so a gate/prompt/register change needs
+  `npm run evidence:snapshot` in the same pull request.
+- `agreement.py` reports percent agreement, Cohen's kappa, unsure/missing counts
+  and disagreements per dimension and for overall Keep/Revise. `--require-human`
+  refuses AI/model-labelled or unlabelled files; it is a metadata check, not
+  proof of human identity. Keep unsure/N/A as its own answer — the tool counts
+  and excludes it rather than coercing it to Problem/Fine.
+- The Claude reviewer corpus and the generated agreement report live under
+  `reports/` (gitignored), so a fresh clone can run the tools but cannot
+  reproduce those numbers until the corpus is archived.
+
 ## CI
 
 `.github/workflows/ci.yml` runs `lint` (ESLint, typecheck, `lint:tokens` +
-`policy`, Prettier check), `test` (`test:coverage` + production build on
+`policy`, `evidence:check`, Prettier check, and the Python unittest suites for
+`tools/labelling` and `tools/retrieval-eval`), `test` (`test:coverage` + production build on
 Node 22.x), `e2e` (after `lint`) and `backend` (restore/build/test the
 solution) on pushes to `master`, `develop`, `feature/*` and PRs to
 `master`/`develop`. `backend-ci.yml` (pushes and PRs to `master` that touch

@@ -27,7 +27,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v55) ──/api, /hubs──► .NET 10 API 
   typing pushes to the store on a 300 ms debounce and the watcher skips
   the editor's own echo (`docs/PERF-AUDIT.md`).
 - **Offline-first**: Dexie 4 (`src/services/db-schema.ts` declares the
-  45 schema versions, v11 to v55; 25 `db-*.ts` modules) is the source of truth
+  46 schema versions, v11 to v56; 26 `db-*.ts` modules) is the source of truth
   in the browser. Writes are debounced and coalesced per entity; the three
   append-only history tables are deduped, throttled and capped; sync to the
   API replays in the background with bounded concurrency and self-heals
@@ -46,7 +46,7 @@ browser (Vue 3 SPA, Dexie/IndexedDB v55) ──/api, /hubs──► .NET 10 API 
 
 Clean Architecture, one solution (`Versatile.slnx`):
 
-- `Versatile.Api` — 39 controllers, SignalR hubs
+- `Versatile.Api` — 40 controllers, SignalR hubs
   (`/hubs/collaboration`, `/hubs/generation`), rate limiting (100/min
   global, 20/min embedding), exception handling (generic 500s),
   per-user response caching, Swagger (Development only), `/health`,
@@ -146,19 +146,38 @@ Clean Architecture, one solution (`Versatile.slnx`):
   audits scope to entities the new chapter touches; fix rounds recheck
   only flagged entities. `analysisQueue` (v46) makes the backfill
   persistent and idle-priority.
-- **Cloud tier** (opt-in): `analysisTier` (`local` default /
-  `cloud-on-demand` / `cloud-audit`) plus a per-project `cloudAuditOptIn`.
+- **Cloud tier** (opt-in): the global `analysisTier` (`local` default /
+  `cloud-on-demand` / `cloud-audit`) is only a ceiling. `cloud-audit`
+  second opinions additionally require the loaded project's own
+  `cloudAuditOptIn` row field; consent is not in `versatile_settings` and is
+  not pushed to the server, so another device must opt in itself.
+  `requestCloudEscalation` refuses a send whose caller passes no consent, and
+  `localOnly` overrides the tier and blocks the escalation transport entirely.
   Contradiction, arc and repetition passes have an injectable JSON
   generator seam; when routed to the cloud they go through the API's
   `GenerationHub` with a pre-upload disclosure (`cloudEscalation.ts`) and a
   budget-guarded batch injector that falls back to local. A suspect or
-  unavailable local critic verdict can auto-request a second opinion.
+  unavailable local critic verdict can auto-request a second opinion; the
+  scene gate reads the project consent through a live callback so a
+  mid-run withdrawal takes effect.
+- **Critic evidence check**: an issue that quotes the draft is verified
+  against the prose before it can count as major. A quote of at least 12
+  alphanumeric characters that does not appear in the draft is marked
+  `quoteVerified: false`, excluded from `majorIssueCount`, and counted as
+  `critic_unverified` in `runHealth`; issues without a quote are untouched.
+  This stops a fabricated quote from failing a scene, while keeping the
+  verdict visible in the report.
 - **Retrieval**: IVF vector index (`vectorIndex.ts`) with k-means++
   clustering, searched off-thread (`vectorIndex.worker.ts`) and
   brute-force fallback; research reindex swaps atomically. The story's own
   content (bible entities and scenes) is indexed the same way
   (`storyVectorIndex.ts`, `contentVectors`, schema v51) for Related and
-  Story Lookup.
+  Story Lookup. `tools/retrieval-eval/fact_retrieval.py` is the non-circular
+  retrieval measure: a book manifest, per-book and pooled MRR/hit@k with
+  deterministic bootstrap intervals, adjacent-chapter hard negatives and
+  explicit noise queries. The checked-in 0.671 MRR remains the older
+  single-book baseline; the multi-book harness has not produced a new
+  cross-book result.
 - **Reproducible locally**: `tools/generate-sample.mjs` runs a 2-scene
   sample against real Ollama models plus critic, gates and chapter
   acceptance; `vitest.live.config.js` + `src/tests/live/` run a whole

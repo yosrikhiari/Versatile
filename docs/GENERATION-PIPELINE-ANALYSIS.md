@@ -1880,6 +1880,16 @@ are the best of those tried; the nomic task prefixes, which production omits,
 do not help here (40 queries: a 0.06 difference is 2-3 queries). The old
 script now says in its header that it is circular.
 
+The 2026-11-06 harness keeps this baseline and broadens the measurement, not
+the architecture: `tools/retrieval-eval/manifest.json` can list several books;
+each book reports its own metrics and the pooled row is computed from
+per-query rows, never an average of averages; every metric carries a
+deterministic bootstrap interval; adjacent chapters are labeled hard negatives
+and the top-1 hard-negative rate is reported; explicit `kind: "noise"` queries
+with no relevant scene are counted but excluded from MRR. The checked-in 0.671
+is still this one-book, 40-query result. No cross-book run has been made, so
+there is no new claim to compare with the table above.
+
 ### Step 8c: the spine as written, and a lost-facts bug
 
 The chapter spine is generated from the outline before any prose exists and

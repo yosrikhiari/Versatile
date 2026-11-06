@@ -304,3 +304,22 @@ are updated as steps land.
 - A stronger within-scene contradiction checker (§35/§36: blocked on a Groq key or a
   larger local model).
 - Keep the history of generated alternatives instead of holding them only in memory.
+
+## 7. Roadmap-batch status (2026-11-06)
+
+The import/branch behaviour in this plan is unchanged. Adjacent work landed:
+
+- **Stable label identity:** local scene labels prefer a stable `sceneId`;
+  the backend `SceneLabel` row gained an optional `SubsectionId` with a
+  migration and handler tests. Labels remain local-only — no mapper or sync
+  protocol — so this is not cross-device identity.
+- **Retrieval evaluation:** `tools/retrieval-eval/fact_retrieval.py` now
+  takes a book manifest, reports per-book and pooled metrics with bootstrap
+  intervals, and supports adjacent-chapter hard negatives and explicit noise
+  queries. The checked-in 0.671 MRR is still the old one-book result; the
+  harness alone is not a new what-if or retrieval claim.
+- **Cloud consent:** background cloud audits now read the project's own
+  `cloudAuditOptIn`, not a browser-wide switch; consent is per device and is
+  not synced.
+- **Not changed:** no new human-label evidence, no What If quality claim, and
+  no branch-sync work. The G4/§37–§47 status above still stands.

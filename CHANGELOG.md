@@ -7,6 +7,95 @@ was verified.
 
 ## [Unreleased]
 
+### Research-roadmap engineering batch (2026-11-06)
+- **Evidence governance:** `smoke:scene` / `smoke:quality` are fixtures, stamp
+  `EVIDENCE_STATUS` / `NOT EVIDENCE` and are listed under `nonEvidence` in
+  `tools/judge-bench/evidence-register.json`; the deprecated `eval:scene` /
+  `pipeline:quality` aliases call them. The register now also records critic
+  quote verification, project-scoped cloud consent, the two-client sync
+  contract and the partial scene-label identity work.
+- **Critic quote verification:** a quoted issue whose text (≥12 alphanumeric
+  characters) is absent from the draft is `quoteVerified: false`, excluded from
+  `majorIssueCount`, and counted as `critic_unverified` in `runHealth`. Issues
+  without a quote are unchanged.
+- **Two-client sync contract:** added `fakeSyncServer.js` and
+  `syncTwoClientConflict.test.js` for simultaneous edits, a pull arriving
+  while a local row is dirty, edits during an in-flight push, delete-vs-dirty
+  subtree and deferred children (`syncTransport.test.js` covers partial
+  failure). Fixed in-flight edits being
+  stamped `synced`, nested `volumeEntities` surviving a clean root tombstone,
+  and a rejected delete accidentally stamping `lastSync`.
+- **Per-project cloud consent:** `cloudAuditOptIn` moved from browser settings
+  to the project row; the global `analysisTier` is only a ceiling.
+  `requestCloudEscalation` refuses a send without consent, and `localOnly`
+  overrides the tier. Consent is per device and is not synced. Project
+  Settings exposes the control and AI Settings exposes the tier.
+- **Retrieval-eval hardening:** `tools/retrieval-eval/fact_retrieval.py` now
+  reads a multi-book manifest, reports per-book and pooled metrics with
+  deterministic bootstrap intervals, derives adjacent-chapter hard negatives,
+  supports explicit noise queries, and has 17 Python tests. The checked-in
+  0.671 MRR is still the old one-book result.
+- **Scene-label identity (partial):** backend `SceneLabel` gained an optional
+  `SubsectionId` with a migration, handler tests and title-fallback guards;
+  local labels prefer `sceneId`; `LabelPanel` forwards it. Labels remain
+  local-only and are not synced.
+- **Docs:** updated architecture, API, schema, sync, gap and What If docs;
+  added `docs/ETHICS-AND-LIMITATIONS.md`; appended implementation-status
+  sections to both research documents.
+- **Validation:** frontend `npm run test:run -- --maxWorkers=3` 342 files
+  (1 skipped), 3,657 passed / 2 skipped; backend
+  `dotnet test backend/Versatile.slnx` 1,116 passed / 1 skipped; 17 retrieval
+  Python tests pass; `typecheck`, `lint` (0 errors, 4 known warnings),
+  `lint:tokens`, `policy`, `evidence:check` and the production build pass.
+
+### Live verification, root deletion convergence, and stable label identity (2026-11-05)
+- **Live RLS and sync verified:** rebuilt the compose API and ran `scripts/verify-postgres-rls.sh --live` (9/9) and `src/tests/live/syncRoundTrip.live.js` (4/4) against the live stack. The round trip now covers remote root-story deletion convergence through tombstones.
+- **Root story deletion convergence:** `GetSyncTombstonesHandler` returns tombstones after the Story row is deleted, authorized by organization context and tombstone ownership (new tombstones record row `UserId`; legacy `Guid.Empty` rows remain fetchable within the same organization). The client applies a root `projects` tombstone by deleting a clean synced subtree with hook-suppressed deletes/id-map cleanup; any dirty local row in the subtree preserves the whole subtree (local wins). The sync engine treats story-gone 404 child-pull errors as resolved when tombstones clean up the project, and reports an explicit incomplete-cleanup conflict when dirty local edits remain.
+- **Scene-label stable identity (partial):** Dexie schema v57 adds `sceneLabels.sceneId`; local label save prefers stable `sceneId` and preserves labels across title renames when provided. Backend SceneLabel API/EF migration remains title-based and labels remain local-only/not synced.
+- **Browser E2E environment:** installed Playwright Chromium; `npm run test:e2e` reports 11 passed / 1 skipped (`agents-panel` self-skips without a second local model). Initial launch failures were due to the missing browser binary.
+- **Validation:** frontend 3,616 passed / 2 skipped (338 files, 1 skipped, `--maxWorkers=3`); backend 1,107 passed / 1 skipped; live RLS 9/9; live sync round trip 5/5; E2E 11/1 skipped. `typecheck`, `lint` (0 errors, 4 known warnings), `policy`, and `evidence:check` pass.
+
+### Post-pull security and integrity review (2026-11-05)
+- **SceneLabels tenant isolation**: add an additive migration that enables,
+  forces, and scopes the RLS policy for the new `SceneLabels` table.
+- **Collaboration hub authorization**: cursor/content events now require a
+  story group joined after entitlement check, and cursor identity comes from
+  the authenticated claim rather than client input.
+- **SSRF DNS rebinding**: research URL fetch pins the TCP connection to a
+  resolved public address and bypasses ambient proxies for this untrusted URL
+  path; IPv6 non-global/special ranges are blocked.
+- **Sync truncation**: a pull that reaches the pagination safety cap now fails
+  rather than returning a truncated list that can be stamped as complete.
+- **Calibration harness**: safe dry-run by default; live run requires explicit
+  approval, named adjudicators, and separate pass A/B labels. Correct gate
+  request input and binary label mapping; mapping-review sampling is SET-A only.
+- **Scene-label ownership**: upsert keys include scene title, reviewer and owner;
+  reads are scoped to the authenticated user.
+- **SignalR security update**: bump `Microsoft.AspNetCore.SignalR.Client` to
+  10.0.13 to resolve GHSA-334f-vvp4-7g6p.
+- **Compose app role**: fixed the runtime role name to `versatile_app`; the EF
+  migrations grant privileges to that exact role, so Compose no longer exposes
+  an unsupported `POSTGRES_APP_USER` override. The password remains configurable.
+- **Validation:** frontend 3,596 passed / 2 skipped (337 test files, 1 skipped);
+  backend 1,107 passed / 1 skipped. Typecheck and repository policy passed.
+  Docker Compose config validated with `.env.example`.
+
+### Evidence snapshot and agreement tooling (2026-11-05)
+- **Evidence snapshot**: `tools/judge-bench/evidence-register.json` curates 21
+  claims and 5 corpora with status and label provenance. `npm run evidence:check`
+  verifies whole-file gate/prompt hashes and the register; `evidence:snapshot`
+  regenerates the frozen artifact. The check runs in the CI lint job, and
+  `vite-node@6.0.0` is pinned in `devDependencies` instead of being downloaded
+  by `npx` on demand. Line endings and a BOM are normalized so Windows and
+  Linux checkouts agree.
+- **Two-rater agreement**: `tools/labelling/agreement.py` reports percent
+  agreement, Cohen's kappa, unsure/missing counts and disagreements per
+  dimension and for overall Keep/Revise. `--require-human` refuses AI/model-
+  labelled or unlabelled inputs.
+- **Validation:** 17 new Vitest cases and 11 Python unittest cases pass; full
+  frontend 3,613 passed / 2 skipped (338 files, 1 skipped); typecheck, lint
+  (0 errors, 4 known warnings) and repository policy pass.
+
 ### P2-F11 hygiene round (2026-10-13)
 - **Delete tracking**: `pushDeletions` returns `{deleted, failed}`; engine
   mirrors the table pattern with a `'deletions'` failedTables entry (badge

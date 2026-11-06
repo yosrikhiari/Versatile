@@ -7,12 +7,12 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 - **Frontend**: Vue 3 (Composition API), TypeScript, Pinia stores, TipTap 3 editor, Vite 8, Vitest 5
 - **Backend**: .NET 10, PostgreSQL 16 (RLS), Redis, Entity Framework Core, SignalR
 - **AI**: 6 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI; `src/config/ai.ts`); Ollama has a prose role and a utility role, both `qwen3:8b` by default (`src/config/ollama.ts`; `dolphin-mistral:7b` is an opt-in prose model); per-role placement (`src/config/roles.ts`: director / writer / critic / editor, plus utility and embedding, GPU or CPU; embedding defaults to CPU) feeds the LangGraph writing orchestrator (`writing/graphStrategy.ts`, ADR-0001) — one GPU model per run, Critic/Editor on a CPU model by preset
-- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v55), PostgreSQL (server)
+- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v57), PostgreSQL (server)
 - **Build/CI**: npm/vite for frontend, dotnet for backend
 
 ## Key Conventions
 
-- **Stores** in `src/stores/` — Pinia with setup syntax (`defineStore('name', () => { ... })`), 23 of them
+- **Stores** in `src/stores/` — Pinia with setup syntax (`defineStore('name', () => { ... })`), 24 of them
 - **Composables** in `src/composables/` — reusable composition logic; the generation engine is under `composables/generation/` (writing strategies incl. the LangGraph graph, context, commit, consistency, delegator, graph checkpointer, lifecycle)
 - **Components** in `src/components/` — organized by domain (`storybible/`, `editor/`, etc.); panels are built from the `Base*` primitives in `components/ui/` (`BasePanelHeader`, `BaseSection`) — no ad-hoc cards or eyebrows
 - **Tests** in `src/tests/unit/` — Vitest with `vi.useFakeTimers()` for debounce tests
@@ -56,11 +56,12 @@ Run `npm run policy` before you finish: it checks that every token is documented
 
 ## Testing
 
-- `npm run test:run` — Vitest suite (335 files, ≈3,590 tests); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
+- `npm run test:run` — Vitest suite (342 files, 1 skipped; latest run 3,657 passed, 2 skipped); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
 - `npm run typecheck` — `tsc --noEmit`, zero errors
 - `npm run lint` — ESLint (0 errors; the four `services must not import stores` warnings are the known architectural debt)
 - `npm run format` — Prettier over `src/**/*.{js,ts,vue,css}`; CI checks the same scope
 - `npm run lint:tokens` and `npm run policy` — the executable design-system and repo policies (both run in the CI `lint` job)
+- `npm run evidence:check` — verifies the gate/prompt/register fingerprints against `tools/judge-bench/evidence-snapshot.json` (also runs in the CI `lint` job; regenerate with `npm run evidence:snapshot` after an intended change)
 - `npm run build` — Vite production build
 - `dotnet test backend/Versatile.slnx` — backend suite
 - New features add tests; debounce tests use `vi.useFakeTimers()`
@@ -79,7 +80,7 @@ Run `npm run policy` before you finish: it checks that every token is documented
 - Story graph uses Canvas/SVG with cached edge lookups for performance
 - Scene evaluations stored in reactive `Map` by scene ID
 - Tool panels dock to the right of a canvas-dominant shell; the sidebar and Ctrl+K palette share one definition
-- Docs that stay current: `README.md`, `ARCHITECTURE.md`, `API.md`, `TESTING.md`, `CHANGELOG.md`, `docs/GENERATION-PIPELINE-ANALYSIS.md`, `docs/UX-AUDIT.md`, `docs/PERF-AUDIT.md`, `docs/database-schema-changelog.md`, `docs/sync-status.md`; `planning/` is a local, gitignored workbook (`planning/README.md` is the index)
+- Docs that stay current: `README.md`, `ARCHITECTURE.md`, `API.md`, `TESTING.md`, `CHANGELOG.md`, `docs/GENERATION-PIPELINE-ANALYSIS.md`, `docs/ETHICS-AND-LIMITATIONS.md`, `docs/UX-AUDIT.md`, `docs/PERF-AUDIT.md`, `docs/database-schema-changelog.md`, `docs/sync-status.md`; `planning/` is a local, gitignored workbook (`planning/README.md` is the index)
 
 ## Which tool reads what
 

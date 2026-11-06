@@ -55,6 +55,12 @@ All story-scoped entities carry `UserId` (required) + `OrganizationId` (optional
 | **DailyGoal** | DailyGoals | Per-story writing goals/tracking |
 | **GeneratedStory** | GeneratedStories | AI-generated story variants |
 
+#### Evaluation
+
+| Entity | Table | Description |
+|---|---|---|
+| **SceneLabel** | SceneLabels | Reviewer label for a scene: overall pass/revise/rewrite, per-dimension marks/scores, notes, excerpt. Optional `SubsectionId` (`Guid?`) is the stable scene identity; `SceneTitle` remains for display and legacy matching. RLS-protected (`ProtectSceneLabelsWithRls`), with `SubsectionId` added by `AddSceneLabelSubsectionId`. |
+
 #### Research
 
 | Entity | Table | Description |
@@ -143,6 +149,7 @@ Story
 | Entity → Story | Cascade |
 | CharacterRelationship → Story | Cascade |
 | ResearchChunk → Document | Restrict (no cascade) |
+| SceneLabel → Story | Cascade |
 | Subsection → Section | Restrict |
 | VolumeEntity → Volume | Restrict |
 | Section → Volume | SetNull |
@@ -199,28 +206,53 @@ whose project has no server story yet waits for the next cycle.
 Field-level gaps (unsent columns, the GraphEdge time-axis columns the backend lacks) are listed in
 `docs/sync-status.md`.
 
+Two client fields are deliberately **not** in `SYNC_ENTITIES`:
+
+- `projects.cloudAuditOptIn` is per-project cloud-consent stored on the local
+  row. Consent is given from one device, so pushing it would silently opt a
+  second device in.
+- `sceneLabels.*` (including `sceneId`) is a local label store. The backend
+  has a `SceneLabels` table with an optional `SubsectionId`, but there is no
+  label mapper or sync protocol yet; labels do not converge across devices.
+
 ### ID Mapping
 
 `SyncIdMap` maintains bidirectional translation between IndexedDB local IDs and backend API IDs. The map is rebuilt on init from `apiId` fields in IndexedDB records.
 
 ### Conflict Resolution
 
-Strategies defined in `sync-conflicts.ts`:
-- **LAST_WRITE_WINS** (default): Compares `updatedAt` timestamps
-- **SKIP_CONFLICTED**: Leaves local changes when remote conflicts exist
-- **MANUAL**: Reserved for interactive resolution
+The shipped transport is a simple, explicit contract, not a CRDT. There is no
+ETag, vector clock or three-way merge; `sync-conflicts.ts` still contains
+timestamp helpers, but the transport does not call them.
+
+- **Pull:** a clean row (`syncStatus === 'synced'`) follows the server. A row
+  with local edits (`pending-create` / `pending-update`) is skipped, so local
+  work is never overwritten. Pull re-checks status and `_syncRevision` after
+  its async link lookups, so an edit made while the response was arriving is
+  also left pending.
+- **Push:** one row at a time, last writer wins. A row edited while its request
+  was in flight is marked `pending-update` again rather than `synced`, because
+  the server now holds the older body.
+- **Deletes:** tombstones delete clean rows only. A deleted root story takes
+  its clean synced subtree with it; if any row in the subtree is dirty, the
+  whole subtree is preserved (local wins) and reported as a conflict.
+- **Parents:** a child whose parent has no server id yet is deferred, not
+  pushed with a broken link, and is not stamped `lastSync`.
+- **Multi-device editing:** concurrent edits to the same row are not merged.
+  The later push replaces the earlier one; there is no conflict UI or
+  per-field merge.
 
 ### Data Flow
 
 1. **Push** (`_installHooks`): IndexedDB `creating`/`updating` hooks set `syncStatus` to `pending-create` or `pending-update`. A delete of a synced row is recorded in `pendingDeletions`, with its story, after the delete commits (recording it inside the delete's transaction threw, so before 2026-10-04 no delete was sent).
 2. **Flush** (30s interval): `SyncEngine.push()` iterates sync-ordered tables, calling `transport.pushTable()` for each, then processes pending deletions. Rows within a table push with bounded concurrency (4; `branches` stays serial because it self-references). A row that fails is surfaced and retried, and a table with stranded rows is re-pushed rather than skipped; a re-push of a record that already has an `apiId` is a PUT update, never a duplicate POST.
-3. **Pull**: `SyncEngine.pull()` pulls the story list (new stories become local projects), then every table of every synced project, following paged answers to the end, and upserts into IndexedDB. Rows with unpushed local edits are left alone. A row deleted on the server is not removed locally.
+3. **Pull**: `SyncEngine.pull()` pulls the story list (new stories become local projects), then every table of every synced project, following paged answers to the end, and upserts into IndexedDB. Rows with unpushed local edits are left alone. A row deleted on the server is removed locally when its tombstone is applied and the row is clean; a dirty subtree is preserved as a conflict.
 4. **Sync Now**: `syncNow()` calls push then pull in sequence.
 
 ### Client schema (IndexedDB)
 
 The browser database is Dexie, declared as a list of versions in `src/services/db-schema.ts`
-(`SCHEMA_VERSIONS`, v11 through **v55**, 53 tables) with data-moving upgrade handlers in
+(`SCHEMA_VERSIONS`, v11 through **v57**, 54 tables) with data-moving upgrade handlers in
 `src/services/db-migrations.ts` (`MIGRATIONS`, keyed by version). Every version is logged in
 `docs/database-schema-changelog.md`.
 

@@ -11,6 +11,13 @@ For each scene, answer each question **Problem / Fine / Unsure**, reading
 only the scene, its brief and the facts listed with it. The gate's verdict
 is never shown: label what you see, not what you expect the gate said.
 
+> **Status 2026-11-06:** the human-reference pilot is still **blocked on
+> humans**. Human labels remain **0**; the only 78-scene labels in the tree
+> are two Claude reviewer passes. `tools/labelling/agreement.py
+> --require-human` refuses those files when a human comparison is requested.
+> See `docs/ETHICS-AND-LIMITATIONS.md` for the data-flow, consent and
+> language limits, and do not cite the reviewer corpus as human validation.
+
 ## The five questions
 
 | Dimension | Mark **Problem** when… | It is **not** a problem when… |

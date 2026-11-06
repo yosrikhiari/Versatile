@@ -75,6 +75,13 @@ existence check, so it reveals nothing to probe (verified live).
   returns a masked hint; the Mistral embedding call is proxied through
   `POST /api/embedding/mistral`. The SPA keeps its own local copy of keys
   for direct browser-side provider calls.
+- Scene labels (`/api/scene-label`) are owner- and org-scoped. The optional
+  `subsectionId` is the stable identity: an upsert looks it up first, and
+  falls back to the display title only for a legacy row with no
+  `subsectionId`. A title match must not move a label already bound to a
+  different subsection. Labels are still local-only on the client and are
+  not in `SYNC_ENTITIES`; the API field is ready for a future sync
+  protocol, not evidence that labels already converge across devices.
 
 ## Endpoint inventory
 
@@ -251,6 +258,10 @@ SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 | | | `POST /api/story/{storyId}/story-element` |
 | | | `PUT /api/story/{storyId}/story-element/{id}` |
 | | | `DELETE /api/story/{storyId}/story-element/{id}` |
+| SceneLabel | auth + org | `GET /api/scene-label?storyId=&reviewerName=` |
+| | | `GET /api/scene-label/{id}` |
+| | | `POST /api/scene-label?storyId=` (upsert; optional body `subsectionId`) |
+| | | `DELETE /api/scene-label/{id}` |
 | StoryStateSnapshot | auth + org | `GET /api/story/{storyId}/story-state-snapshot` |
 | | | `GET /api/story/{storyId}/story-state-snapshot/{id}` |
 | | | `POST /api/story/{storyId}/story-state-snapshot` |
@@ -278,3 +289,9 @@ SignalR hubs (both `[Authorize]`): `/hubs/collaboration`
 | | | `POST /api/story/{storyId}/volume-entity` |
 | | | `PUT /api/story/{storyId}/volume-entity/{id}` |
 | | | `DELETE /api/story/{storyId}/volume-entity/{id}` |
+
+The `fetch-url` endpoint accepts HTTP(S) only, rejects credentials and
+non-public/reserved addresses, disables ambient proxies, and pins each direct
+socket connection to a validated public IP (including redirects). It follows at
+most three redirects, has a 30-second timeout, and caps the returned body at
+5 MB.
