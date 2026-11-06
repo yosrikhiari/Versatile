@@ -47,7 +47,8 @@ import {
   splitSentences,
   statementList,
   validClaims,
-  verifyContradictions
+  verifyContradictions,
+  verifyIssueQuotes
 } from './criticIsolation'
 import { FEATURES } from '../config/ai'
 import { SessionBudget } from '../services/aiProviderBudget'
@@ -1007,7 +1008,7 @@ Return JSON: { "score": number, "issue": "one sentence, or omit if none" }`
           // dimension anyway. The mean is reported for display only.
           score: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10,
           dimensionScores,
-          issues,
+          issues: verifyIssueQuotes(issues, draftText),
           strengths: [],
           // Judged and reported, not failing (§31, criticVerdict.ts).
           advisoryDimensions: FOCUSED_ADVISORY_DIMENSIONS
@@ -1066,7 +1067,10 @@ Your previous answer omitted "score" and "dimensionScores". Return every field: 
         }
       }
 
-      const issues = Array.isArray(parsed.issues) ? parsed.issues : []
+      // A free-text issue is evidence only if the words it quotes are in the
+      // draft. Unverified quotes stay in the report but cannot fail the scene
+      // (criticVerdict.ts), so the judge cannot send prose back on invented text.
+      const issues = verifyIssueQuotes(Array.isArray(parsed.issues) ? parsed.issues : [], draftText)
       const strengths = Array.isArray(parsed.strengths) ? parsed.strengths : []
 
       const expectedDims = getDimensionNames(categoryType)

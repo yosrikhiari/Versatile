@@ -87,6 +87,31 @@ describe('writeSceneWithGate keeps the attempt the gate accepted (#104)', () => 
     expect(out.chosenProse).toBe(short)
   })
 
+  it('counts an unverified critic quote without failing the scene', async () => {
+    const draft = words(1200, 'd')
+    const { g, record } = gate({
+      drafts: [draft],
+      verdicts: [
+        verdict(8, {
+          issues: [
+            {
+              type: 'voice',
+              severity: 'major',
+              description: 'Halim says "the salt road ends at the sea".',
+              quoteVerified: false
+            }
+          ]
+        })
+      ]
+    })
+    const out = await g.writeSceneWithGate(args)
+    expect(out.gateFailure).toBeFalsy()
+    expect(record).toHaveBeenCalledWith(
+      'critic_unverified',
+      expect.objectContaining({ stage: 'critic', sceneIndex: 2 })
+    )
+  })
+
   it('does not let a retry the critic could not judge displace a judged draft', async () => {
     const short = words(841, 'a')
     const unjudged = words(1187, 'b')

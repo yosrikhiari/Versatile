@@ -281,6 +281,37 @@ export function verifyContradictions(
   })
 }
 
+/**
+ * Verify the quotation a critic uses as its evidence (report §11 #3). A focused
+ * judge answers in a free-text sentence, and a small model will sometimes put
+ * words in the scene's mouth: the quote looks like evidence, so a reviewer
+ * trusts it, but it is not there. Any quoted span long enough to be evidence
+ * must appear in the draft. Issues with no quotation are left untouched —
+ * absence of a quote is not a fabrication, and inventing a failure from it
+ * would make the gate stricter than the critic.
+ */
+const ISSUE_QUOTE = /[“"]([^“”"\n]+)[”"]/g
+
+export function verifyIssueQuotes<T>(issues: T, draft: string): T {
+  if (!Array.isArray(issues)) return [] as unknown as T
+  const body = alnum(draft)
+  return issues.map((issue) => {
+    if (!issue || typeof issue !== 'object') return issue
+    const description = (issue as { description?: unknown }).description
+    if (typeof description !== 'string') return issue
+    const quotes = [...description.matchAll(ISSUE_QUOTE)]
+      .map((m) => alnum(m[1]))
+      // "cold" and "the lamp" are labels; a quote has to carry a claim before
+      // code can call it true or false.
+      .filter((q) => q.length >= 12)
+    if (!quotes.length) return issue
+    return {
+      ...issue,
+      quoteVerified: quotes.every((q) => body.includes(q))
+    }
+  }) as T
+}
+
 export function buildContinuityPrompt({
   facts,
   sentences

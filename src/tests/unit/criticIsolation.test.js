@@ -13,6 +13,7 @@ import {
   pacingVote,
   unreverseParagraphNumbers,
   verifyContradictions,
+  verifyIssueQuotes,
   bibleNames
 } from '@/composables/criticIsolation'
 
@@ -582,6 +583,86 @@ ${lines(8)}`)
       .mocked(aiGenerateJson)
       .mock.calls.find((c) => c[2].schemaName === 'focused_voice_isolated')
     expect(call[0]).not.toContain('Narration nobody should judge')
+  })
+})
+
+describe('critic issue quotes', () => {
+  const draft =
+    'Nesrin set the lamp on the sill. "You carry enough to feed a village," Halim said, "but leave some behind." The wind took the rest.'
+
+  it('keeps a quote that is literally in the scene, ignoring punctuation', () => {
+    const [issue] = verifyIssueQuotes(
+      [
+        {
+          type: 'voice',
+          severity: 'major',
+          description: 'Halim says "You carry enough to feed a village" twice.'
+        }
+      ],
+      draft
+    )
+    expect(issue.quoteVerified).toBe(true)
+  })
+
+  it('marks a fabricated quote unverified', () => {
+    const [issue] = verifyIssueQuotes(
+      [
+        {
+          type: 'continuity',
+          severity: 'major',
+          description:
+            'The scene claims "the lamp had been cold for three winters" but the bible says it was lit.'
+        }
+      ],
+      draft
+    )
+    expect(issue.quoteVerified).toBe(false)
+  })
+
+  it('leaves an issue with no quote alone', () => {
+    const [issue] = verifyIssueQuotes(
+      [{ type: 'pacing', severity: 'major', description: 'The middle section repeats itself.' }],
+      draft
+    )
+    expect(issue).not.toHaveProperty('quoteVerified')
+  })
+
+  it('requires every substantial quote in one issue to be present', () => {
+    const [issue] = verifyIssueQuotes(
+      [
+        {
+          type: 'voice',
+          severity: 'major',
+          description:
+            'Halim says "You carry enough to feed a village" but also "the salt road ends at the sea".'
+        }
+      ],
+      draft
+    )
+    expect(issue.quoteVerified).toBe(false)
+  })
+
+  it('ignores short quoted words, which are labels rather than evidence', () => {
+    const [issue] = verifyIssueQuotes(
+      [
+        {
+          type: 'show_tell',
+          severity: 'major',
+          description: 'The phrase "cold" is reported, not shown.'
+        }
+      ],
+      draft
+    )
+    expect(issue).not.toHaveProperty('quoteVerified')
+  })
+
+  it('survives malformed issue lists', () => {
+    expect(verifyIssueQuotes(null, draft)).toEqual([])
+    expect(verifyIssueQuotes([null, {}, { description: 42 }], draft)).toEqual([
+      null,
+      {},
+      { description: 42 }
+    ])
   })
 })
 

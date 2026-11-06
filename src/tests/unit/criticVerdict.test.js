@@ -97,6 +97,32 @@ describe('rules', () => {
     expect(deriveVerdict({ score: 10, dimensionScores: strong, issues }, THRESHOLD).pass).toBe(true)
   })
 
+  it('does not fail a scene on majority-unverified quotes', () => {
+    // The quote check is a floor on evidence, not a new way to fail prose: an
+    // invented quotation cannot be the reason a scene is sent back.
+    const issues = [
+      { severity: 'major', type: 'voice', quoteVerified: false },
+      { severity: 'major', type: 'continuity', quoteVerified: false }
+    ]
+    const v = deriveVerdict({ score: 10, dimensionScores: strong, issues }, THRESHOLD)
+    expect(v.majorIssueCount).toBe(0)
+    expect(v.unverifiedIssueCount).toBe(2)
+    expect(v.pass).toBe(true)
+  })
+
+  it('still counts a verified or unquoted major issue', () => {
+    const issues = [
+      { severity: 'major', type: 'voice', quoteVerified: false },
+      { severity: 'major', type: 'continuity', quoteVerified: true },
+      { severity: 'major', type: 'pacing' }
+    ]
+    const v = deriveVerdict({ score: 10, dimensionScores: strong, issues }, THRESHOLD)
+    expect(v.majorIssueCount).toBe(2)
+    expect(v.unverifiedIssueCount).toBe(1)
+    expect(v.pass).toBe(false)
+    expect(v.reason).toMatch(/major issues/)
+  })
+
   it('fails when the mean is below the workspace threshold', () => {
     const atMin = CRITIC_VERDICT_CONFIG.minDimensionScore
     // Every dimension clears the minimum, so only the mean rule can fail this.

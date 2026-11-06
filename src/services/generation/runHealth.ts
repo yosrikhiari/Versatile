@@ -49,6 +49,13 @@ export type DegradationKind =
   /** The critic could not produce a usable verdict. */
   | 'eval_unavailable'
   /**
+   * The critic quoted text that is not in the draft. The issue stays in the
+   * report but is excluded from the major count (criticVerdict.ts): an invented
+   * quote is not evidence about the prose, but a run of them is evidence about
+   * the judge.
+   */
+  | 'critic_unverified'
+  /**
    * The critic scored the scene and found nothing to say. One is a clean
    * scene; a whole run of them is a critic that is not discriminating. Not
    * degrading and never budgeted — it feeds the `critic_flat` invariant.
@@ -174,6 +181,7 @@ const SCENE_DEGRADING: DegradationKind[] = [
   'metadata_failed',
   'metadata_skipped',
   'eval_unavailable',
+  'critic_unverified',
   'gate_failed',
   'critique_failed',
   'write_failed'

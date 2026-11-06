@@ -76,7 +76,17 @@ export const FOCUSED_ADVISORY_DIMENSIONS: readonly string[] = [
 export interface CritiqueLike {
   score?: number | null
   dimensionScores?: Record<string, number | null> | null
-  issues?: Array<{ severity?: string; type?: string; description?: string }> | null
+  issues?: Array<{
+    severity?: string
+    type?: string
+    description?: string
+    /**
+     * Set by the critic when an issue quotes the scene: false means the quote
+     * could not be found in the draft (`verifyIssueQuotes`). Only the major
+     * count ignores these; the issue stays in the report.
+     */
+    quoteVerified?: boolean
+  }> | null
   /**
    * Scored and reported, never failing: excluded from the floor, the
    * major-issue count and the mean. Set by the focused critic; a critique
@@ -102,6 +112,12 @@ export interface Verdict {
   advisoryBelowFloor: Array<{ name: string; score: number }>
   dimensionMean: number | null
   majorIssueCount: number
+  /**
+   * Issues whose quotation was not found in the draft. Reported, and excluded
+   * from the major count: an invented quote is not evidence that the prose is
+   * bad, but a run full of them is evidence that the judge is.
+   */
+  unverifiedIssueCount: number
   /**
    * True when no usable dimension scores existed and the self-reported score had
    * to be used. Surfaced rather than hidden: a verdict reached this way carries
@@ -129,8 +145,10 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
     .filter(([name, v]) => advisory.has(name) && v < CRITIC_VERDICT_CONFIG.minDimensionScore)
     .map(([name, score]) => ({ name, score }))
   const issues = Array.isArray(critique?.issues) ? critique.issues : []
+  const unverifiedIssueCount = issues.filter((i) => i?.quoteVerified === false).length
   const majorIssueCount = issues.filter(
-    (i) => i?.severity === 'major' && !advisory.has(String(i?.type || ''))
+    (i) =>
+      i?.severity === 'major' && !advisory.has(String(i?.type || '')) && i?.quoteVerified !== false
   ).length
 
   if (allDims.length > 0 && dims.length === 0) {
@@ -143,6 +161,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       advisoryBelowFloor,
       dimensionMean: null,
       majorIssueCount,
+      unverifiedIssueCount,
       usedScoreFallback: false
     }
   }
@@ -160,6 +179,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
         advisoryBelowFloor,
         dimensionMean: null,
         majorIssueCount,
+        unverifiedIssueCount,
         usedScoreFallback: true
       }
     }
@@ -174,6 +194,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       advisoryBelowFloor,
       dimensionMean: null,
       majorIssueCount,
+      unverifiedIssueCount,
       usedScoreFallback: true
     }
   }
@@ -196,6 +217,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       advisoryBelowFloor,
       dimensionMean: mean,
       majorIssueCount,
+      unverifiedIssueCount,
       usedScoreFallback: false
     }
   }
@@ -209,6 +231,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       advisoryBelowFloor,
       dimensionMean: mean,
       majorIssueCount,
+      unverifiedIssueCount,
       usedScoreFallback: false
     }
   }
@@ -222,6 +245,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
       advisoryBelowFloor,
       dimensionMean: mean,
       majorIssueCount,
+      unverifiedIssueCount,
       usedScoreFallback: false
     }
   }
@@ -238,6 +262,7 @@ export function deriveVerdict(critique: CritiqueLike, threshold: number): Verdic
     advisoryBelowFloor,
     dimensionMean: mean,
     majorIssueCount,
+    unverifiedIssueCount,
     usedScoreFallback: false
   }
 }

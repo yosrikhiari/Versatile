@@ -50,6 +50,12 @@ export interface SceneGateContext {
   gate: () => Promise<void>
   liveDraft: any
   promptAdjuster: any
+  /**
+   * Whether the loaded project has consented to background cloud audits.
+   * A callback, not a value: consent can be withdrawn mid-run. Missing means
+   * "no consent", so a context that never wires it fails closed.
+   */
+  projectOptIn?: () => boolean
   rejectedPatterns: Ref<any[]>
   runHealth: any
   scenePlan: Ref<any[]>
@@ -789,6 +795,16 @@ export function createSceneGate(ctx: SceneGateContext) {
         "\n⚠ Quality gate did not run for this scene — the critic's output could not be parsed. The draft was accepted unchecked.\n"
       )
     }
+    const unverifiedQuotes = (criticResult?.issues || []).filter(
+      (issue: NonNullable<CriticVerdict['issues']>[number]) => issue?.quoteVerified === false
+    )
+    if (unverifiedQuotes.length > 0) {
+      runHealth.record('critic_unverified', {
+        stage: 'critic',
+        sceneIndex,
+        detail: `${unverifiedQuotes.length} issue(s) quoted text not found in the draft; excluded from the major-issue count`
+      })
+    }
     const continuityOk = (criticResult?.dimensionScores?.continuity ?? 10) >= 6
 
     // Cloud escalation check: if eval is unavailable or has suspect scores and
@@ -832,8 +848,8 @@ export function createSceneGate(ctx: SceneGateContext) {
           const auto = await maybeAutoEscalateScene({
             projectId: writeParams.value?.projectId || '',
             tier: getAnalysisTier(),
-            cloudAvailable: true,
-            projectOptIn: !!settings.cloudAuditOptIn,
+            cloudAvailable: canUseCloudEscalation(),
+            projectOptIn: ctx.projectOptIn?.() === true,
             provider: settings.aiProvider,
             model: settings.ollamaModel,
             operation: 'escalation-on-failure',

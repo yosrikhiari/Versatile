@@ -99,6 +99,8 @@ export interface CriticVerdict {
     paragraphs?: number[]
     /** Continuity: code-verified quote pairs (§25 repair). */
     evidence?: Array<{ sentence: string; fact: string }>
+    /** False when a quoted span in `description` is not in the draft. */
+    quoteVerified?: boolean
   }>
   verdictReason?: string
   [extra: string]: unknown
