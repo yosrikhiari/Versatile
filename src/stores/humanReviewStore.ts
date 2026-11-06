@@ -220,7 +220,9 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
       const saved = await persistResponse(activeSession.value.id, {
         sceneId: target.sceneId,
         overall: draft.overall,
-        dims: draft.dims as Record<RubricDimension, RubricMark>,
+        // The form's dims object is a Vue reactive proxy; IndexedDB's
+        // structured clone cannot copy it. Persist a plain copy.
+        dims: { ...draft.dims } as Record<RubricDimension, RubricMark>,
         note: draft.note.trim()
       })
       const idx = responses.value.findIndex((response) => response.sceneId === saved.sceneId)

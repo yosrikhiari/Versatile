@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { reactive } from 'vue'
 import { db } from '@/services/db-core'
 import { useHumanReviewStore } from '@/stores/humanReviewStore'
 import { buildHumanReviewExport } from '@/services/humanReviewExport'
@@ -95,6 +96,17 @@ describe('humanReviewStore', () => {
       dims
     })
     expect(exported.labels[0].sceneId).toBe('scene-1')
+  })
+
+  it('persists a plain copy of the reactive form object', async () => {
+    await openStudy(store)
+    const reactiveDims = reactive({ ...dims })
+    await expect(
+      store.saveDraft(
+        { overall: 'Keep', dims: reactiveDims, note: 'reactive form' },
+        store.currentScene.sceneId
+      )
+    ).resolves.toMatchObject({ dims })
   })
 
   it('saves to the scene the form was showing, even if another save advanced the cursor', async () => {
