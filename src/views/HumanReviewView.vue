@@ -226,7 +226,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-bg-primary text-text-primary">
+  <div class="h-dvh overflow-y-auto bg-bg-primary text-text-primary">
     <header class="border-b border-border-subtle bg-bg-secondary/70 backdrop-blur">
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
         <div class="flex min-w-0 items-center gap-3">
