@@ -120,7 +120,8 @@ export const useHumanReviewStore = defineStore('humanReview', () => {
     loading.value = true
     clearError()
     try {
-      const parsed: unknown = typeof input === 'string' ? JSON.parse(input) : input
+      const parsed: unknown =
+        typeof input === 'string' ? JSON.parse(input.replace(/^\uFEFF/, '')) : input
       const pack = parseStudyPack(parsed)
       const record = await saveStudy(pack)
       studies.value = await getStudies()
