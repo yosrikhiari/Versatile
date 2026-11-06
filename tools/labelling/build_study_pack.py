@@ -12,7 +12,6 @@ must stay blinded.
 import argparse
 import json
 import os
-import sys
 
 DEFAULT_SCENES = "reports/live/labelling/scenes.json"
 DEFAULT_OUT = "reports/live/labelling/human-review-pack.json"
