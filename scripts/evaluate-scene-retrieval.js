@@ -19,6 +19,15 @@ import { aggregateMetrics, formatReport } from '../src/evaluation/ragEvaluator'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+const EVIDENCE_STATUS = 'non-evidence'
+const NOT_EVIDENCE_REASON =
+  'Fixture smoke test. The relevant scenes are selected by the same TF-IDF cosine the ranker uses, over synthetic keyword documents, so the result is circular and cannot validate production retrieval. Run tools/retrieval-eval/fact_retrieval.py for the measured retrieval claim.'
+
+function printEvidenceBanner() {
+  console.log(`EVIDENCE_STATUS: ${EVIDENCE_STATUS}`)
+  console.log(`Not evidence. ${NOT_EVIDENCE_REASON}\n`)
+}
+
 const TOPIC_NAMES = [
   'fantasy',
   'mystery',
@@ -907,6 +916,8 @@ function writeReport(strategy, group, report) {
   const lines = []
   lines.push(`# Scene Retrieval Evaluation: ${strategy.toUpperCase()} — ${group}`)
   lines.push('')
+  lines.push(`> **EVIDENCE_STATUS: ${EVIDENCE_STATUS}.** Not evidence. ${NOT_EVIDENCE_REASON}`)
+  lines.push('')
   lines.push('## Configuration')
   lines.push(`- Strategy: ${strategy}`)
   lines.push(`- k: ${report.config.k}`)
@@ -1038,7 +1049,8 @@ function printSummary(strategy, group, report) {
 }
 
 function main() {
-  console.log('=== Scene Retrieval Evaluation ===\n')
+  console.log('=== Scene Retrieval Evaluation (SMOKE ONLY) ===\n')
+  printEvidenceBanner()
 
   const { scenes, idf, allKeywords } = buildSceneDataset()
   console.log(

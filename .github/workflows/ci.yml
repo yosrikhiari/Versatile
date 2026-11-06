@@ -39,6 +39,19 @@ jobs:
       - name: Design-system and repo policies
         run: npm run lint:tokens && npm run policy
 
+      - name: Evidence snapshot drift check
+        run: npm run evidence:check
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python evaluation tools
+        run: |
+          python -m unittest discover -s tools/labelling -p "test_*.py"
+          python -m unittest discover -s tools/retrieval-eval -p "test_*.py"
+
       - name: Prettier formatting check
         run: npx prettier --check "src/**/*.{js,ts,vue,css}"
 

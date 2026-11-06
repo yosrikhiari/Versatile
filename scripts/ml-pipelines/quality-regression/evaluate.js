@@ -4,6 +4,9 @@ import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+const NOT_EVIDENCE_REASON =
+  'Fixture suite: expected scores are embedded in test-suite.json and scoreTest reproduces them, so the pipeline reports fixture agreement, not model quality. Replace with recorded model outputs before citing it as evidence.'
+
 const PIPELINE_DIR = resolve(__dirname)
 const REPORTS_DIR = resolve(__dirname, '..', '..', '..', 'reports')
 const BASELINES_DIR = resolve(PIPELINE_DIR, 'baselines')
@@ -157,6 +160,7 @@ async function evaluate() {
   const suite = loadTestSuite()
   const baseline = loadBaseline(suite)
 
+  console.log('=== Quality Regression (SMOKE ONLY — NOT EVIDENCE) ===\n')
   console.log(`Test suite v${suite.version}: ${suite.tests.length} cases`)
   console.log(`Baseline: ${baseline ? `v${suite.version}` : 'none'}\n`)
 
@@ -191,6 +195,8 @@ async function evaluate() {
 
   const report = {
     timestamp: new Date().toISOString(),
+    evidenceStatus: 'fixture',
+    notEvidenceReason: NOT_EVIDENCE_REASON,
     suiteVersion: suite.version,
     testCount: suite.tests.length,
     passed: results.length - gateAlerts.length,

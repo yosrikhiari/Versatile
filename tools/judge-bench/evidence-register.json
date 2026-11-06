@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-11-06",
+  "gate": {
+    "version": "continuity-voice-gate/2026-11-05",
+    "loadBearingDimensions": ["continuity", "voice"],
+    "advisoryDimensions": ["show_tell", "pacing", "emotional_goal"],
+    "minDimensionScore": 7,
+    "maxMajorIssues": 2,
+    "enforceMean": true,
+    "focusedCriticDefault": true,
+    "judgeSampling": { "repeatPenalty": 1 }
+  },
+  "models": {
+    "defaultProse": "qwen3:8b",
+    "defaultUtility": "qwen3:8b",
+    "uncensoredProse": "dolphin-mistral:7b",
+    "embeddingExample": "snowflake-arctic-embed2 (demo) / nomic-embed-text (Ollama default)"
+  },
+  "corpora": [
+    {
+      "id": "claude-reviewer-78",
+      "description": "78 real scenes from four stories, labelled twice by separate Claude reviewer passes under rubric v1",
+      "units": "scenes",
+      "count": 78,
+      "source": "reports/live/labelling/claude-labels/{pass1,pass2,consensus}.json",
+      "labelSource": "claude-reviewer",
+      "status": "active",
+      "note": "NOT human labels. pass1.json and pass2.json retain the two passes; consensus.json is merged and must not be treated as two independent raters."
+    },
+    {
+      "id": "human-pilot-12",
+      "description": "Intended 12-scene human reference pilot, selected from the shortest scenes",
+      "units": "scenes",
+      "count": 12,
+      "source": "reports/live/labelling/claude-labels/main-12.json",
+      "labelSource": "claude-reviewer",
+      "status": "incomplete",
+      "note": "The current file is a Claude main read, not a human label set. No human labels exist in the tree."
+    },
+    {
+      "id": "masterpieces-12",
+      "description": "12 public-domain masterpiece passages used as known-good controls",
+      "units": "passages",
+      "count": 12,
+      "source": "reports/live/masterpieces/scenes.json",
+      "labelSource": "none",
+      "status": "active",
+      "note": "Controls for over-strictness; no label set is needed."
+    },
+    {
+      "id": "planted-flaws-145",
+      "description": "Deliberately injected defects used as the focused-critic sensitivity regression set",
+      "units": "injected defects",
+      "count": 145,
+      "source": "reports/live/plants, reports/live/plants-b",
+      "labelSource": "planted",
+      "status": "active",
+      "note": "Sensitivity evidence only; not natural prevalence and not a false-alarm estimate."
+    },
+    {
+      "id": "retrieval-40q",
+      "description": "One-book fact-retrieval evaluation, 40 queries over 30 scenes, three relevant scenes per query",
+      "units": "queries",
+      "count": 40,
+      "source": "tools/retrieval-eval/fact_retrieval.py; reports/live/retrieval-eval/results.json",
+      "labelSource": "structured",
+      "status": "active",
+      "note": "Single-book baseline; no cross-book holdout or user-perceived relevance study."
+    },
+    {
+      "id": "constory-within-40",
+      "description": "Exploratory within-scene ConStory-Checker probe: 20 model-labelled positives and 20 model-labelled negatives",
+      "units": "examples",
+      "count": 40,
+      "source": "tools/judge-bench/constory_within.py; reports/live/judge-bench/constory-within.json",
+      "labelSource": "model-generated",
+      "status": "incomplete",
+      "note": "Labels come from another LLM checker, not humans. The 20 positives were sampled from that checker's own findings, so this is a negative signal about transfer, not a prevalence estimate."
+    }
+  ],
+  "nonEvidence": [
+    {
+      "id": "scene-retrieval-fixture",
+      "script": "scripts/evaluate-scene-retrieval.js",
+      "command": "npm run smoke:scene",
+      "reason": "Relevance is defined by the same TF-IDF cosine the fixture then ranks with, so MRR 1.000 is true by construction.",
+      "replacement": "tools/retrieval-eval/fact_retrieval.py"
+    },
+    {
+      "id": "quality-regression-fixture",
+      "script": "scripts/ml-pipelines/quality-regression/evaluate.js",
+      "command": "npm run smoke:quality",
+      "reason": "scoreTest assigns each dimension score = expected.minScores, so the report measures fixture drift, not model quality.",
+      "replacement": null
+    }
+  ],
+  "claims": [
+    {
+      "id": "gate-scope",
+      "statement": "The production scene gate fails only on continuity or voice; show_tell, pacing and emotional_goal are still judged but are advisory.",
+      "value": "continuity+voice",
+      "source": "src/services/criticVerdict.ts:45-74; src/composables/useStoryCritic.ts:1013",
+      "date": "2026-11-05",
+      "status": "active",
+      "labelSource": "none"
+    },
+    {
+      "id": "gate-thresholds",
+      "statement": "Any load-bearing dimension below 7, or two or more major issues, fails a scene; the mean must also clear the workspace threshold.",
+      "value": "minDimensionScore=7; maxMajorIssues=2; enforceMean=true",
+      "source": "src/services/criticVerdict.ts:33-50",
+      "date": "2026-11-05",
+      "status": "active",
+      "labelSource": "none"
+    },
+    {
+      "id": "gate-planted-133-of-145",
+      "statement": "The focused critic caught 133 of 145 deliberately planted defects.",
+      "value": "133/145",
+      "source": "docs/REPORT.md 5c-5e; docs/GENERATION-PIPELINE-ANALYSIS.md",
+      "status": "active",
+      "labelSource": "planted",
+      "note": "Sensitivity on injected defects only; not a natural-prevalence or false-alarm estimate. Last measured run; not rerun for this snapshot."
+    },
+    {
+      "id": "real-scenes-earlier-0-of-78",
+      "statement": "An earlier gate caught none of the continuity or voice problems the two reviewer passes agreed on across 78 real scenes.",
+      "value": "0/78",
+      "source": "docs/REPORT.md 5i",
+      "status": "superseded",
+      "supersededBy": "gate-continuity-3-of-17",
+      "labelSource": "claude-reviewer",
+      "note": "Historical. Reviewer labels were Claude passes, not human labels; the gate has changed since."
+    },
+    {
+      "id": "gate-failures-12-of-78",
+      "statement": "The gate failed 12 of the 78 reviewer-labelled real scenes.",
+      "value": "12/78",
+      "source": "docs/REPORT.md 5i",
+      "status": "historical",
+      "labelSource": "claude-reviewer",
+      "note": "Gate-failure count, not recall of reviewer-identified problems. Measured under the gate at that time."
+    },
+    {
+      "id": "gate-continuity-3-of-17",
+      "statement": "The current continuity check caught 3 of the 17 continuity problems the reviewer passes identified.",
+      "value": "3/17",
+      "source": "docs/REPORT.md 5k; docs/GENERATION-PIPELINE-ANALYSIS.md 31",
+      "status": "active",
+      "labelSource": "claude-reviewer",
+      "note": "Reviewer labels only; no human reference. Does not establish precision on natural prose. Last measured run; not rerun for this snapshot."
+    },
+    {
+      "id": "masterpieces-11-of-12",
+      "statement": "The pre-31 gate failed 11 of 12 public-domain masterpiece passages.",
+      "value": "11/12",
+      "source": "docs/REPORT.md 5j",
+      "status": "superseded",
+      "supersededBy": "masterpieces-0-of-12",
+      "labelSource": "none",
+      "note": "Historical. It motivated demoting show_tell, pacing and emotional_goal to advisory."
+    },
+    {
+      "id": "masterpieces-0-of-12",
+      "statement": "After the advisory demotion, the gate failed 0 of 12 masterpiece passages.",
+      "value": "0/12",
+      "source": "docs/REPORT.md 5k",
+      "status": "active",
+      "labelSource": "none",
+      "note": "Last measured run; not rerun for this snapshot."
+    },
+    {
+      "id": "reviewer-agreement-pass1-pass2",
+      "statement": "The two Claude reviewer passes agree substantially per dimension; agreement is within-model, not human-human.",
+      "value": "continuity .75, voice .66, show_tell .68, pacing .85, emotional_goal .89; overall Keep/Revise .59",
+      "source": "reports/live/labelling/claude-labels/agreement-pass1-pass2.json; tools/labelling/agreement.py",
+      "date": "2026-11-05",
+      "status": "active",
+      "labelSource": "claude-reviewer",
+      "note": "78-scene overlap. Voice has only n=46 usable pairs and 30/32 unsure marks; this is a same-model consistency check, not human validation."
+    },
+    {
+      "id": "main-12-claude-agreement",
+      "statement": "A third Claude read of the 12 pilot scenes agreed with the two reviewer passes on 42 of 50 decisions.",
+      "value": "42/50",
+      "source": "docs/REPORT.md 5j; reports/live/labelling/claude-labels/main-12.json",
+      "status": "historical",
+      "labelSource": "claude-reviewer",
+      "note": "Same model family as the reviewers. It is a consistency check, not a human check; one scene had been seen before."
+    },
+    {
+      "id": "human-pilot-pending",
+      "statement": "No human labels have been collected; the 12-scene main read is by Claude, not a human.",
+      "value": "0 human labels",
+      "source": "reports/live/labelling/claude-labels/main-12.json; docs/LABELLING-RUBRIC.md",
+      "date": "2026-11-05",
+      "status": "blocked",
+      "labelSource": "claude-reviewer",
+      "note": "At least two humans must independently label an overlap before human-human agreement can be reported."
+    },
+    {
+      "id": "calibration-run-blocked",
+      "statement": "The P0-A calibration run has not been executed; the local consensus artifact is merged and lacks separate passA/passB labels.",
+      "value": "no run",
+      "source": "tools/judge-bench/PREREGISTRATION.md; reports/live/labelling/claude-labels/consensus.json",
+      "date": "2026-11-05",
+      "status": "blocked",
+      "labelSource": "claude-reviewer",
+      "note": "The runner refuses merged labels. Two named human adjudicators and explicit approval are required; recording names is not proof the exercise happened."
+    },
+    {
+      "id": "retrieval-mrr-1-000",
+      "statement": "The older scene-retrieval evaluation reported MRR 1.000.",
+      "value": "MRR 1.000",
+      "source": "scripts/evaluate-scene-retrieval.js; docs/GENERATION-PIPELINE-ANALYSIS.md 35",
+      "status": "superseded",
+      "supersededBy": "retrieval-mrr-0-671",
+      "labelSource": "structured",
+      "note": "Circular query/scene construction. Run only via `npm run smoke:scene`; the artifact is stamped non-evidence."
+    },
+    {
+      "id": "retrieval-mrr-0-671",
+      "statement": "The later 40-query, one-book fact-retrieval baseline scored MRR 0.671.",
+      "value": "MRR 0.671",
+      "source": "tools/retrieval-eval/fact_retrieval.py; reports/live/retrieval-eval/results.json; docs/GENERATION-PIPELINE-ANALYSIS.md 35",
+      "status": "active",
+      "labelSource": "structured",
+      "note": "40 queries, 30 scenes, one book, three relevant scenes per query. Useful narrow baseline, not broad validation. The 2026-11-06 harness adds a multi-book manifest, pooled metrics, bootstrap intervals, hard negatives and noise queries, but this value is still the old one-book result; no cross-book run is claimed."
+    },
+    {
+      "id": "critic-quote-verification",
+      "statement": "A critic issue whose quoted span (at least 12 alphanumeric characters) is absent from the draft is marked quoteVerified=false, excluded from the major-issue count, and counted as critic_unverified.",
+      "value": "unverified quotes excluded from majorIssueCount",
+      "source": "src/composables/criticIsolation.ts; src/services/criticVerdict.ts; src/composables/generation/writing/sceneGate.ts; src/services/generation/runHealth.ts",
+      "date": "2026-11-06",
+      "status": "active",
+      "labelSource": "none",
+      "note": "This reduces the cost of a fabricated quote. It does not validate the gate against human readers, and issues without a quote are left untouched."
+    },
+    {
+      "id": "cloud-consent-project-scoped",
+      "statement": "Background cloud-audit consent is stored on the project row and is not part of the sync payload; the transport refuses a send whose caller passes no consent.",
+      "value": "project cloudAuditOptIn; consent=false refused",
+      "source": "src/stores/projectStore.ts; src/services/cloudEscalation.ts; src/composables/betareader/useBetaReader.ts; src/composables/generation/writing/sceneGate.ts",
+      "date": "2026-11-06",
+      "status": "active",
+      "labelSource": "none",
+      "note": "Provider retention and jurisdiction remain the provider's terms. Consent is per device, so a second device must opt in itself."
+    },
+    {
+      "id": "sync-two-client-contract",
+      "statement": "Two clients follow an explicit conflict contract: clean rows follow the server, dirty rows win on pull, in-flight edits stay pending, root tombstones delete clean subtrees and preserve dirty subtrees.",
+      "value": "documented matrix + 7 in-memory tests",
+      "source": "docs/sync-status.md; src/tests/unit/syncTwoClientConflict.test.js; src/tests/helpers/fakeSyncServer.js",
+      "date": "2026-11-06",
+      "status": "active",
+      "labelSource": "none",
+      "note": "No CRDT and no field merge; simultaneous edits to the same row are last-writer-wins."
+    },
+    {
+      "id": "scene-label-backend-subsectionid",
+      "statement": "The backend SceneLabel has an optional SubsectionId with a migration and upsert tests, and local labels prefer a stable sceneId; labels are still not synced.",
+      "value": "SubsectionId added; no label sync",
+      "source": "backend/Versatile.Domain/Entities/SceneLabel.cs; backend/Versatile.Infrastructure/Migrations/20261106064742_AddSceneLabelSubsectionId.cs; src/services/db-labels.ts",
+      "date": "2026-11-06",
+      "status": "active",
+      "labelSource": "none",
+      "note": "Partial identity only. There is no label mapper or sync protocol, so this is not cross-device identity."
+    },
+    {
+      "id": "constory-within-probe",
+      "statement": "The local within-scene ConStory-Checker probe flagged 1 of 20 sampled positives, located none, and flagged 0 of 20 negatives.",
+      "value": "1/20 flagged; 0/20 located; 0/20 false alarms",
+      "source": "tools/judge-bench/constory_within.py; reports/live/judge-bench/constory-within.json",
+      "date": "2026-09-27",
+      "status": "exploratory",
+      "labelSource": "model-generated",
+      "note": "The positive samples were themselves another LLM checker's findings, and the raw data lives under gitignored reports/. It is a negative signal about transfer to scene-length local critique, not a human-grounded failure or a prevalence estimate."
+    },
+    {
+      "id": "ledger-effect-p-025-retracted",
+      "statement": "The earlier claim that the fact ledger made contradictions worse by +.67 per scene at p=.25 was retracted.",
+      "value": "p=.25 (retracted)",
+      "source": "docs/GENERATION-PIPELINE-ANALYSIS.md 22",
+      "status": "retracted",
+      "labelSource": "model-generated",
+      "note": "The difference came from old-judge false alarms, not the ledger. Do not cite it as evidence of harm."
+    },
+    {
+      "id": "memory-context-3-5x-p-125",
+      "statement": "A wider memory experiment measured 3.5x more context, but its callback outcome was underpowered and did not establish better prose.",
+      "value": "3.5x context; p=.125 callback",
+      "source": "docs/GENERATION-PIPELINE-ANALYSIS.md 12",
+      "status": "exploratory",
+      "labelSource": "model-generated",
+      "note": "Context increase measured; the callback proxy was poor. Do not present it as improved continuity."
+    },
+    {
+      "id": "probability-auc-0-77-to-0-91",
+      "statement": "Reading token probabilities instead of sampled scores separated dimensions better in an internal probe (pooled AUC 0.77 to 0.91).",
+      "value": "AUC 0.77 -> 0.91",
+      "source": "docs/REPORT.md 5; docs/GENERATION-PIPELINE-ANALYSIS.md",
+      "status": "exploratory",
+      "labelSource": "model-generated",
+      "note": "Internal probe; transfer to the production critic prompt is not measured."
+    },
+    {
+      "id": "quality-pipeline-fixed-scores",
+      "statement": "The quality-regression pipeline sets each dimension score to its expected minimum.",
+      "value": "score = expected minimum",
+      "source": "scripts/ml-pipelines/quality-regression/evaluate.js:101-143",
+      "status": "invalid",
+      "labelSource": "structured",
+      "note": "Fixture and pipeline smoke path, not independent model-quality evidence."
+    },
+    {
+      "id": "backup-recovery-exists",
+      "statement": "Full local recovery backup exists and round-trips prose; it is not an open core gap.",
+      "value": "implemented",
+      "source": "src/services/dbRecovery.ts; src/tests/integration/branchIntegrity.test.js",
+      "status": "active",
+      "labelSource": "none",
+      "note": "Restore UX and very large/corrupt backups remain untested."
+    },
+    {
+      "id": "test-suite-2026-11-05",
+      "statement": "The frontend suite passed on the reviewed working tree.",
+      "value": "3,613 passed / 2 skipped (338 files, 1 skipped)",
+      "source": "npm run test:run -- --maxWorkers=3",
+      "date": "2026-11-05",
+      "status": "active",
+      "labelSource": "none"
+    },
+    {
+      "id": "backend-suite-2026-11-05",
+      "statement": "The backend suite passed on the reviewed working tree.",
+      "value": "1,107 passed / 1 skipped",
+      "source": "dotnet test backend/Versatile.slnx",
+      "date": "2026-11-05",
+      "status": "active",
+      "labelSource": "none"
+    }
+  ]
+}

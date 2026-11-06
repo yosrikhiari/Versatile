@@ -2,6 +2,14 @@
 
 5 automated ML pipelines built on Versatile's existing AI generation and evaluation infrastructure.
 
+> **Evidence status.** Only the model-benchmarking pipeline calls a model. The
+> quality-regression suite is a fixture: `scoreTest` assigns each dimension
+> score from `test-suite.json`'s expected minima, so its report measures fixture
+> drift, not model quality. Do not cite its scores as evidence. The fixture
+> scripts remain runnable as smoke checks (`npm run smoke:quality`,
+> `npm run smoke:scene`); both are registered as `nonEvidence` in
+> `tools/judge-bench/evidence-register.json`.
+
 ## Pipelines
 
 | Pipeline                 | Location                | Purpose                                                                                                                                                                                             |
@@ -23,7 +31,9 @@
 ## Running
 
 ```bash
-npm run pipeline:quality
+npm run smoke:quality            # fixture check — not evidence
+npm run smoke:scene              # circular fixture check — not evidence
+npm run pipeline:quality         # deprecated alias for smoke:quality
 npm run pipeline:benchmark
 npm run pipeline:active:sample   # Active Learning — analyze sample eval history
 npm run pipeline:active          # Active Learning — analyze full eval history
@@ -36,6 +46,24 @@ npm run pipeline:drift:synthetic # Drift Monitor — synthetic drift dataset (10
 npm run pipeline:drift:edge      # Drift Monitor — edge case dataset (80 evals, threshold 1)
 npm run pipeline:drift           # Drift Monitor — run with --source
 ```
+
+## Retrieval evaluation (not an ML pipeline)
+
+The non-circular retrieval measure lives in `tools/retrieval-eval/`, not in
+this directory:
+
+```bash
+python -X utf8 tools/retrieval-eval/fact_retrieval.py
+python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v
+```
+
+`manifest.json` lists books; each book has a corpus and optional explicit
+queries. Results are reported per book, pooled (not an average of averages),
+and with deterministic bootstrap intervals. Adjacent chapters are hard
+negatives; a query with no relevant scene can be declared `kind: "noise"`.
+The checked-in `reports/live/retrieval-eval/results.json` is the older
+40-query, one-book run (MRR 0.671). The multi-book harness is code and tests,
+not a new cross-book result.
 
 ## Model Benchmarking
 

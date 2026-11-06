@@ -1,0 +1,10 @@
+{
+  "books": [
+    {
+      "id": "salt-road",
+      "corpus": "reports/live/critic-rank-agreement/corpus.json",
+      "cache": "reports/live/retrieval-eval",
+      "docs": ["summary", "prose"]
+    }
+  ]
+}
