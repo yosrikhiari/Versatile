@@ -25,6 +25,8 @@ export async function createProject(
         category,
         description,
         userId,
+        // Cloud-audit consent is opt-in and per project; a new book starts off.
+        cloudAuditOptIn: false,
         createdAt: now,
         updatedAt: now
       })

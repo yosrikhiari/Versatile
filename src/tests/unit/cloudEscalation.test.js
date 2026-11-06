@@ -9,8 +9,14 @@ vi.mock('@/services/aiProviderBudget', () => ({
   BudgetExceededError: class BudgetExceededError extends Error {}
 }))
 
-import { maybeAutoEscalateScene } from '@/services/cloudEscalation'
+import {
+  canUseCloudEscalation,
+  maybeAutoEscalateScene,
+  requestCloudEscalation
+} from '@/services/cloudEscalation'
 import { providerBudget, BudgetExceededError } from '@/services/aiProviderBudget'
+import { backendStream, backendTestConnection } from '@/services/backendAiService'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 const base = {
   projectId: 'p1',
@@ -98,5 +104,65 @@ describe('maybeAutoEscalateScene', () => {
     })
     expect(out.requested).toBe(false)
     expect(out.note).toContain('cloud is down')
+  })
+})
+
+describe('canUseCloudEscalation', () => {
+  function settings() {
+    const s = useSettingsStore()
+    s.analysisTier = 'cloud-audit'
+    s.aiProvider = 'openai'
+    return s
+  }
+
+  it('is off when the user chose local-only, whatever the tier says', () => {
+    const s = settings()
+    s.localOnly = true
+    expect(canUseCloudEscalation()).toBe(false)
+  })
+
+  it('is on only for a hosted provider and a non-local tier', () => {
+    const s = settings()
+    s.localOnly = false
+    expect(canUseCloudEscalation()).toBe(true)
+    s.aiProvider = 'ollama'
+    expect(canUseCloudEscalation()).toBe(false)
+    s.aiProvider = 'openai'
+    s.analysisTier = 'local'
+    expect(canUseCloudEscalation()).toBe(false)
+  })
+})
+
+describe('requestCloudEscalation consent', () => {
+  beforeEach(() => {
+    backendTestConnection.mockResolvedValue({ success: true, model: 'm', error: null })
+    backendStream.mockResolvedValue('Second opinion.')
+  })
+
+  it('refuses to send manuscript text without explicit consent', async () => {
+    const out = await requestCloudEscalation({ ...base, consent: false })
+
+    expect(out.success).toBe(false)
+    expect(out.error).toMatch(/consent/i)
+    expect(backendTestConnection).not.toHaveBeenCalled()
+    expect(backendStream).not.toHaveBeenCalled()
+  })
+
+  it('sends only after the caller confirms consent', async () => {
+    useSettingsStore().localOnly = false
+    const out = await requestCloudEscalation({ ...base, consent: true })
+
+    expect(out.success).toBe(true)
+    expect(out.result).toBe('Second opinion.')
+    expect(backendStream).toHaveBeenCalledOnce()
+  })
+
+  it('refuses even with consent while local-only is on', async () => {
+    useSettingsStore().localOnly = true
+    const out = await requestCloudEscalation({ ...base, consent: true })
+
+    expect(out.success).toBe(false)
+    expect(out.error).toMatch(/local-only/i)
+    expect(backendTestConnection).not.toHaveBeenCalled()
   })
 })

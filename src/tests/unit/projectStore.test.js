@@ -255,4 +255,62 @@ describe('projectStore', () => {
 
     expect(dbService.saveManuscript).toHaveBeenCalledWith('test-id', '<p>Content</p>')
   })
+
+  // Consent to send a project's manuscript to a cloud provider belongs to the
+  // project, not to the browser. A global switch let a project the author never
+  // opted in for ride on an earlier decision made for a different book.
+  describe('per-project cloud audit consent', () => {
+    async function open(id, project = {}) {
+      const store = useProjectStore()
+      dbService.getProject.mockResolvedValue({ id, name: 'Book', ...project })
+      dbService.getManuscript.mockResolvedValue({ content: '', wordCount: 0 })
+      dbService.getDailyGoal.mockResolvedValue({ goalWords: 500 })
+      dbService.getStreakData.mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
+      dbService.getLastSessionData.mockResolvedValue(null)
+      await store.loadProject(id)
+      return store
+    }
+
+    it('defaults off when the project row has no consent', async () => {
+      const store = await open('p1')
+      expect(store.cloudAuditOptIn).toBe(false)
+    })
+
+    it('loads the consent recorded on the project row', async () => {
+      const store = await open('p1', { cloudAuditOptIn: true })
+      expect(store.cloudAuditOptIn).toBe(true)
+    })
+
+    it('does not carry one project consent to the next project', async () => {
+      const store = await open('p1', { cloudAuditOptIn: true })
+      expect(store.cloudAuditOptIn).toBe(true)
+
+      await open('p2')
+      expect(store.cloudAuditOptIn).toBe(false)
+    })
+
+    it('writes consent to the project row, not browser settings', async () => {
+      const store = await open('p1')
+
+      await store.setCloudAuditOptIn(true)
+
+      expect(store.cloudAuditOptIn).toBe(true)
+      expect(dbService.updateProject).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ cloudAuditOptIn: true })
+      )
+    })
+
+    it('saves consent through updateProjectInfo', async () => {
+      const store = await open('p1')
+
+      await store.updateProjectInfo({ cloudAuditOptIn: true })
+
+      expect(store.cloudAuditOptIn).toBe(true)
+      expect(dbService.updateProject).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ cloudAuditOptIn: true })
+      )
+    })
+  })
 })

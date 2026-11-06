@@ -9,7 +9,9 @@ vi.mock('@/services/ollamaService', () => ({
     } catch {
       return s
     }
-  })
+  }),
+  encrypt: vi.fn(async (s) => s),
+  decrypt: vi.fn(async (s) => s)
 }))
 
 vi.mock('@/config/ai', () => ({
@@ -94,20 +96,22 @@ describe('settingsStore', () => {
     expect(store.featureModels.content).toEqual({ provider: 'ollama', model: 'llama3' })
   })
 
-  it('defaults cloud audit opt-in to off', () => {
+  it('keeps cloud audit consent out of browser settings', () => {
     const store = useSettingsStore()
-    expect(store.cloudAuditOptIn).toBe(false)
+    // Consent is a project-row field (`projectStore.cloudAuditOptIn`). A
+    // browser-wide opt-in would let a new book inherit an old one's decision.
+    expect(store.cloudAuditOptIn).toBeUndefined()
   })
 
-  it('persists cloud audit opt-in through save and load', () => {
+  it('persists the analysis tier through save and load', () => {
     const store = useSettingsStore()
-    store.setCloudAuditOptIn(true)
-    expect(store.cloudAuditOptIn).toBe(true)
+    store.setAnalysisTier('cloud-audit')
+    expect(store.analysisTier).toBe('cloud-audit')
 
     setActivePinia(createPinia())
     const reloaded = useSettingsStore()
     reloaded.loadSettings()
-    expect(reloaded.cloudAuditOptIn).toBe(true)
+    expect(reloaded.analysisTier).toBe('cloud-audit')
   })
 
   it('resets to defaults', () => {

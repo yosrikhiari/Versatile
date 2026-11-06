@@ -1397,6 +1397,8 @@ export function useVolumeStoryGenerator() {
     prefetchStats,
     progress,
     promptAdjuster,
+    // Read live: the author can withdraw consent while a long run is writing.
+    projectOptIn: () => projectStore.cloudAuditOptIn === true,
     recordSceneDigest,
     rejectedPatterns,
     researchRagOptions,

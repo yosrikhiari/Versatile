@@ -2,7 +2,8 @@ import { backendStream, backendTestConnection } from './backendAiService'
 import { providerBudget } from './aiProviderBudget'
 import { useSettingsStore } from '../stores/settingsStore'
 
-export interface CloudEscalationOptions {
+/** Everything needed to describe a send, before anyone has consented to it. */
+export interface CloudDisclosureOptions {
   projectId: string
   operation:
     | 'full-audit'
@@ -21,6 +22,15 @@ export interface CloudEscalationOptions {
     message: string
   }) => void
   abortSignal?: AbortSignal
+}
+
+export interface CloudEscalationOptions extends CloudDisclosureOptions {
+  /**
+   * Consent for this specific send: the project's own audit opt-in, or the
+   * user's explicit per-run opt-in on the on-demand offer. `requestCloudEscalation`
+   * refuses to send without it, so a new caller cannot bypass the UI.
+   */
+  consent: boolean
 }
 
 export interface CloudEscalationResult {
@@ -65,7 +75,7 @@ function estimateCost(
 }
 
 export async function buildCloudDisclosure(
-  options: CloudEscalationOptions
+  options: CloudDisclosureOptions
 ): Promise<CloudDisclosure> {
   const settings = useSettingsStore()
   const provider = options.provider || settings.aiProvider
@@ -103,9 +113,24 @@ export async function buildCloudDisclosure(
 export async function requestCloudEscalation(
   options: CloudEscalationOptions
 ): Promise<CloudEscalationResult> {
+  if (options.consent !== true) {
+    return {
+      success: false,
+      error:
+        'Cloud escalation requires explicit consent. Opt this project in to cloud audits, or confirm the per-run offer.'
+    }
+  }
+
   const settings = useSettingsStore()
   const provider = options.provider || settings.aiProvider
   const model = options.model || settings.ollamaModel
+
+  if (settings.localOnly) {
+    return {
+      success: false,
+      error: 'Local-only mode is on. Cloud escalation is disabled for every provider.'
+    }
+  }
 
   if (!provider || provider === 'ollama') {
     return {
@@ -179,8 +204,15 @@ export async function requestCloudEscalation(
 
 export function canUseCloudEscalation(): boolean {
   const settings = useSettingsStore()
+  // `localOnly` is the stronger, explicit opt-out: it overrides the provider
+  // and feature routing for every model call, so it must also stop the direct
+  // cloud-escalation transport. Checking only the tier and provider let a
+  // local-only user's scene text reach a configured cloud provider.
   return (
-    settings.analysisTier !== 'local' && !!settings.aiProvider && settings.aiProvider !== 'ollama'
+    !settings.localOnly &&
+    settings.analysisTier !== 'local' &&
+    !!settings.aiProvider &&
+    settings.aiProvider !== 'ollama'
   )
 }
 
@@ -237,6 +269,9 @@ export async function maybeAutoEscalateScene(
   try {
     const result = await run({
       projectId: ctx.projectId,
+      // `ctx.projectOptIn` was checked above, but passing it through keeps the
+      // transport's own guard meaningful when the request path is swapped.
+      consent: ctx.projectOptIn,
       operation: ctx.operation,
       text: ctx.text,
       systemPrompt: ctx.systemPrompt,

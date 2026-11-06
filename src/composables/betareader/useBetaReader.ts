@@ -100,14 +100,16 @@ export function useBetaReader() {
       // estimate. resolveBatchInjector is pure, so probing twice (here and
       // in the pass branches below) is cheap and keeps this block local.
       try {
-        if (canUseCloudEscalation()) {
+        const cloudEnabled = canUseCloudEscalation()
+        if (cloudEnabled) {
           const settings = useSettingsStore()
           const manuscriptText = scenes.map((s) => s.content).join('\n\n')
           const ctxBase = {
             tier: getAnalysisTier(),
-            cloudAvailable: true,
+            cloudAvailable: cloudEnabled,
             runOptIn: cloudRunOptIn.value,
-            projectOptIn: settings.cloudAuditOptIn,
+            // Consent belongs to the loaded project, not to the browser.
+            projectOptIn: projectStore.cloudAuditOptIn,
             provider: settings.aiProvider,
             model: settings.ollamaModel,
             localGenerateJson: aiGenerateJson
@@ -168,7 +170,7 @@ export function useBetaReader() {
           const tier = getAnalysisTier()
           const available = canUseCloudEscalation()
           const settings = useSettingsStore()
-          const projectOptIn = settings.cloudAuditOptIn
+          const projectOptIn = projectStore.cloudAuditOptIn
           const injector = resolveBatchInjector({
             tier,
             cloudAvailable: available,
@@ -200,7 +202,7 @@ export function useBetaReader() {
             tier,
             cloudAvailable: available,
             runOptIn: cloudRunOptIn.value,
-            projectOptIn: settings.cloudAuditOptIn,
+            projectOptIn: projectStore.cloudAuditOptIn,
             provider: settings.aiProvider,
             model: settings.ollamaModel,
             localGenerateJson: aiGenerateJson
@@ -218,7 +220,7 @@ export function useBetaReader() {
             tier,
             cloudAvailable: available,
             runOptIn: cloudRunOptIn.value,
-            projectOptIn: settings.cloudAuditOptIn,
+            projectOptIn: projectStore.cloudAuditOptIn,
             provider: settings.aiProvider,
             model: settings.ollamaModel,
             localGenerateJson: aiGenerateJson

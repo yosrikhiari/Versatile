@@ -41,11 +41,12 @@ const DEFAULT_SETTINGS = {
   // Analysis tier controls whether and when manuscript analysis escalates to cloud.
   // 'local' (default) — all analysis runs locally, never leaves device
   // 'cloud-on-demand' — user explicitly triggers cloud audit per operation
-  // 'cloud-audit' — background cloud audits enabled (opt-in, per-book)
+  // 'cloud-audit' — background cloud audits, only for projects whose own
+  // `cloudAuditOptIn` row field is true
   analysisTier: 'local',
-  // Per-project opt-in for background cloud audits ('cloud-audit' tier).
-  // Default off — the audit tier never routes to cloud without it.
-  cloudAuditOptIn: false,
+  // Cloud-audit consent is NOT a browser setting. It is stored per project
+  // (`projectStore.cloudAuditOptIn`) so one book cannot inherit another's
+  // decision; see projectStore.loadProject / setCloudAuditOptIn.
   // Chapter generation gets its own pipeline, its own delegator and its own
   // acceptance gate. The flag is the zero-deploy way back: turning it off
   // hides the Chapter tab and leaves the arc path exactly as it was.
@@ -80,7 +81,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const embeddingThreshold = ref(DEFAULT_SETTINGS.embeddingThreshold)
   const cloudflareAccountId = ref(DEFAULT_SETTINGS.cloudflareAccountId)
   const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
-  const cloudAuditOptIn = ref(DEFAULT_SETTINGS.cloudAuditOptIn)
   const enableChapterGeneration = ref(DEFAULT_SETTINGS.enableChapterGeneration)
   const orchestrator = ref<'legacy' | 'langgraph'>(DEFAULT_SETTINGS.orchestrator)
   const orchestratorMode = ref<'workflow' | 'agentic'>(DEFAULT_SETTINGS.orchestratorMode)
@@ -135,10 +135,6 @@ export const useSettingsStore = defineStore('settings', () => {
         if (typeof data.cloudflareAccountId === 'string')
           cloudflareAccountId.value = data.cloudflareAccountId
         if (data.analysisTier) analysisTier.value = data.analysisTier
-        // Explicit `!== undefined` for the same reason as `localOnly`: an
-        // opt-in the user never gave must survive a save/load round-trip
-        // as false, not flip to true — and vice versa.
-        if (data.cloudAuditOptIn !== undefined) cloudAuditOptIn.value = !!data.cloudAuditOptIn
         // Explicit `!== undefined` for the same reason as `localOnly`: turning
         // the flag off is a real choice, and truthiness would undo it on load.
         if (data.orchestrator === 'legacy' || data.orchestrator === 'langgraph')
@@ -186,7 +182,6 @@ export const useSettingsStore = defineStore('settings', () => {
           embeddingThreshold: embeddingThreshold.value,
           cloudflareAccountId: cloudflareAccountId.value,
           analysisTier: analysisTier.value,
-          cloudAuditOptIn: cloudAuditOptIn.value,
           enableChapterGeneration: enableChapterGeneration.value,
           orchestrator: orchestrator.value,
           orchestratorMode: orchestratorMode.value
@@ -346,11 +341,6 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  function setCloudAuditOptIn(value: any) {
-    cloudAuditOptIn.value = !!value
-    saveSettings()
-  }
-
   function setEnableChapterGeneration(value: any) {
     enableChapterGeneration.value = !!value
     saveSettings()
@@ -370,7 +360,6 @@ export const useSettingsStore = defineStore('settings', () => {
     embeddingModel.value = DEFAULT_SETTINGS.embeddingModel
     embeddingThreshold.value = DEFAULT_SETTINGS.embeddingThreshold
     analysisTier.value = DEFAULT_SETTINGS.analysisTier
-    cloudAuditOptIn.value = DEFAULT_SETTINGS.cloudAuditOptIn
     orchestrator.value = DEFAULT_SETTINGS.orchestrator
     orchestratorMode.value = DEFAULT_SETTINGS.orchestratorMode
     enableChapterGeneration.value = DEFAULT_SETTINGS.enableChapterGeneration
@@ -447,7 +436,6 @@ export const useSettingsStore = defineStore('settings', () => {
     // always true: a user who chose the local tier still had cloud escalation
     // enabled, and getAnalysisTier() returned undefined. Only tsc noticed.
     analysisTier,
-    cloudAuditOptIn,
     enableChapterGeneration,
     setEnableChapterGeneration,
     orchestrator,
@@ -474,7 +462,6 @@ export const useSettingsStore = defineStore('settings', () => {
     setEmbeddingModel,
     setEmbeddingThreshold,
     setAnalysisTier,
-    setCloudAuditOptIn,
     resetToDefaults,
     testOllamaConnection,
     testProviderConnection

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useSettingsStore } from '../../stores/settingsStore'
+import BaseSelect from '../ui/BaseSelect.vue'
 import {
   PROVIDERS,
   PROVIDER_LABELS,
@@ -60,6 +61,17 @@ const featureProviderSelections = ref({})
 const featureModelSelections = ref({})
 
 const NON_OLLAMA_PROVIDERS = computed(() => PROVIDER_LIST.filter((p) => p !== PROVIDERS.OLLAMA))
+
+/**
+ * How far analysis may go. `cloud-audit` is the only tier that sends without a
+ * per-run prompt, so each project carries its own `cloudAuditOptIn`; this
+ * control only sets the ceiling for the whole app.
+ */
+const ANALYSIS_TIERS = [
+  { value: 'local', label: 'Local only — analysis never leaves this device' },
+  { value: 'cloud-on-demand', label: 'Cloud on demand — ask before each upload' },
+  { value: 'cloud-audit', label: "Cloud audit — use each book's opt-in" }
+]
 
 function getModelsForProvider(provider) {
   if (provider === PROVIDERS.OLLAMA) return availableModels.value
@@ -312,6 +324,14 @@ defineExpose({
         The settings below are kept but not used while this is on. Turn it off to route individual
         features to a hosted model.
       </div>
+
+      <BaseSelect
+        :model-value="settingsStore.analysisTier"
+        :options="ANALYSIS_TIERS"
+        label="Cloud analysis"
+        hint="Global ceiling. Background audits also need this book's own opt-in in Project settings."
+        @update:model-value="settingsStore.setAnalysisTier"
+      />
 
       <div>
         <label for="default-provider" class="block text-xs text-text-secondary mb-1"

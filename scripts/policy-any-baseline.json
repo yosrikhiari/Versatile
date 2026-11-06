@@ -215,7 +215,7 @@
   "src/stores/manuscriptStore.ts": 68,
   "src/stores/polishStore.ts": 27,
   "src/stores/projectStore.ts": 23,
-  "src/stores/settingsStore.ts": 25,
+  "src/stores/settingsStore.ts": 24,
   "src/stores/snapshotStore.ts": 13,
   "src/stores/sparkStore.ts": 27,
   "src/stores/storyBibleStore.ts": 77,

@@ -60,6 +60,15 @@ export const useProjectStore = defineStore('project', () => {
   const authorVoiceProfile = ref<any | null>(null)
   const lastSessionRecap = ref<any | null>(null)
   const promptOverrides = ref<any>({})
+  /**
+   * Consent to background cloud audits for this project (`cloud-audit` tier).
+   *
+   * It lives on the project row, not in `versatile_settings`: a browser-wide
+   * switch let a new book inherit a decision made for another one. The field
+   * is deliberately not part of the sync payload — consent is given to the
+   * provider from this device, so a second device has to opt in itself.
+   */
+  const cloudAuditOptIn = ref(false)
 
   function getActivePrompts(categoryType: any) {
     const base = DOCUMENT_PROMPTS[categoryType] || DOCUMENT_PROMPTS.creative
@@ -169,6 +178,9 @@ export const useProjectStore = defineStore('project', () => {
     currentDescription.value = project.description || project.synopsis || ''
     currentCategory.value = project.category || ''
     currentGenre.value = project.genre || ''
+    // Re-read on every project load: a previous project's consent must never
+    // leak into a book the author has not opted in for.
+    cloudAuditOptIn.value = project.cloudAuditOptIn === true
     lastWrittenAt.value = project.updatedAt
 
     if (manuscript) {
@@ -432,6 +444,15 @@ export const useProjectStore = defineStore('project', () => {
     if (data.category !== undefined) currentCategory.value = data.category
     if (data.genre !== undefined) currentGenre.value = data.genre
     if (data.description !== undefined) currentDescription.value = data.description
+    if (data.cloudAuditOptIn !== undefined) cloudAuditOptIn.value = data.cloudAuditOptIn === true
+  }
+
+  /** Grant or withdraw this project's cloud-audit consent and persist it. */
+  async function setCloudAuditOptIn(value: unknown) {
+    if (!currentProjectId.value) return
+    const next = value === true
+    await updateProject(currentProjectId.value, { cloudAuditOptIn: next })
+    cloudAuditOptIn.value = next
   }
 
   async function loadLastProject() {
@@ -478,6 +499,8 @@ export const useProjectStore = defineStore('project', () => {
     authorVoiceProfile,
     lastSessionRecap,
     promptOverrides,
+    cloudAuditOptIn,
+    setCloudAuditOptIn,
     getActivePrompts,
     loadPromptOverrides,
     savePromptOverrides,

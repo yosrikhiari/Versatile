@@ -6,6 +6,7 @@ import { ollamaGenerate, ollamaEmbeddings, cosineSimilarity } from '../../servic
 import { getDailyGoal, setDailyGoal } from '../../services/dbService'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
+import BaseCheckbox from '../ui/BaseCheckbox.vue'
 import { useAsyncError } from '../../composables/useAsyncError'
 const { onAsyncError } = useAsyncError()
 
@@ -54,6 +55,9 @@ const activeTab = ref('general')
 // single input and left a dead end: the goal bar in the header opens THIS modal,
 // which had no goal in it.
 const localDailyGoal = ref(500)
+// Stored on the project row (`projectStore.cloudAuditOptIn`), not in browser
+// settings: consent is given for one book, from this device.
+const localCloudAuditOptIn = ref(false)
 
 watch(
   () => props.show,
@@ -65,6 +69,7 @@ watch(
       localPromptOverrides.value = { ...projectStore.promptOverrides }
       activeTab.value = 'general'
       localDailyGoal.value = projectStore.dailyGoal || 500
+      localCloudAuditOptIn.value = projectStore.cloudAuditOptIn === true
       if (projectStore.currentProjectId) {
         try {
           const existing = await getDailyGoal(projectStore.currentProjectId)
@@ -257,7 +262,8 @@ async function handleSave() {
     await projectStore.updateProjectInfo({
       name: localName.value.trim(),
       genre: localGenre.value.trim(),
-      description: localSynopsis.value.trim()
+      description: localSynopsis.value.trim(),
+      cloudAuditOptIn: localCloudAuditOptIn.value
     })
     await projectStore.savePromptOverrides(localPromptOverrides.value)
 
@@ -369,6 +375,19 @@ function handleOverlayClick(event) {
                 </span>
                 <BaseIcon name="chevron-right" :size="14" class="text-text-hint shrink-0" />
               </button>
+
+              <!--
+                Consent is scoped to this book. The old global switch let a new
+                project inherit an earlier book's decision, so the control now
+                sits with the project it applies to.
+              -->
+              <div class="rounded-lg border border-border-subtle p-3">
+                <BaseCheckbox
+                  v-model="localCloudAuditOptIn"
+                  label="Allow background cloud audits for this book"
+                  description="Only used when cloud analysis is set to Cloud audit in AI settings. This book's scenes may then be sent to the selected provider for a second opinion. Stored per project — other books and other devices are unaffected."
+                />
+              </div>
 
               <div>
                 <label class="block text-sm font-medium text-text-primary mb-2">
