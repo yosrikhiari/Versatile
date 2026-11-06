@@ -214,6 +214,10 @@ Two client fields are deliberately **not** in `SYNC_ENTITIES`:
 - `sceneLabels.*` (including `sceneId`) is a local label store. The backend
   has a `SceneLabels` table with an optional `SubsectionId`, but there is no
   label mapper or sync protocol yet; labels do not converge across devices.
+- `humanReviewStudies`, `humanReviewSessions` and `humanReviewResponses` are
+  the local-only human-reference study workspace (schema v58). They hold an
+  imported frozen pack, one session per rater/pass, and one response per
+  scene. They are deliberately excluded from sync and cloud escalation.
 
 ### ID Mapping
 
@@ -252,7 +256,7 @@ timestamp helpers, but the transport does not call them.
 ### Client schema (IndexedDB)
 
 The browser database is Dexie, declared as a list of versions in `src/services/db-schema.ts`
-(`SCHEMA_VERSIONS`, v11 through **v57**, 54 tables) with data-moving upgrade handlers in
+(`SCHEMA_VERSIONS`, v11 through **v58**, 57 tables) with data-moving upgrade handlers in
 `src/services/db-migrations.ts` (`MIGRATIONS`, keyed by version). Every version is logged in
 `docs/database-schema-changelog.md`.
 

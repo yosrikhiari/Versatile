@@ -131,5 +131,11 @@ export const SYSTEM_ITEMS: NavItem[] = [
   { label: 'Costs', panel: 'cost-dashboard', icon: 'dollar-sign', keywords: ['spend', 'tokens'] },
   { label: 'Research', panel: 'research', icon: 'search', keywords: ['notes', 'sources'] },
   { label: 'Archive', panel: 'archive', icon: 'archive', keywords: ['history', 'snapshots'] },
+  {
+    label: 'Review study',
+    panel: 'human-review',
+    icon: 'clipboard-list',
+    keywords: ['human', 'labels', 'pilot', 'rubric', 'calibration', 'research', 'agreement']
+  },
   { label: 'Settings', panel: 'settings', icon: 'settings', keywords: ['preferences', 'project'] }
 ]

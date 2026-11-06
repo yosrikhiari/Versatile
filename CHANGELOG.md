@@ -7,6 +7,25 @@ was verified.
 
 ## [Unreleased]
 
+### Human-review study workspace (2026-11-06)
+- **Blinded, local-only pilot workspace:** `/study` imports a frozen 12-scene
+  rubric-v1 pack, refuses packs containing critic/score/gate output, randomizes
+  presentation order per anonymous rater/pass, and records Keep/Revise plus
+  Problem/Fine/Unsure for all five dimensions.
+- **Separate from production labels:** the study uses new local-only
+  `humanReviewStudies`, `humanReviewSessions` and `humanReviewResponses` tables
+  (Dexie v58). It does not write `sceneLabels`, does not sync, and does not call
+  a model.
+- **Export for agreement:** finished sessions export raw JSON with study id,
+  rubric version, pack hash, anonymous rater code and pass on every row, ready
+  for `tools/labelling/agreement.py`.
+- **No fabricated labels:** the app starts empty and only imports a pack the
+  facilitator supplies; it does not ship or invent human labels.
+- **Validation:** frontend 345 files (1 skipped), 3,677 passed / 2 skipped;
+  13 labelling Python tests and 17 retrieval Python tests; `typecheck`, `lint`
+  (0 errors, 4 known warnings), `lint:tokens`, `policy`, `evidence:check` and
+  the production build pass. Backend untouched.
+
 ### Research-roadmap engineering batch (2026-11-06)
 - **Evidence governance:** `smoke:scene` / `smoke:quality` are fixtures, stamp
   `EVIDENCE_STATUS` / `NOT EVIDENCE` and are listed under `nonEvidence` in

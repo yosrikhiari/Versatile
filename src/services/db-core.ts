@@ -34,6 +34,9 @@ export interface VersatileTables {
   generatedStories: VersatileTable
   graphEdges: VersatileTable
   graphGroupsV2: VersatileTable
+  humanReviewStudies: VersatileTable
+  humanReviewSessions: VersatileTable
+  humanReviewResponses: VersatileTable
   graphNodeInstances: VersatileTable
   graphNodeParents: VersatileTable
   graphNodePositions: VersatileTable

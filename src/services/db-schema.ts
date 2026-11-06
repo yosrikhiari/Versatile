@@ -530,5 +530,19 @@ export const SCHEMA_VERSIONS = [
       sceneLabels:
         '++id, storyId, sceneId, reviewerName, overallLabel, createdAt, [storyId+reviewerName]'
     }
+  },
+  // v58 (2026-11-06): local human-review study workspace for the frozen
+  // 12-scene pilot. Studies hold the imported pack; sessions separate raters
+  // and passes; responses are one row per session+scene. These tables are
+  // deliberately local-only and are not part of the sync payload.
+  {
+    version: 58,
+    stores: {
+      humanReviewStudies: '++id, studyId, rubricVersion, packHash, importedAt, &[studyId+packHash]',
+      humanReviewSessions:
+        '++id, studyId, packHash, raterId, passLabel, status, startedAt, updatedAt, [studyId+packHash+raterId+passLabel]',
+      humanReviewResponses:
+        '++id, sessionId, sceneId, overall, createdAt, updatedAt, &[sessionId+sceneId]'
+    }
   }
 ]

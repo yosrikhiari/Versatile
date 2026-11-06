@@ -30,6 +30,7 @@ Nothing leaves the device unless you opt in — the cloud tier is per-project an
 - **Multi-agent orchestration on LangGraph** (opt-in, `Settings → AI → Generation orchestrator`) — the Writer and the Critic run as separate agents on separate device lanes (the Critic judges scene N on the CPU while the Writer drafts N+1 on the GPU, so the judge can be a different model with zero swaps on 8 GB), an Editor agent decides each step in `agentic` mode inside a fence of legal moves, every decision is logged, and the graph checkpoints per step so a killed tab resumes mid-chapter. Role placement (which model, which device) is a Settings table with a one-click preset. See [ADR-0001](docs/adr/0001-langgraph-multi-agent-writing.md).
 - **Digest layer** — per-scene digests rolled up into chapter and volume digests, an entity-state timeline, and deterministic contradiction rules that run before any LLM call
 - **Cloud escalation (opt-in, per project)** — route whole-manuscript audits or second-opinion critiques to a cloud provider with an explicit disclosure of what is sent
+- **Human-review study** — a local-only, blinded workspace for the frozen rubric-v1 pilot: anonymous rater sessions, randomized scene order, Keep/Revise plus Problem/Fine/Unsure marks, and raw JSON export for agreement analysis. It refuses packs that contain critic or gate output
 - **Entity Generation** — AI-assisted character, location, and plot thread creation
 - **Embedding-Similarity Retrieval** — IVF vector index in a worker for context selection on long stories
 - **Context Budgeting** — real token budgets per model, calibrated from observed usage
@@ -108,7 +109,7 @@ src/
 │   └── sync-engine.ts  — offline-to-server sync (14 synced tables)
 ├── stores/             — 23 Pinia stores (setup syntax)
 ├── config/             — providers, models, prompts, eval rubrics, gate config, workspaces
-└── tests/              — unit (318 files), integration, audit, evaluation, live
+└── tests/              — unit (321 files), integration, audit, evaluation, live
 ```
 
 See `ARCHITECTURE.md` for the system map, `API.md` for the backend contract, `TESTING.md` for every suite, `docs/GENERATION-PIPELINE-ANALYSIS.md` for how a run behaves, and `docs/ETHICS-AND-LIMITATIONS.md` for evidence status, data flows and scope limits.
@@ -162,7 +163,7 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run build`            | Production build (pre-compressed `.br`/`.gz` assets)            |
 | `npm run preview`          | Preview production build                                        |
 | `npm test`                 | Run unit tests (watch mode)                                     |
-| `npm run test:run`         | Run unit tests once (latest: 3,657 passed, 2 skipped)            |
+| `npm run test:run`         | Run unit tests once (latest: 3,677 passed, 2 skipped)            |
 | `npm run test:coverage`    | Run tests with coverage report                                  |
 | `npm run test:e2e`         | Playwright smoke/auth/responsive/panel specs (boots dev server) |
 | `npm run typecheck`        | `tsc --noEmit`                                                  |

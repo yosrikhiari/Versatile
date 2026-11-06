@@ -26,6 +26,14 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    // The supervised, local-only human-reference pilot. Kept out of the editor
+    // so a rater sees scene text and the frozen rubric, never critic output.
+    path: '/study',
+    name: 'human-review',
+    component: () => import('../views/HumanReviewView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     // The root and anything unknown go to the workspace; the guard below
     // sends a signed-out visitor on to the login page. Sending everyone to
     // /login first bounced a signed-in writer who opened the bare URL.

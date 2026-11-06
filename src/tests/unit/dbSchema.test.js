@@ -43,6 +43,12 @@ const EXPECTED = {
   graphNodeParents: '[projectId+nodeId] | groupId, nodeId, nodeType, projectId',
   graphNodePositions: '[projectId+nodeId] | nodeId, nodeType, projectId, x, y',
   groupEdges: '++id | projectId, relationshipType, sourceGroupId, targetGroupId',
+  // v58: the local human-review workspace; deliberately not synced.
+  humanReviewResponses:
+    '++id | &[sessionId+sceneId], createdAt, overall, sceneId, sessionId, updatedAt',
+  humanReviewSessions:
+    '++id | [studyId+packHash+raterId+passLabel], packHash, passLabel, raterId, startedAt, status, studyId, updatedAt',
+  humanReviewStudies: '++id | &[studyId+packHash], importedAt, packHash, rubricVersion, studyId',
   locations:
     '++id | *tags, apiId, description, generationStatus, lastSyncedAt, metadata, name, notes, projectId, syncStatus',
   manuscripts: '++id | apiId, content, lastSyncedAt, projectId, syncStatus, updatedAt, wordCount',
@@ -114,7 +120,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(57)
+    expect(verno).toBe(58)
   })
 
   it('has exactly the expected set of tables', () => {

@@ -41,6 +41,7 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Embedding-Similarity Retrieval: IVF vector index in a worker for context selection on long stories
 - Digest layer: per-scene digests rolled into chapter/volume digests and an entity-state timeline; deterministic contradiction rules run before any LLM call
 - Cloud escalation: opt-in, per project, with an explicit disclosure of what leaves the device
+- Human-review study: local-only, blinded rubric-v1 workspace for the 12-scene pilot; anonymous rater sessions, randomized order, Keep/Revise + Problem/Fine/Unsure marks, and raw JSON export for agreement analysis
 - Context Compaction: smart summarization to stay within AI token budgets
 - Author Voice Learning: statistical voice profiling without LLM calls
 - Story Bible: characters, locations, plot threads, relationships with visual graph (Vue Flow)
@@ -52,10 +53,10 @@ An AI-native writing environment — deep, multi-agent AI pipelines (prompting, 
 - Export to Word (docx), PDF (jsPDF) and EPUB (JSZip)
 - Session history archive with author model tracking
 - Goal tracking (session and daily word counts)
-- Offline-first persistence via Dexie IndexedDB (schema v55, 53 tables)
+- Offline-first persistence via Dexie IndexedDB (schema v58, 57 tables)
 - Cloud sync via .NET 10 + PostgreSQL (optional)
 - Light and dark themes (both equally maintained)
-- 326 test files (3,475 tests on 2026-10-04) — Vitest; Playwright E2E; xUnit backend
+- 345 test files (3,677 tests on 2026-11-06) — Vitest; Playwright E2E; xUnit backend
 - Geist Variable UI font, IBM Plex Mono manuscript font, various serif fonts for feature modes
 - One panel grammar across every tool panel (`BasePanelHeader` / `BaseSection`); panels dock right of a canvas-dominant shell
 - Whole-book generation verified against a real local model (10 chapters, 28K words, 62 min — `docs/examples/the-salt-road.md`)

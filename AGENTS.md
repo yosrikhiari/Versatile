@@ -7,7 +7,7 @@ Fiction writing assistant. Vue 3 + Pinia + TipTap frontend, .NET 10 + PostgreSQL
 - **Frontend**: Vue 3 (Composition API), TypeScript, Pinia stores, TipTap 3 editor, Vite 8, Vitest 5
 - **Backend**: .NET 10, PostgreSQL 16 (RLS), Redis, Entity Framework Core, SignalR
 - **AI**: 6 providers (Ollama default, OpenAI, Anthropic, Gemini, Groq, Cloudflare Workers AI; `src/config/ai.ts`); Ollama has a prose role and a utility role, both `qwen3:8b` by default (`src/config/ollama.ts`; `dolphin-mistral:7b` is an opt-in prose model); per-role placement (`src/config/roles.ts`: director / writer / critic / editor, plus utility and embedding, GPU or CPU; embedding defaults to CPU) feeds the LangGraph writing orchestrator (`writing/graphStrategy.ts`, ADR-0001) — one GPU model per run, Critic/Editor on a CPU model by preset
-- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v57), PostgreSQL (server)
+- **Storage**: IndexedDB via Dexie 4 (offline-first, schema v58), PostgreSQL (server)
 - **Build/CI**: npm/vite for frontend, dotnet for backend
 
 ## Key Conventions
@@ -56,7 +56,7 @@ Run `npm run policy` before you finish: it checks that every token is documented
 
 ## Testing
 
-- `npm run test:run` — Vitest suite (342 files, 1 skipped; latest run 3,657 passed, 2 skipped); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
+- `npm run test:run` — Vitest suite (345 files, 1 skipped; latest run 3,677 passed, 2 skipped); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
 - `npm run typecheck` — `tsc --noEmit`, zero errors
 - `npm run lint` — ESLint (0 errors; the four `services must not import stores` warnings are the known architectural debt)
 - `npm run format` — Prettier over `src/**/*.{js,ts,vue,css}`; CI checks the same scope

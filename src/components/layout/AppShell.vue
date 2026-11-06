@@ -403,6 +403,11 @@ function handleSidebarNav(name) {
     showProjectSettings.value = true
     return
   }
+  if (name === 'human-review') {
+    flowMode.value = false
+    router.push('/study')
+    return
+  }
   flowMode.value = false
   const map = {
     'story-generator': toggleStoryGenerator,

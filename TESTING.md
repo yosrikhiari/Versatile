@@ -6,7 +6,7 @@ How to run every check in this repo, and the conventions new tests must follow.
 
 ```bash
 npm test              # watch mode
-npm run test:run      # latest: 342 files (1 skipped), 3,657 passed / 2 skipped
+npm run test:run      # latest: 345 files (1 skipped), 3,677 passed / 2 skipped
 npm run test:coverage # what CI runs: v8 coverage with thresholds (statements 38, branches 30, functions 31, lines 38)
 npm run typecheck     # tsc --noEmit, must be zero errors
 npm run lint          # eslint, zero errors (warnings are pre-existing)
@@ -18,7 +18,7 @@ With a model loaded in Ollama, the default worker pool can run out of
 memory; `npx vitest run --maxWorkers=3` is how the suite is run locally.
 
 - Suites live under `src/tests/` (`vitest.config.js` includes
-  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 318 files),
+  `src/tests/**/*.test.{js,ts,jsx,tsx}`): `unit/` (the bulk, 321 files),
   `integration/` (10 multi-component flows: context pipeline, editor
   population, voice extraction, volume membership, the chapter-tab panel,
   book analysis, novel import, What If branches, branch integrity),
@@ -167,6 +167,7 @@ npx vitest run src/tests/unit/evidenceSnapshot.test.js
 python -m unittest discover -s tools/labelling -p "test_*.py" -v
 python tools/labelling/agreement.py <rater-a.json> <rater-b.json>
 python tools/labelling/agreement.py <rater-a.json> <rater-b.json> --require-human
+python tools/labelling/build_study_pack.py   # frozen 12 scenes, no labels
 
 python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v
 python -X utf8 tools/retrieval-eval/fact_retrieval.py
@@ -197,6 +198,11 @@ python -X utf8 tools/retrieval-eval/fact_retrieval.py
   refuses AI/model-labelled or unlabelled files; it is a metadata check, not
   proof of human identity. Keep unsure/N/A as its own answer — the tool counts
   and excludes it rather than coercing it to Problem/Fine.
+- The review-study workspace (`/study`) has three unit surfaces:
+  pack validation/blinding and deterministic per-rater order
+  (`humanReviewPack.test.js`), local session/export persistence
+  (`humanReviewStore.test.js`), and a render test that a live session shows the
+  scene and rubric but no critic or gate output (`humanReviewView.test.js`).
 - The Claude reviewer corpus and the generated agreement report live under
   `reports/` (gitignored), so a fresh clone can run the tools but cannot
   reproduce those numbers until the corpus is archived.

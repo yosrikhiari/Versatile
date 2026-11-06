@@ -62,3 +62,59 @@ The 12 human labels decide how far the reviewers' labels can stand in for a
 human: their agreement on those 12 is reported first. Every gate number
 measured against reviewer labels is reported as that, never as "human
 labels".
+
+## Running the pilot in the app
+
+Open **Review study** in the sidebar (or `/study`). The workspace is
+local-only and blinded:
+
+1. Import a frozen v1 pack as JSON. It must contain exactly 12 scenes and may
+   carry only the scene text, title, brief and the facts the rubric allows.
+   Packs containing critic, score or gate output are refused, so the rater
+   cannot see the verdict.
+2. Enter an anonymous participant code (for example `Rater A`). AI/model names
+   are refused because they would fail the `agreement.py --require-human`
+   provenance check. Use `Pass 1` for the first pass.
+3. The workspace randomizes scene order per rater/pass, shows one scene at a
+   time, and records Keep/Revise plus Problem/Fine/Unsure for all five
+   dimensions. Unsure is a real answer. No score, critic note or other rater's
+   answer is shown.
+4. Export the finished session as JSON. The file keeps the study id, rubric
+   version, pack hash, rater code and pass on every row. Run
+   `tools/labelling/agreement.py` on two exported rater files to get
+   agreement.
+
+The pack shape is:
+
+```json
+{
+  "studyId": "gate-human-pilot-v1",
+  "rubricVersion": "v1",
+  "title": "Gate human-reference pilot",
+  "scenes": [
+    {
+      "sceneId": "stable-scene-id",
+      "sceneTitle": "Pilot scene 1",
+      "brief": "What the scene is trying to do.",
+      "facts": ["A fact the rubric permits the rater to use."],
+      "text": "The plain-text scene."
+    }
+  ]
+}
+```
+
+`scenes` must contain 12 entries. The app does not ship or invent a pack; the
+facilitator supplies the frozen one. A session with no completed responses
+contains no labels and is not evidence.
+
+The repository can build the pack from the existing frozen labelling corpus
+without copying any labels:
+
+```bash
+python tools/labelling/build_study_pack.py
+# writes reports/live/labelling/human-review-pack.json
+```
+
+It selects the 12 ids in `quick` from `reports/live/labelling/scenes.json` and
+copies only scene text, brief and facts. If the corpus is absent, the script
+fails rather than inventing scenes.

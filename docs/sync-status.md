@@ -65,7 +65,7 @@ Backend `DbSet`s with **no Dexie table any more** (server-side kept for backward
 
 ---
 
-## 📱 Client-only (23 tables)
+## 📱 Client-only (26 tables)
 
 Exist only in IndexedDB — no server equivalent.
 
@@ -94,6 +94,9 @@ Exist only in IndexedDB — no server equivalent.
 | `contentVectors` | Embeddings of bible entities and scenes for Related / Lookup (v51) |
 | `graphCheckpoints` | LangGraph writing-orchestrator checkpoints, one row per run thread (v54) |
 | `agentDecisions` | Editor-agent decision log, one row per superstep (v54) |
+| `humanReviewStudies` | Imported frozen human-review pack (v58); local-only so a rater's study cannot sync |
+| `humanReviewSessions` | One anonymous rater/pass session per study (v58) |
+| `humanReviewResponses` | One Keep/Revise + dimension-mark response per session/scene (v58) |
 
 The digest and analysis tables are derived artifacts: rebuildable from prose, so never synced.
 

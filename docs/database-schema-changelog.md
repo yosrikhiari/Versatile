@@ -53,6 +53,7 @@ Each entry documents what changed, why, and whether a data-migration handler exi
 | 56 | sceneLabels | Added table (`++id, storyId, reviewerName, overallLabel, createdAt, [storyId+reviewerName]`) | P0-A human-reference labels: overall pass/revise/rewrite plus per-dimension marks, scores and notes, stored locally before calibration | None needed (new table) |
 | 57 | sceneLabels | Added `sceneId` index; schema now `++id, storyId, sceneId, reviewerName, overallLabel, createdAt, [storyId+reviewerName]` | Stable local scene identity: prefer `sceneId` over `sceneTitle` when present so renamed scenes keep their label; `sceneTitle` remains for display and backward-compatible matching | None needed (index-only; existing labels keep title-based matching until `sceneId` is saved) |
 | — | projects | Added `cloudAuditOptIn` (boolean, unindexed, not in the Dexie store string) | Per-project consent for background cloud audits. It replaces the browser-wide `settings.cloudAuditOptIn`, which let one book inherit another's decision | None needed (non-indexed field; absent reads as `false`, and old global setting is ignored) |
+| 58 | humanReviewStudies, humanReviewSessions, humanReviewResponses | Added the local review-study workspace: imported packs, rater/pass sessions, and one response per `[sessionId+sceneId]` | The frozen 12-scene human-reference pilot needs separate anonymous rater sessions without exposing critic/gate output. These tables are local-only and deliberately excluded from sync | None needed (new tables) |
 
 ## Rules
 
