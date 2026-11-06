@@ -25,7 +25,7 @@ was verified.
   completes two anonymous rater sessions and verifies both exports. It caught
   and now guards a real bug: the reactive rubric object had to be copied before
   IndexedDB's structured clone.
-- **Validation:** frontend 345 files (1 skipped), 3,677 passed / 2 skipped;
+- **Validation:** frontend 345 files (1 skipped), 3,678 passed / 2 skipped;
   13 labelling Python tests and 17 retrieval Python tests; `typecheck`, `lint`
   (0 errors, 4 known warnings), `lint:tokens`, `policy`, `evidence:check` and
   the production build pass. Backend untouched.

@@ -56,7 +56,7 @@ Run `npm run policy` before you finish: it checks that every token is documented
 
 ## Testing
 
-- `npm run test:run` — Vitest suite (345 files, 1 skipped; latest run 3,677 passed, 2 skipped); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
+- `npm run test:run` — Vitest suite (345 files, 1 skipped; latest run 3,678 passed, 2 skipped); with a model resident in Ollama run `npx vitest run --maxWorkers=3`, the default pool can run out of memory
 - `npm run typecheck` — `tsc --noEmit`, zero errors
 - `npm run lint` — ESLint (0 errors; the four `services must not import stores` warnings are the known architectural debt)
 - `npm run format` — Prettier over `src/**/*.{js,ts,vue,css}`; CI checks the same scope

@@ -163,7 +163,7 @@ The .NET 10 API adds accounts, organisations, sync and collaboration. `docker co
 | `npm run build`            | Production build (pre-compressed `.br`/`.gz` assets)            |
 | `npm run preview`          | Preview production build                                        |
 | `npm test`                 | Run unit tests (watch mode)                                     |
-| `npm run test:run`         | Run unit tests once (latest: 3,677 passed, 2 skipped)            |
+| `npm run test:run`         | Run unit tests once (latest: 3,678 passed, 2 skipped)            |
 | `npm run test:coverage`    | Run tests with coverage report                                  |
 | `npm run test:e2e`         | Playwright smoke/auth/responsive/panel specs (boots dev server) |
 | `npm run typecheck`        | `tsc --noEmit`                                                  |
