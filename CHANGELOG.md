@@ -10,7 +10,7 @@ was verified.
 ### Cloud sync & cross-browser (Phase 1, 2026-11-07)
 - **Sync tab in Settings:** shows server-sync state (status, last sync, errors, failed tables, pending local changes) and provides **Sync now** plus **Queue unsynced local data** (marks never-uploaded local rows as `pending-create`, then syncs). Requires a server account; local-only browser accounts do not sync across browsers.
 - **Cross-browser convergence:** when authenticated and online, the sync engine triggers a throttled `syncNow()` on tab focus/visibility return, in addition to the existing 30s push flush and online resume.
-- **Migration helper:** `SyncEngine.queueLocalRowsForSync()` queues local rows missing `apiId`/sync metadata for upload without touching already-synced rows. Limitations unchanged: opt-in sync, not end-to-end encrypted, last-writer-wins, no CRDT/conflict UI; local-only tables stay local.
+- **Migration helper:** `SyncEngine.queueLocalRowsForSync()` queues local rows missing `apiId`/sync metadata for upload without touching already-synced rows. `countLocalRowsForSync()` provides a read-only preview; the Sync tab shows eligible never-uploaded local records and refreshes after sync/migration. Limitations unchanged: opt-in sync, not end-to-end encrypted, last-writer-wins, no CRDT/conflict UI; local-only tables stay local.
 
 ### Retrieval-eval multi-book workflow (2026-11-07, prep — not a cross-book result)
 - **`fact_retrieval.py --validate` (+ `--json`):** validates manifest/corpora/queries

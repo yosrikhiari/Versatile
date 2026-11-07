@@ -541,6 +541,33 @@ class SyncEngine {
     if (this._failedTables.size > 0) this._startRetryQueue()
   }
 
+  private _isLocalRowEligibleForSync(row: Record<string, unknown>): boolean {
+    if (row.apiId) return false
+    const status = String(row.syncStatus || '')
+    if (status.startsWith('pending') || status === 'synced') return false
+    return true
+  }
+
+  /**
+   * Count local rows that were never synced and would be queued by
+   * queueLocalRowsForSync(). Read-only preview for migration UX.
+   */
+  async countLocalRowsForSync(): Promise<{ eligible: number; tables: Record<string, number> }> {
+    let eligible = 0
+    const tables: Record<string, number> = {}
+    for (const entity of SYNC_ENTITIES) {
+      const table = db.table(entity.table)
+      if (!table) continue
+      const rows = (await table.toArray()) as Record<string, unknown>[]
+      const count = rows.filter((row) => this._isLocalRowEligibleForSync(row)).length
+      if (count > 0) {
+        tables[entity.table] = count
+        eligible += count
+      }
+    }
+    return { eligible, tables }
+  }
+
   /**
    * Mark local rows that were never synced (no apiId, not pending/synced) as
    * pending-create so an authenticated sync can push them. Used for the
@@ -556,12 +583,7 @@ class SyncEngine {
       const table = db.table(entity.table)
       if (!table) continue
       const rows = (await table.toArray()) as Record<string, unknown>[]
-      const toQueue = rows.filter((row) => {
-        if (row.apiId) return false
-        const status = String(row.syncStatus || '')
-        if (status.startsWith('pending') || status === 'synced') return false
-        return true
-      })
+      const toQueue = rows.filter((row) => this._isLocalRowEligibleForSync(row))
       if (toQueue.length === 0) continue
       for (const row of toQueue) {
         const keyPath = table.schema?.primKey?.keyPath

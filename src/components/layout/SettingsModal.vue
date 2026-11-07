@@ -45,7 +45,31 @@ const activeTab = ref('ai')
 const activeLearning = useActiveLearning()
 const showVoiceUpload = ref(false)
 const syncBusy = ref(false)
+/** @type {import('vue').Ref<number | null>} */
+const eligibleLocalCount = ref(null)
 const canServerSync = computed(() => hasToken() && !!authStore.user)
+
+async function refreshMigrationPreview() {
+  if (!canServerSync.value) {
+    eligibleLocalCount.value = null
+    return
+  }
+  try {
+    const engine = getSyncEngine()
+    await engine.init()
+    const { eligible } = await engine.countLocalRowsForSync()
+    eligibleLocalCount.value = eligible
+  } catch {
+    eligibleLocalCount.value = null
+  }
+}
+
+watch(
+  () => [props.show, activeTab.value, canServerSync.value],
+  ([visible, tab]) => {
+    if (visible && tab === 'sync') refreshMigrationPreview().catch(() => {})
+  }
+)
 
 function formatSyncTime(value) {
   if (!value) return 'Never'
@@ -65,6 +89,7 @@ async function syncNow() {
     await engine.init()
     await engine.syncNow()
     await refreshPendingCount()
+    await refreshMigrationPreview()
     if (syncStatus.state === 'error' || syncStatus.lastError) {
       addToast(syncStatus.lastError || 'Sync finished with errors.', 'warning')
     } else {
@@ -89,6 +114,7 @@ async function migrateLocalData() {
     const { queued } = await engine.queueLocalRowsForSync()
     await engine.syncNow()
     await refreshPendingCount()
+    await refreshMigrationPreview()
     addToast(
       queued > 0
         ? `Queued ${queued} local record(s) and synced.`
@@ -247,6 +273,10 @@ watch(
 
             <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
               <h3 class="text-sm font-medium text-text-primary">Actions</h3>
+              <p v-if="canServerSync" class="text-xs text-text-secondary">
+                Local records never uploaded (eligible to queue):
+                <span class="text-text-primary tabular-nums">{{ eligibleLocalCount ?? '—' }}</span>
+              </p>
               <div class="flex flex-wrap gap-2">
                 <BaseButton
                   variant="secondary"
@@ -254,7 +284,7 @@ watch(
                   :disabled="!canServerSync || syncBusy || syncStatus.state === 'syncing'"
                   @click="syncNow"
                 >
-                  {{ syncBusy || syncStatus.state === 'syncing' ? 'Syncing…' : 'Sync now' }}
+                  {{ syncBusy || syncStatus.state === 'syncing' ? 'Syncing...' : 'Sync now' }}
                 </BaseButton>
                 <BaseButton
                   variant="secondary"
@@ -262,11 +292,24 @@ watch(
                   :disabled="!canServerSync || syncBusy || syncStatus.state === 'syncing'"
                   @click="migrateLocalData"
                 >
-                  Queue unsynced local data
+                  {{
+                    eligibleLocalCount && eligibleLocalCount > 0
+                      ? `Queue ${eligibleLocalCount} local record(s)`
+                      : 'Queue unsynced local data'
+                  }}
+                </BaseButton>
+                <BaseButton
+                  v-if="canServerSync"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="syncBusy || syncStatus.state === 'syncing'"
+                  @click="refreshMigrationPreview"
+                >
+                  Refresh
                 </BaseButton>
               </div>
               <p class="text-xs text-text-secondary leading-relaxed">
-                “Queue unsynced local data” marks local records that were never uploaded as pending,
+                "Queue unsynced local data" marks local records that were never uploaded as pending,
                 then runs sync. Use this after signing in on a device that already has local
                 projects. It does not upload local-only tables (settings, caches, study data, etc.).
               </p>

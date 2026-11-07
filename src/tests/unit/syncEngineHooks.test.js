@@ -241,4 +241,30 @@ describe('queueLocalRowsForSync (migration helper)', () => {
     await engine.init()
     await expect(engine.queueLocalRowsForSync()).rejects.toThrow(/server account/i)
   })
+
+  it('counts local rows eligible for migration without mutating synced rows', async () => {
+    const engine = getSyncEngine()
+    await engine.init()
+
+    await db.projects.put({ id: 'p-local2', name: 'Local2', _suppressHooks: true })
+    await db.projects.update('p-local2', {
+      apiId: null,
+      syncStatus: null,
+      lastSyncedAt: null,
+      _suppressHooks: true
+    })
+    await db.projects.put({
+      id: 'p-synced2',
+      name: 'Synced2',
+      apiId: 'srv-p2',
+      syncStatus: 'synced',
+      _suppressHooks: true
+    })
+
+    const preview = await engine.countLocalRowsForSync()
+    expect(preview.eligible).toBe(1)
+    expect(preview.tables.projects).toBe(1)
+    expect((await db.projects.get('p-local2')).syncStatus).toBeNull()
+    expect((await db.projects.get('p-synced2')).syncStatus).toBe('synced')
+  })
 })
