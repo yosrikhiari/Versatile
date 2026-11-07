@@ -96,6 +96,18 @@ const router = useRouter()
 
 const wordCount = computed(() => projectStore.manuscriptWordCount)
 const projectName = computed(() => projectStore.currentProjectName)
+const authTitle = computed(() => {
+  if (authStore.localUser) {
+    const name = authStore.localUser.displayName || authStore.localUser.username
+    return authStore.user
+      ? `${name} (local) · Server account connected`
+      : `${name} · Local account (Settings → Sync for cross-browser)`
+  }
+  if (authStore.user || authStore.isAuthenticated) {
+    return `Signed in as ${authStore.user?.username || 'user'} · Server account`
+  }
+  return 'Sign in to server account (sync across browsers)'
+})
 
 const { isDark: isThemeDark, initTheme, toggleTheme } = useTheme()
 
@@ -655,13 +667,7 @@ watch(
         </button>
         <button
           class="hidden sm:inline-flex hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg p-1.5 btn-ghost transition-all duration-150 active:scale-[0.97]"
-          :title="
-            authStore.localUser
-              ? `Signed in as ${authStore.localUser.displayName || authStore.localUser.username}`
-              : authStore.isAuthenticated
-                ? `Signed in as ${authStore.user?.username || 'user'}`
-                : 'Sign in to sync'
-          "
+          :title="authTitle"
           @click="handleAuthClick()"
         >
           <BaseIcon :name="authStore.isAuthenticated ? 'log-in' : 'user'" :size="16" />
