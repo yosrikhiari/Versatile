@@ -82,6 +82,7 @@ const emit = defineEmits([
   'export-pdf',
   'export-rtf',
   'open-settings',
+  'open-sync-settings',
   'open-auth',
   'complete-onboarding',
   'create-project',
@@ -602,7 +603,7 @@ watch(
           <BaseIcon name="search" :size="13" />
           <kbd class="font-ui text-xs">Ctrl K</kbd>
         </button>
-        <NetworkStatusBadge />
+        <NetworkStatusBadge @activate="emit('open-sync-settings')" />
         <!-- Diagnostics and secondary exports leave the 48px row on phones;
              every one of them is still reachable from the palette or Settings. -->
         <ContextStatusIndicator class="hidden sm:flex" />

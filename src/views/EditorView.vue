@@ -48,9 +48,15 @@ const route = useRoute()
 const timer = useFlowSession()
 
 const showSettingsModal = ref(false)
+const settingsInitialTab = ref('ai')
 const showShortcutsModal = ref(false)
 const showNewProject = ref(false)
 const showAuthModal = ref(false)
+
+function openSettings(tab = 'ai') {
+  settingsInitialTab.value = tab
+  showSettingsModal.value = true
+}
 const polishDrawerRef = ref(null)
 const flowEditorRef = ref(null)
 const appShell = ref(null)
@@ -372,7 +378,8 @@ function onCharacterChatClose() {
       @export-pdf="handleExportPDF"
       @export-rtf="handleExportRtf"
       @import="handleImport"
-      @open-settings="showSettingsModal = true"
+      @open-settings="openSettings('ai')"
+      @open-sync-settings="openSettings('sync')"
       @open-auth="showAuthModal = true"
       @create-project="showNewProject = true"
     >
@@ -386,7 +393,7 @@ function onCharacterChatClose() {
           <FlowEditor
             ref="flowEditorRef"
             @paragraph-click="handleParagraphClick"
-            @open-settings="showSettingsModal = true"
+            @open-settings="openSettings('ai')"
             @open-generator="openGeneratorOn"
             @exit-flow="handleEndFlow"
           />
@@ -654,6 +661,7 @@ function onCharacterChatClose() {
 
     <SettingsModal
       :show="showSettingsModal"
+      :initial-tab="settingsInitialTab"
       @close="showSettingsModal = false"
       @open-auth="onOpenAuthFromSettings"
       @model-changed="checkModelAvailability"

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useNetworkStatus } from '../../composables/useNetworkStatus'
 import BaseIcon from './BaseIcon.vue'
 
+const emit = defineEmits(['activate'])
 const { isOnline, state, pendingCount, hasPending } = useNetworkStatus()
 
 // Only render when there is something worth surfacing: offline, syncing,
@@ -38,16 +39,17 @@ const display = computed(() => {
 
 <template>
   <Transition name="anim-fade">
-    <div
+    <button
       v-if="visible"
-      class="flex items-center gap-1.5 px-2 py-1 rounded-md text-2xs font-ui tabular-nums"
+      type="button"
+      class="flex items-center gap-1.5 px-2 py-1 rounded-md text-2xs font-ui tabular-nums transition-colors hover:bg-bg-tertiary/60 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       :class="display.tone"
-      role="status"
-      :aria-label="display.label"
-      :title="display.label"
+      :aria-label="`${display.label}. Open sync settings`"
+      :title="`${display.label} — Open sync settings`"
+      @click="emit('activate')"
     >
       <BaseIcon :name="display.icon" :size="12" :class="{ 'animate-spin': display.spin }" />
       <span class="hidden md:inline">{{ display.label }}</span>
-    </div>
+    </button>
   </Transition>
 </template>

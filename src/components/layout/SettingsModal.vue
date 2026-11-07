@@ -18,7 +18,11 @@ import ActiveLearningPanel from '../eval/ActiveLearningPanel.vue'
 import { useActiveLearning } from '../../composables/useActiveLearning'
 
 const props = defineProps({
-  show: Boolean
+  show: Boolean,
+  initialTab: {
+    type: String,
+    default: 'ai'
+  }
 })
 
 const emit = defineEmits(['close', 'model-changed', 'open-auth'])
@@ -164,7 +168,7 @@ async function runActiveLearning() {
 watch(
   () => props.show,
   (newVal) => {
-    if (newVal) activeTab.value = 'ai'
+    if (newVal) activeTab.value = props.initialTab || 'ai'
   }
 )
 </script>
