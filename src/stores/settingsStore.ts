@@ -4,7 +4,6 @@ import { encrypt, decrypt } from '../services/ollamaService'
 import { getAuthHeaders } from '../services/api'
 import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
-import { getSyncEngine } from '../services/sync-engine'
 import {
   setOllamaEndpoint as setOllamaConfigEndpoint,
   DEFAULT_MODEL as DEFAULT_OLLAMA_MODEL
@@ -233,11 +232,16 @@ export const useSettingsStore = defineStore('settings', () => {
     if (!Number.isFinite(n)) return
     syncFlushIntervalSec.value = Math.min(300, Math.max(10, Math.round(n)))
     saveSettings()
-    try {
-      getSyncEngine().setFlushIntervalMs(syncFlushIntervalSec.value * 1000)
-    } catch {
-      // engine not initialized (e.g., local-only session) — setting persists
-    }
+    // Lazy import avoids pulling sync-engine (and its vue/reactive deps) into
+    // every settingsStore consumer; also prevents partial vue mocks in tests
+    // from breaking unrelated module graphs.
+    import('../services/sync-engine')
+      .then(({ getSyncEngine }) => {
+        getSyncEngine().setFlushIntervalMs(syncFlushIntervalSec.value * 1000)
+      })
+      .catch(() => {
+        // engine not initialized (e.g., local-only session) — setting persists
+      })
   }
 
   function setAIProvider(provider: any) {
