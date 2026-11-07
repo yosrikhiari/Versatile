@@ -7,6 +7,21 @@ was verified.
 
 ## [Unreleased]
 
+### Retrieval-eval multi-book workflow (2026-11-07, prep — not a cross-book result)
+- **`fact_retrieval.py --validate` (+ `--json`):** validates manifest/corpora/queries
+  (including explicit query files) without running scorers/embeddings/Ollama or
+  writing results. Reports per-book counts, query source, and a disclaimer: it
+  does **not** fabricate or verify relevance judgments.
+- **Human-checked query worksheet helper:** `tools/retrieval-eval/query_worksheet.py`
+  scaffolds an **unfilled TEMPLATE** (invalid `__FILL__` relevance, `humanCheckedRelevance:false`)
+  and `finalize` emits strict query rows only after `HUMAN_CHECKED` + per-query
+  `humanChecked:true`. `hintDerived*` fields are unverified suggestions only — **no
+  labels fabricated**.
+- **Docs/examples:** `tools/retrieval-eval/README.md`, `multi-book-manifest.example.json`.
+  Retrieval-eval suite **24 tests**. The checked-in result remains the older
+  single-book (`salt-road`), 40 story-ledger-derived-query baseline — **not** a
+  cross-book or human-checked-relevance claim.
+
 ### Manuscript UX (2026-11-07)
 - **Subsection (scene) delete undo:** deleting a scene in the manuscript manager
   no longer uses a blocking confirm-then-lose flow. The scene is removed, a
@@ -39,7 +54,7 @@ was verified.
   both exports. It caught and guards reactive-form IndexedDB cloning and the
   `/study` scroll container inside the locked app shell.
 - **Validation:** frontend 345 files (1 skipped), 3,678 passed / 2 skipped;
-  23 labelling Python tests and 19 retrieval Python tests; `typecheck`, `lint`
+  23 labelling Python tests and 24 retrieval Python tests; `typecheck`, `lint`
   (0 errors, 4 known warnings), `lint:tokens`, `policy`, `evidence:check` and
   the production build pass. Backend untouched. Pipelines green.
 

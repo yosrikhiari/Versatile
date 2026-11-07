@@ -1,0 +1,25 @@
+{
+  "books": [
+    {
+      "id": "book-a",
+      "corpus": "reports/live/retrieval-eval/corpora/book-a.corpus.json",
+      "queriesPath": "reports/live/retrieval-eval/queries/book-a.queries.json",
+      "cache": "reports/live/retrieval-eval/book-a",
+      "docs": ["summary", "prose"]
+    },
+    {
+      "id": "book-b",
+      "corpus": "reports/live/retrieval-eval/corpora/book-b.corpus.json",
+      "queriesPath": "reports/live/retrieval-eval/queries/book-b.queries.json",
+      "cache": "reports/live/retrieval-eval/book-b",
+      "docs": ["summary", "prose"]
+    },
+    {
+      "id": "book-c",
+      "corpus": "reports/live/retrieval-eval/corpora/book-c.corpus.json",
+      "queriesPath": "reports/live/retrieval-eval/queries/book-c.queries.json",
+      "cache": "reports/live/retrieval-eval/book-c",
+      "docs": ["summary", "prose"]
+    }
+  ]
+}

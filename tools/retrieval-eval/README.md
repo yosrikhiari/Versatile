@@ -63,10 +63,23 @@ Explicit query rows (inline `queries` or a JSON file at `queriesPath`):
 - `kind: "noise"` / empty `relevant`: counted separately (noise hard-negative top-1), excluded from MRR.
 - Indices are validated against corpus size; ids must be unique.
 
+## Human annotation worksheet (optional helper)
+
+`query_worksheet.py` can scaffold an **unfilled TEMPLATE** from a corpus (scene context + suggested query texts/hints). It **does not create relevance labels**: `relevant` is filled with `__FILL__` markers, `humanCheckedRelevance` is `false`, and finalize rejects unfilled/missing human checks.
+
+```bash
+python tools/retrieval-eval/query_worksheet.py scaffold --corpus <corpus.json> --book-id <id> --out worksheet.json
+# human fills relevance/hard_negatives/kind and sets humanChecked:true per query, status=HUMAN_CHECKED, humanCheckedRelevance=true
+python tools/retrieval-eval/query_worksheet.py finalize --worksheet worksheet.json --out queries.json
+```
+
+`hintDerived*` fields are unverified story-ledger suggestions only — never treat them as human-checked relevance.
+
 ## Adding a book (roadmap step)
 
 1. Add a corpus with stable scene indices/chapters and the required text fields.
-2. Provide **human-checked** explicit `queries`/`queriesPath` with `relevant` (and `hard_negatives`/`noise` as appropriate). **Do not invent relevance labels.**
-3. Run `--validate` to check structure.
-4. Run `--no-embed` for a fast sanity check, then the full embedding run.
-5. Report per-book and pooled intervals; keep limitations explicit (book count, query provenance, language/genre).
+2. Optionally scaffold a worksheet, then have a human produce **human-checked** explicit `queries`/`queriesPath` with `relevant` (and `hard_negatives`/`noise` as appropriate). **Do not invent relevance labels.**
+3. Add the book to a manifest (see `multi-book-manifest.example.json`).
+4. Run `--validate` to check structure.
+5. Run `--no-embed` for a fast sanity check, then the full embedding run.
+6. Report per-book and pooled intervals; keep limitations explicit (book count, query provenance, language/genre). No fabricated judgments or results.
