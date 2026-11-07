@@ -126,7 +126,13 @@ class SyncEngine {
         _primKey: unknown,
         obj: Record<string, unknown>
       ) => {
-        if (modifications._suppressHooks) return { _suppressHooks: undefined }
+        if (modifications._suppressHooks) {
+          const rest = { ...modifications }
+          delete rest._suppressHooks
+          return Object.keys(rest).length > 0
+            ? { ...rest, _suppressHooks: undefined }
+            : { _suppressHooks: undefined }
+        }
         if (obj.syncStatus !== 'pending-create') {
           return {
             syncStatus: 'pending-update',
@@ -193,7 +199,21 @@ class SyncEngine {
     this._hooksInstalled = false
   }
 
-  // ── Online/offline detection ────────────────────────────────
+  // ── Online/offline detection + cross-browser convergence ────
+
+  private _visibilityHandler: (() => void) | null = null
+  private _focusHandler: (() => void) | null = null
+  private _lastVisibilitySyncAt = 0
+  private static VISIBILITY_SYNC_THROTTLE_MS = 15_000
+
+  private _scheduleCrossBrowserSync(): void {
+    if (!hasToken() || !this._online || this._destroyed) return
+    if (syncStatus.state === 'syncing') return
+    const now = Date.now()
+    if (now - this._lastVisibilitySyncAt < SyncEngine.VISIBILITY_SYNC_THROTTLE_MS) return
+    this._lastVisibilitySyncAt = now
+    this.syncNow().catch(() => {})
+  }
 
   private _installOnlineDetection(): void {
     this._onlineHandler = () => {
@@ -207,8 +227,15 @@ class SyncEngine {
       isOnline.value = false
       console.warn('[SyncEngine] Offline — sync paused')
     }
+    // Pull on return to the tab so edits made in another browser converge sooner.
+    this._visibilityHandler = () => {
+      if (document.visibilityState === 'visible') this._scheduleCrossBrowserSync()
+    }
+    this._focusHandler = () => this._scheduleCrossBrowserSync()
     window.addEventListener('online', this._onlineHandler)
     window.addEventListener('offline', this._offlineHandler)
+    document.addEventListener('visibilitychange', this._visibilityHandler)
+    window.addEventListener('focus', this._focusHandler)
   }
 
   private _uninstallOnlineDetection(): void {
@@ -219,6 +246,14 @@ class SyncEngine {
     if (this._offlineHandler) {
       window.removeEventListener('offline', this._offlineHandler)
       this._offlineHandler = null
+    }
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler)
+      this._visibilityHandler = null
+    }
+    if (this._focusHandler) {
+      window.removeEventListener('focus', this._focusHandler)
+      this._focusHandler = null
     }
   }
 
@@ -504,6 +539,52 @@ class SyncEngine {
       syncStatus.lastError = `syncNow pull failed — ${(err as Error).message}`
     }
     if (this._failedTables.size > 0) this._startRetryQueue()
+  }
+
+  /**
+   * Mark local rows that were never synced (no apiId, not pending/synced) as
+   * pending-create so an authenticated sync can push them. Used for the
+   * "migrate local data to cloud account" flow. Safe to run repeatedly; rows
+   * that already have an apiId or are pending/synced are left untouched.
+   */
+  async queueLocalRowsForSync(): Promise<{ queued: number; tables: Record<string, number> }> {
+    if (!hasToken())
+      throw new Error('Sign in to a server account before syncing local data to the cloud.')
+    let queued = 0
+    const tables: Record<string, number> = {}
+    for (const entity of SYNC_ENTITIES) {
+      const table = db.table(entity.table)
+      if (!table) continue
+      const rows = (await table.toArray()) as Record<string, unknown>[]
+      const toQueue = rows.filter((row) => {
+        if (row.apiId) return false
+        const status = String(row.syncStatus || '')
+        if (status.startsWith('pending') || status === 'synced') return false
+        return true
+      })
+      if (toQueue.length === 0) continue
+      for (const row of toQueue) {
+        const keyPath = table.schema?.primKey?.keyPath
+        const key = Array.isArray(keyPath)
+          ? keyPath.map((k) => (row as Record<string, unknown>)[String(k)])
+          : typeof keyPath === 'string'
+            ? row[keyPath]
+            : row.id
+        if (key == null || (Array.isArray(key) && key.some((k) => k == null))) continue
+        await table.update(
+          key as string | number,
+          {
+            syncStatus: 'pending-create',
+            lastSyncedAt: null,
+            _syncRevision: 1,
+            _suppressHooks: true
+          } as Record<string, unknown>
+        )
+      }
+      tables[entity.table] = toQueue.length
+      queued += toQueue.length
+    }
+    return { queued, tables }
   }
 }
 

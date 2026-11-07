@@ -1,6 +1,11 @@
 <script setup>
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
+import { useAuthStore } from '../../stores/authStore'
+import { getSyncEngine, syncStatus } from '../../services/sync-engine'
+import { hasToken } from '../../services/api'
+import { useNetworkStatus } from '../../composables/useNetworkStatus'
+import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseTab from '../ui/BaseTab.vue'
 import BaseButton from '../ui/BaseButton.vue'
@@ -33,9 +38,69 @@ watch(
 onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 const projectStore = useProjectStore()
+const authStore = useAuthStore()
+const { addToast } = useNotifications()
+const { pendingCount, refreshPendingCount } = useNetworkStatus({ pollMs: 10000 })
 const activeTab = ref('ai')
 const activeLearning = useActiveLearning()
 const showVoiceUpload = ref(false)
+const syncBusy = ref(false)
+const canServerSync = computed(() => hasToken() && !!authStore.user)
+
+function formatSyncTime(value) {
+  if (!value) return 'Never'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleString()
+}
+
+async function syncNow() {
+  if (!canServerSync.value) {
+    addToast('Sign in to a server account to sync across browsers.', 'warning')
+    return
+  }
+  syncBusy.value = true
+  try {
+    const engine = getSyncEngine()
+    await engine.init()
+    await engine.syncNow()
+    await refreshPendingCount()
+    if (syncStatus.state === 'error' || syncStatus.lastError) {
+      addToast(syncStatus.lastError || 'Sync finished with errors.', 'warning')
+    } else {
+      addToast('Sync complete.', 'success')
+    }
+  } catch (err) {
+    addToast(err?.message || 'Sync failed.', 'error')
+  } finally {
+    syncBusy.value = false
+  }
+}
+
+async function migrateLocalData() {
+  if (!canServerSync.value) {
+    addToast('Sign in to a server account first.', 'warning')
+    return
+  }
+  syncBusy.value = true
+  try {
+    const engine = getSyncEngine()
+    await engine.init()
+    const { queued } = await engine.queueLocalRowsForSync()
+    await engine.syncNow()
+    await refreshPendingCount()
+    addToast(
+      queued > 0
+        ? `Queued ${queued} local record(s) and synced.`
+        : 'No unsynced local records found. Sync completed.',
+      'success'
+    )
+  } catch (err) {
+    addToast(err?.message || 'Migration sync failed.', 'error')
+  } finally {
+    syncBusy.value = false
+  }
+}
 
 // The daily word goal used to live here as a "Goals" tab holding one number
 // input — which made the modal collapse to almost nothing on open. It is stored
@@ -45,6 +110,7 @@ const tabOptions = [
   { key: 'ai', label: 'AI Providers' },
   { key: 'eval', label: 'Evaluation' },
   { key: 'voice', label: 'Voice' },
+  { key: 'sync', label: 'Sync' },
   { key: 'privacy', label: 'Privacy' }
 ]
 
@@ -138,6 +204,73 @@ watch(
               </button>
             </div>
             <VoiceUploadModal :is-open="showVoiceUpload" @close="showVoiceUpload = false" />
+          </div>
+
+          <div v-if="activeTab === 'sync'" class="space-y-4">
+            <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
+              <h3 class="text-sm font-medium text-text-primary">Cloud sync</h3>
+              <p class="text-xs text-text-secondary leading-relaxed">
+                Sign in to a server account to sync synced project data across browsers. This device
+                keeps a local copy (offline-first). Sync is not end-to-end encrypted, and
+                simultaneous edits use last-writer-wins — see the sync limitations in project docs.
+              </p>
+              <p v-if="!canServerSync" class="text-xs text-warning">
+                You’re not signed in to a server account. Local-only browser accounts don’t sync
+                across browsers.
+              </p>
+            </div>
+
+            <div class="bg-bg-tertiary rounded-lg p-4 space-y-2">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs text-text-secondary">Status</span>
+                <span class="text-xs text-text-primary font-medium capitalize">{{
+                  syncStatus.state || 'idle'
+                }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs text-text-secondary">Last sync</span>
+                <span class="text-xs text-text-primary">{{
+                  formatSyncTime(syncStatus.lastSync)
+                }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs text-text-secondary">Pending local changes</span>
+                <span class="text-xs text-text-primary tabular-nums">{{ pendingCount }}</span>
+              </div>
+              <p v-if="syncStatus.lastError" class="text-xs text-danger pt-1">
+                {{ syncStatus.lastError }}
+              </p>
+              <p v-if="syncStatus.failedTables?.length" class="text-xs text-warning">
+                Needs attention: {{ syncStatus.failedTables.join(', ') }}
+              </p>
+            </div>
+
+            <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
+              <h3 class="text-sm font-medium text-text-primary">Actions</h3>
+              <div class="flex flex-wrap gap-2">
+                <BaseButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canServerSync || syncBusy || syncStatus.state === 'syncing'"
+                  @click="syncNow"
+                >
+                  {{ syncBusy || syncStatus.state === 'syncing' ? 'Syncing…' : 'Sync now' }}
+                </BaseButton>
+                <BaseButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canServerSync || syncBusy || syncStatus.state === 'syncing'"
+                  @click="migrateLocalData"
+                >
+                  Queue unsynced local data
+                </BaseButton>
+              </div>
+              <p class="text-xs text-text-secondary leading-relaxed">
+                “Queue unsynced local data” marks local records that were never uploaded as pending,
+                then runs sync. Use this after signing in on a device that already has local
+                projects. It does not upload local-only tables (settings, caches, study data, etc.).
+              </p>
+            </div>
           </div>
 
           <div v-if="activeTab === 'privacy'" class="space-y-5">

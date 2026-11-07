@@ -176,3 +176,69 @@ describe('SyncTransport.withRetry', () => {
     expect(calls).toBe(1)
   })
 })
+
+describe('queueLocalRowsForSync (migration helper)', () => {
+  beforeAll(async () => {
+    await db.open()
+  })
+
+  beforeEach(async () => {
+    await db.projects.clear()
+    await db.characters.clear()
+    localStorage.setItem('versatile_api_token', 'test-token')
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('versatile_api_token')
+    destroySyncEngine()
+  })
+
+  it('marks local rows without apiId as pending-create and leaves synced rows alone', async () => {
+    const engine = getSyncEngine()
+    await engine.init()
+
+    // Simulate pre-sign-in/local data: present in DB but never given sync metadata.
+    await db.projects.put({ id: 'p-local', name: 'Local', _suppressHooks: true })
+    await db.projects.update('p-local', {
+      apiId: null,
+      syncStatus: null,
+      lastSyncedAt: null,
+      _suppressHooks: true
+    })
+    await db.characters.put({
+      id: 'c-local',
+      projectId: 'p-local',
+      name: 'L',
+      _suppressHooks: true
+    })
+    await db.characters.update('c-local', {
+      apiId: null,
+      syncStatus: null,
+      lastSyncedAt: null,
+      _suppressHooks: true
+    })
+    await db.projects.put({
+      id: 'p-synced',
+      name: 'Synced',
+      apiId: 'srv-p',
+      syncStatus: 'synced',
+      _suppressHooks: true
+    })
+
+    const result = await engine.queueLocalRowsForSync()
+
+    expect(result.queued).toBeGreaterThanOrEqual(2)
+    expect(result.tables.projects).toBe(1)
+    expect(result.tables.characters).toBe(1)
+    expect((await db.projects.get('p-local')).syncStatus).toBe('pending-create')
+    expect((await db.characters.get('c-local')).syncStatus).toBe('pending-create')
+    expect((await db.projects.get('p-synced')).syncStatus).toBe('synced')
+  })
+
+  it('requires a server token', async () => {
+    localStorage.removeItem('versatile_api_token')
+    const engine = getSyncEngine()
+    await engine.init()
+    await expect(engine.queueLocalRowsForSync()).rejects.toThrow(/server account/i)
+  })
+})
