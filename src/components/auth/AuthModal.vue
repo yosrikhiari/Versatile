@@ -75,11 +75,16 @@ const isValid = computed(() => {
     @click.self="emit('close')"
   >
     <div class="glass-modal rounded-xl shadow-warm-lg p-6 max-w-sm w-full animate-scale-in">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="type-display text-sm text-text-primary">
-          {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
-        </h2>
-        <BaseButton variant="ghost" icon="x" @click="emit('close')" />
+      <div class="flex items-start justify-between gap-3 mb-5">
+        <div>
+          <h2 class="type-display text-sm text-text-primary">
+            {{ mode === 'login' ? 'Sign in' : 'Create account' }}
+          </h2>
+          <p class="mt-1 text-xs text-text-secondary">
+            Server account for cross-browser sync and organizations.
+          </p>
+        </div>
+        <BaseButton variant="ghost" icon="x" aria-label="Close" @click="emit('close')" />
       </div>
 
       <form class="space-y-4" @submit.prevent="handleSubmit">
@@ -143,7 +148,7 @@ const isValid = computed(() => {
           :disabled="!isValid"
           :loading="submitting"
         >
-          {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
+          {{ mode === 'login' ? 'Sign in' : 'Create account' }}
         </BaseButton>
       </form>
 
