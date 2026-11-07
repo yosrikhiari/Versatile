@@ -60,6 +60,11 @@ const focusMode = ref(false)
 const embeddingBannerDismissed = ref(false)
 const consistencyNavigateTarget = ref(null)
 
+function onOpenAuthFromSettings() {
+  showSettingsModal.value = false
+  showAuthModal.value = true
+}
+
 provide('insertAtCursor', (text) => {
   flowEditorRef.value?.insertAtCursor(text)
 })
@@ -650,10 +655,7 @@ function onCharacterChatClose() {
     <SettingsModal
       :show="showSettingsModal"
       @close="showSettingsModal = false"
-      @open-auth="
-        showSettingsModal = false
-        showAuthModal = true
-      "
+      @open-auth="onOpenAuthFromSettings"
       @model-changed="checkModelAvailability"
     />
 
