@@ -43,6 +43,7 @@ export {
   addSubsection,
   updateSubsection,
   deleteSubsection,
+  restoreSubsection,
   getFailedSubsections,
   reorderSubsections,
   getSectionWordCounts,

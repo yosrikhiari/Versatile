@@ -7,6 +7,13 @@ was verified.
 
 ## [Unreleased]
 
+### Manuscript UX (2026-11-07)
+- **Subsection (scene) delete undo:** deleting a scene in the manuscript manager
+  no longer uses a blocking confirm-then-lose flow. The scene is removed, a
+  non-auto-dismissing toast offers **Undo**, and restoring it preserves the
+  original record (id/order) and re-queues indexing/embedding. Cascading section
+  and volume deletes remain confirmed.
+
 ### Human-review study workspace (2026-11-06, readiness updates 2026-11-07)
 - **Blinded, local-only pilot workspace:** `/study` imports a frozen 12-scene
   rubric-v1 pack, refuses packs containing critic/score/gate output, randomizes

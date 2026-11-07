@@ -95,6 +95,28 @@ export async function deleteSubsection(id: string) {
   return db.subsections.delete(id)
 }
 
+type SubsectionRestoreRecord = Record<string, unknown> & {
+  id: string | number
+  content?: string | null
+}
+
+/**
+ * Restore a previously deleted subsection, preserving its original id and order.
+ * Used by undo; `put` upserts so a repeated restore is safe.
+ */
+export async function restoreSubsection(record: SubsectionRestoreRecord) {
+  if (record.id == null) throw new Error('restoreSubsection requires a record with an id')
+  const now = new Date().toISOString()
+  await db.subsections.put({ ...record, updatedAt: now })
+  if (record.content) {
+    getEmbedding('subsection', String(record.id), record.content).catch((err: Error) => {
+      console.error('Failed to generate embedding for restored subsection:', record.id, err)
+    })
+  }
+  queueStoryIndex('subsection', String(record.id), () => db.subsections.get(record.id))
+  return record.id
+}
+
 export async function getFailedSubsections(projectId: string, branchId?: string) {
   const subs = branchId
     ? await db.subsections.where('[projectId+branchId]').equals([projectId, branchId]).toArray()

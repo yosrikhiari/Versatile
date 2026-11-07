@@ -12,6 +12,7 @@ import {
   addSubsection,
   updateSubsection,
   deleteSubsection,
+  restoreSubsection,
   reorderSubsections,
   reorderSections,
   getStoryElements,
@@ -301,6 +302,16 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     queueStyleGuideRegen()
   }
 
+  /** Restore a deleted subsection (undo), preserving its id and order. */
+  async function restoreSubsectionData(record: Record<string, unknown> | null | undefined) {
+    if (!record || record.id == null) return
+    await restoreSubsection(record as Parameters<typeof restoreSubsection>[0])
+    if (!subsections.value.some((s) => s.id === record.id)) {
+      subsections.value = [...subsections.value, { ...(record as Record<string, unknown>) }]
+    }
+    queueStyleGuideRegen()
+  }
+
   async function reorderSubsectionsData(subsectionIds: any, _projectId: any) {
     await reorderSubsections(subsectionIds)
     subsectionIds.forEach((id: any, index: any) => {
@@ -501,6 +512,7 @@ export const useManuscriptStore = defineStore('manuscript', () => {
     addSubsectionData,
     updateSubsectionData,
     deleteSubsectionData,
+    restoreSubsectionData,
     reorderSubsectionsData,
     addStoryElementData,
     addStoryElementsBatchData,

@@ -11,7 +11,7 @@ export { SECTION_STATUSES }
 export function useSectionSchemaManager() {
   const manuscriptStore = useManuscriptStore()
   const projectStore = useProjectStore()
-  const { showConfirm } = useNotifications()
+  const { addToast } = useNotifications()
 
   const editingSubsection = ref<any>(null)
   const showSubsectionModal = ref(false)
@@ -123,16 +123,18 @@ export function useSectionSchemaManager() {
   }
 
   async function deleteSubsection(subsection: any) {
-    if (
-      await showConfirm(
-        `Delete ${projectStore.structureTerms.subsectionLc}`,
-        `Delete "${subsection.title || 'Untitled'}"?`,
-        'Delete',
-        'danger'
-      )
-    ) {
-      manuscriptStore.deleteSubsectionData(subsection.id, projectStore.currentProjectId)
-    }
+    if (!subsection?.id) return
+    // Capture a plain snapshot before deletion so undo restores the exact record.
+    const record = JSON.parse(JSON.stringify(subsection))
+    const label = projectStore.structureTerms.subsectionLc || 'scene'
+    const title = subsection.title || 'Untitled'
+    await manuscriptStore.deleteSubsectionData(subsection.id, projectStore.currentProjectId)
+    addToast(`Deleted ${label} "${title}".`, 'info', 0, {
+      action: {
+        label: 'Undo',
+        onClick: () => manuscriptStore.restoreSubsectionData(record)
+      }
+    })
   }
 
   return {

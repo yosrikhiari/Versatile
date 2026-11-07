@@ -1,8 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-// Simple direct import without complex mocks
+vi.mock('@/services/dbService', () => ({
+  restoreSubsection: vi.fn(async () => 'id'),
+  deleteSubsection: vi.fn(async () => {}),
+  // Unused by these state-focused tests, but imported by the store.
+  getSections: vi.fn(async () => []),
+  addSection: vi.fn(),
+  updateSection: vi.fn(),
+  deleteSection: vi.fn(),
+  getSubsections: vi.fn(async () => []),
+  addSubsection: vi.fn(),
+  updateSubsection: vi.fn(),
+  reorderSubsections: vi.fn(),
+  reorderSections: vi.fn(),
+  getStoryElements: vi.fn(async () => []),
+  addStoryElement: vi.fn(),
+  addStoryElementsBatch: vi.fn(),
+  updateStoryElement: vi.fn(),
+  deleteStoryElement: vi.fn(),
+  getCharacterRelationships: vi.fn(async () => []),
+  addCharacterRelationship: vi.fn(),
+  updateCharacterRelationship: vi.fn(),
+  deleteCharacterRelationship: vi.fn()
+}))
+
 import { useManuscriptStore } from '@/stores/manuscriptStore'
+import { restoreSubsection } from '@/services/dbService'
 
 describe('manuscriptStore', () => {
   let store
@@ -88,5 +112,26 @@ describe('manuscriptStore', () => {
 
     expect(store.activeSubsection).toBeDefined()
     expect(store.activeSubsection.id).toBe('sc2')
+  })
+
+  it('restores a deleted subsection (undo) preserving its record', async () => {
+    const record = {
+      id: 'sc9',
+      sectionId: 'ch1',
+      title: 'Lost scene',
+      order: 2,
+      content: '<p>x</p>'
+    }
+    store.subsections = [{ id: 'sc1', sectionId: 'ch1', order: 0 }]
+    await store.restoreSubsectionData(record)
+    expect(restoreSubsection).toHaveBeenCalledWith(record)
+    expect(store.subsections.some((s) => s.id === 'sc9' && s.title === 'Lost scene')).toBe(true)
+  })
+
+  it('restoreSubsectionData is idempotent when the record is already present', async () => {
+    const record = { id: 'sc1', sectionId: 'ch1', order: 0 }
+    store.subsections = [record]
+    await store.restoreSubsectionData(record)
+    expect(store.subsections.filter((s) => s.id === 'sc1')).toHaveLength(1)
   })
 })
