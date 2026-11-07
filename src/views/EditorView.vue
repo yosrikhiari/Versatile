@@ -650,6 +650,10 @@ function onCharacterChatClose() {
     <SettingsModal
       :show="showSettingsModal"
       @close="showSettingsModal = false"
+      @open-auth="
+        showSettingsModal = false
+        showAuthModal = true
+      "
       @model-changed="checkModelAvailability"
     />
 

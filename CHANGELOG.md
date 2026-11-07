@@ -12,6 +12,7 @@ was verified.
 - **Cross-browser convergence:** when authenticated and online, the sync engine triggers a throttled `syncNow()` on tab focus/visibility return, in addition to the existing 30s push flush and online resume.
 - **Migration helper:** `SyncEngine.queueLocalRowsForSync()` queues local rows missing `apiId`/sync metadata for upload without touching already-synced rows. `countLocalRowsForSync()` provides a read-only preview; the Sync tab shows eligible never-uploaded local records and refreshes after sync/migration. Limitations unchanged: opt-in sync, not end-to-end encrypted, last-writer-wins, no CRDT/conflict UI; local-only tables stay local.
 - **Configurable sync flush interval:** `syncFlushIntervalSec` setting (default 30s, clamped 10–300s) controls the authenticated sync engine’s background push interval. Applied on engine init and live via Settings → Sync; preserves prior default behavior.
+- **Sync UX hardening:** Sync tab offers server sign-in handoff (opens auth modal from EditorView) when not signed in, and confirms before queueing never-uploaded local data for migration.
 
 ### Retrieval-eval multi-book workflow (2026-11-07, prep — not a cross-book result)
 - **`fact_retrieval.py --validate` (+ `--json`):** validates manifest/corpora/queries

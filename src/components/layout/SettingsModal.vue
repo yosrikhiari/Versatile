@@ -21,7 +21,7 @@ const props = defineProps({
   show: Boolean
 })
 
-const emit = defineEmits(['close', 'model-changed'])
+const emit = defineEmits(['close', 'model-changed', 'open-auth'])
 
 // Escape closes like every other modal (shared Modal.vue does this; this
 // bespoke shell never did — Escape left the backdrop swallowing all clicks).
@@ -42,7 +42,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
-const { addToast } = useNotifications()
+const { addToast, showConfirm } = useNotifications()
 const { pendingCount, refreshPendingCount } = useNetworkStatus({ pollMs: 10000 })
 const activeTab = ref('ai')
 const activeLearning = useActiveLearning()
@@ -110,6 +110,18 @@ async function migrateLocalData() {
     addToast('Sign in to a server account first.', 'warning')
     return
   }
+  const countHint =
+    eligibleLocalCount.value != null && eligibleLocalCount.value > 0
+      ? `About ${eligibleLocalCount.value} local record(s) appear eligible (never uploaded). `
+      : ''
+  const ok = await showConfirm(
+    'Queue local data for sync',
+    `${countHint}This will mark local synced-table records that were never uploaded as pending, then run sync. It does not change rows already synced or local-only tables (settings, caches, study data). Continue?`,
+    'Queue and sync',
+    'primary'
+  )
+  if (!ok) return
+
   syncBusy.value = true
   try {
     const engine = getSyncEngine()
@@ -241,12 +253,17 @@ watch(
               <p class="text-xs text-text-secondary leading-relaxed">
                 Sign in to a server account to sync synced project data across browsers. This device
                 keeps a local copy (offline-first). Sync is not end-to-end encrypted, and
-                simultaneous edits use last-writer-wins — see the sync limitations in project docs.
+                simultaneous edits use last-writer-wins; see the sync limitations in project docs.
               </p>
-              <p v-if="!canServerSync" class="text-xs text-warning">
-                You’re not signed in to a server account. Local-only browser accounts don’t sync
-                across browsers.
-              </p>
+              <div v-if="!canServerSync" class="space-y-2 pt-1">
+                <p class="text-xs text-warning">
+                  You're not signed in to a server account. Local-only browser accounts don't sync
+                  across browsers.
+                </p>
+                <BaseButton variant="secondary" size="sm" @click="emit('open-auth')">
+                  Sign in to server account
+                </BaseButton>
+              </div>
             </div>
 
             <div class="bg-bg-tertiary rounded-lg p-4 space-y-2">
