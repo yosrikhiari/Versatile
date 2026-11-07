@@ -72,17 +72,21 @@ local-only and blinded:
    carry only the scene text, title, brief and the facts the rubric allows.
    Packs containing critic, score or gate output are refused, so the rater
    cannot see the verdict.
-2. Enter an anonymous participant code (for example `Rater A`). AI/model names
-   are refused because they would fail the `agreement.py --require-human`
-   provenance check. Use `Pass 1` for the first pass.
-3. The workspace randomizes scene order per rater/pass, shows one scene at a
+2. Enter an anonymous participant code (for example `Rater A`) and pass label.
+   AI/model names are refused because they would fail the
+   `agreement.py --require-human` provenance check.
+3. Read and accept the informed-consent screen before any scene is shown. The
+   session records only the consent version and a timestamp — no name,
+   signature or contact detail. A participant can stop at any time and delete
+   the local session; exported copies must be deleted on request.
+4. The workspace randomizes scene order per rater/pass, shows one scene at a
    time, and records Keep/Revise plus Problem/Fine/Unsure for all five
    dimensions. Unsure is a real answer. No score, critic note or other rater's
    answer is shown.
-4. Export the finished session as JSON. The file keeps the study id, rubric
-   version, pack hash, rater code and pass on every row. Run
-   `tools/labelling/agreement.py` on two exported rater files to get
-   agreement.
+5. Export the finished session as JSON. The file keeps the study id, rubric
+   version, pack hash, rater code and pass on every row. Optionally pre-flight
+   with `tools/labelling/check_pilot_exports.py`, then run
+   `tools/labelling/agreement.py --require-human` on two exported rater files.
 
 The pack shape is:
 

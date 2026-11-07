@@ -73,10 +73,12 @@ Consent details that matter:
   content in PostgreSQL; the deployment operator can read it.
 - Backups and exports are local files. Treat them with the same care as the
   manuscript.
-- The human-review study workspace is local-only. Imported packs, anonymous
-  rater sessions and responses stay in IndexedDB; the export is a local JSON
-  file. The workspace does not sync, call a model or send anything to a cloud
-  provider.
+- The human-review study workspace is local-only and requires informed consent
+  before any scene is shown (records only consent version + timestamp, no
+  name/signature). Imported packs, anonymous rater sessions and responses stay
+  in IndexedDB; the export is a local JSON file. The workspace does not sync,
+  call a model or send anything to a cloud provider. Resumed pre-consent
+  sessions must consent again.
 
 ## 4. Authorship and responsible use
 

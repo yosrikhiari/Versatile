@@ -7,28 +7,34 @@ was verified.
 
 ## [Unreleased]
 
-### Human-review study workspace (2026-11-06)
+### Human-review study workspace (2026-11-06, readiness updates 2026-11-07)
 - **Blinded, local-only pilot workspace:** `/study` imports a frozen 12-scene
   rubric-v1 pack, refuses packs containing critic/score/gate output, randomizes
   presentation order per anonymous rater/pass, and records Keep/Revise plus
   Problem/Fine/Unsure for all five dimensions.
+- **Informed consent before scenes:** the app requires consent (version +
+  timestamp recorded; no name/signature) before any scene is shown. Resumed
+  pre-consent sessions must consent again. The scene is not exposed by the store
+  while consent is needed.
 - **Separate from production labels:** the study uses new local-only
   `humanReviewStudies`, `humanReviewSessions` and `humanReviewResponses` tables
   (Dexie v58). It does not write `sceneLabels`, does not sync, and does not call
   a model.
-- **Export for agreement:** finished sessions export raw JSON with study id,
-  rubric version, pack hash, anonymous rater code and pass on every row, ready
-  for `tools/labelling/agreement.py`.
+- **Export and pilot tooling:** finished sessions export raw JSON (study id,
+  rubric version, pack hash, anonymous rater code, pass on every row) for
+  `tools/labelling/agreement.py`. `tools/labelling/check_pilot_exports.py`
+  pre-flights two exports (shape, metadata, 12-scene overlap, forbidden fields,
+  optional `--pack` check).
 - **No fabricated labels:** the app starts empty and only imports a pack the
   facilitator supplies; it does not ship or invent human labels.
-- **Browser E2E:** a Playwright spec imports a generated 12-scene pack,
-  completes two anonymous rater sessions and verifies both exports. It caught
-  and now guards a real bug: the reactive rubric object had to be copied before
-  IndexedDB's structured clone.
+- **Browser E2E:** a Playwright spec imports a generated 12-scene pack, covers
+  the consent step for both raters, completes two anonymous sessions and verifies
+  both exports. It caught and guards reactive-form IndexedDB cloning and the
+  `/study` scroll container inside the locked app shell.
 - **Validation:** frontend 345 files (1 skipped), 3,678 passed / 2 skipped;
-  13 labelling Python tests and 17 retrieval Python tests; `typecheck`, `lint`
+  19 labelling Python tests and 17 retrieval Python tests; `typecheck`, `lint`
   (0 errors, 4 known warnings), `lint:tokens`, `policy`, `evidence:check` and
-  the production build pass. Backend untouched.
+  the production build pass. Backend untouched. Pipelines green.
 
 ### Research-roadmap engineering batch (2026-11-06)
 - **Evidence governance:** `smoke:scene` / `smoke:quality` are fixtures, stamp

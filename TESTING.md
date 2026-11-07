@@ -167,12 +167,12 @@ npm run evidence:check     # fail if gate/prompt sources or the evidence registe
 npm run evidence:snapshot  # regenerate tools/judge-bench/evidence-snapshot.json after an intended change
 npx vitest run src/tests/unit/evidenceSnapshot.test.js
 
-python -m unittest discover -s tools/labelling -p "test_*.py" -v
-python tools/labelling/agreement.py <rater-a.json> <rater-b.json>
-python tools/labelling/agreement.py <rater-a.json> <rater-b.json> --require-human
-python tools/labelling/build_study_pack.py   # frozen 12 scenes, no labels
+python -m unittest discover -s tools/labelling -p "test_*.py" -v   # 19 tests
+python tools/labelling/build_study_pack.py   # frozen 12 scenes, no labels/critic output
+python tools/labelling/check_pilot_exports.py <rater-a.json> <rater-b.json> [--pack reports/live/labelling/human-review-pack.json]
+python tools/labelling/agreement.py <rater-a.json> <rater-b.json> --require-human [--json]
 
-python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v
+python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v   # 17 tests
 python -X utf8 tools/retrieval-eval/fact_retrieval.py
 ```
 
