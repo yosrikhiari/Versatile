@@ -177,6 +177,22 @@ describe('SyncTransport.withRetry', () => {
   })
 })
 
+describe('sync flush interval config', () => {
+  afterEach(() => {
+    destroySyncEngine()
+  })
+
+  it('accepts init flush interval and clamps to safe bounds', async () => {
+    const engine = getSyncEngine()
+    await engine.init({ flushIntervalMs: 5_000 })
+    expect(engine.getFlushIntervalMs()).toBe(10_000)
+    engine.setFlushIntervalMs(999_999)
+    expect(engine.getFlushIntervalMs()).toBe(300_000)
+    engine.setFlushIntervalMs(45_000)
+    expect(engine.getFlushIntervalMs()).toBe(45_000)
+  })
+})
+
 describe('queueLocalRowsForSync (migration helper)', () => {
   beforeAll(async () => {
     await db.open()

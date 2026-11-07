@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, hasToken, setAuth, clearAuth, setOnLogout } from '../services/api'
 import { getSyncEngine, destroySyncEngine } from '../services/sync-engine'
+import { useSettingsStore } from './settingsStore'
 import { disconnect as disconnectGeneration } from '../services/signalrService'
 import { disconnect as disconnectCollaboration } from '../services/collaborationService'
 import { db } from '../services/db-core'
@@ -55,6 +56,11 @@ export const useAuthStore = defineStore('auth', () => {
           organizations.value.find((o) => o.id === currentOrgId) || organizations.value[0] || null
         const se = getSyncEngine()
         await se.init()
+        try {
+          se.setFlushIntervalMs(useSettingsStore().syncFlushIntervalSec * 1000)
+        } catch {
+          /* setting apply is best-effort */
+        }
         se.syncNow().catch(() => {})
       }
     }
@@ -87,6 +93,11 @@ export const useAuthStore = defineStore('auth', () => {
         organizations.value.find((o) => o.id === payload?.org_id) || organizations.value[0] || null
       const se = getSyncEngine()
       await se.init()
+      try {
+        se.setFlushIntervalMs(useSettingsStore().syncFlushIntervalSec * 1000)
+      } catch {
+        /* setting apply is best-effort */
+      }
       se.syncNow().catch(() => {})
       return result
     } catch (err: any) {
@@ -115,6 +126,11 @@ export const useAuthStore = defineStore('auth', () => {
         organizations.value.find((o) => o.id === payload?.org_id) || organizations.value[0] || null
       const se = getSyncEngine()
       await se.init()
+      try {
+        se.setFlushIntervalMs(useSettingsStore().syncFlushIntervalSec * 1000)
+      } catch {
+        /* setting apply is best-effort */
+      }
       se.syncNow().catch(() => {})
       return result
     } catch (err: any) {

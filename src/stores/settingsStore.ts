@@ -4,6 +4,7 @@ import { encrypt, decrypt } from '../services/ollamaService'
 import { getAuthHeaders } from '../services/api'
 import { PROVIDERS, PROVIDER_DEFAULT, FEATURE_DEFAULTS, EMBEDDING_DEFAULTS } from '../config/ai'
 import { aiTestConnection } from '../services/aiService'
+import { getSyncEngine } from '../services/sync-engine'
 import {
   setOllamaEndpoint as setOllamaConfigEndpoint,
   DEFAULT_MODEL as DEFAULT_OLLAMA_MODEL
@@ -55,6 +56,9 @@ const DEFAULT_SETTINGS = {
   // provider like every other key); the account ID only addresses the URL, so
   // it lives here in plain settings next to the Ollama endpoint.
   cloudflareAccountId: '',
+  // Background sync push interval (seconds) for authenticated server sync.
+  // Bounded in setter/engine (10–300s). Default 30s preserves prior behavior.
+  syncFlushIntervalSec: 30,
   // Which writing orchestrator a one-click run uses (useVolumeStoryGenerator).
   //   'legacy'    — the anchor-first parallel strategy, unchanged.
   //   'langgraph' — the multi-agent graph (writing/graphStrategy.ts): Writer and
@@ -82,6 +86,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const cloudflareAccountId = ref(DEFAULT_SETTINGS.cloudflareAccountId)
   const analysisTier = ref(DEFAULT_SETTINGS.analysisTier)
   const enableChapterGeneration = ref(DEFAULT_SETTINGS.enableChapterGeneration)
+  const syncFlushIntervalSec = ref(DEFAULT_SETTINGS.syncFlushIntervalSec)
   const orchestrator = ref<'legacy' | 'langgraph'>(DEFAULT_SETTINGS.orchestrator)
   const orchestratorMode = ref<'workflow' | 'agentic'>(DEFAULT_SETTINGS.orchestratorMode)
 
@@ -135,6 +140,10 @@ export const useSettingsStore = defineStore('settings', () => {
         if (typeof data.cloudflareAccountId === 'string')
           cloudflareAccountId.value = data.cloudflareAccountId
         if (data.analysisTier) analysisTier.value = data.analysisTier
+        if (data.syncFlushIntervalSec !== undefined) {
+          const n = Number(data.syncFlushIntervalSec)
+          if (Number.isFinite(n)) syncFlushIntervalSec.value = Math.min(300, Math.max(10, n))
+        }
         // Explicit `!== undefined` for the same reason as `localOnly`: turning
         // the flag off is a real choice, and truthiness would undo it on load.
         if (data.orchestrator === 'legacy' || data.orchestrator === 'langgraph')
@@ -183,6 +192,7 @@ export const useSettingsStore = defineStore('settings', () => {
           cloudflareAccountId: cloudflareAccountId.value,
           analysisTier: analysisTier.value,
           enableChapterGeneration: enableChapterGeneration.value,
+          syncFlushIntervalSec: syncFlushIntervalSec.value,
           orchestrator: orchestrator.value,
           orchestratorMode: orchestratorMode.value
         })
@@ -216,6 +226,18 @@ export const useSettingsStore = defineStore('settings', () => {
   function setAutoSaveInterval(minutes: any) {
     autoSaveInterval.value = minutes
     saveSettings()
+  }
+
+  function setSyncFlushIntervalSec(seconds: number | string | null | undefined) {
+    const n = Number(seconds)
+    if (!Number.isFinite(n)) return
+    syncFlushIntervalSec.value = Math.min(300, Math.max(10, Math.round(n)))
+    saveSettings()
+    try {
+      getSyncEngine().setFlushIntervalMs(syncFlushIntervalSec.value * 1000)
+    } catch {
+      // engine not initialized (e.g., local-only session) — setting persists
+    }
   }
 
   function setAIProvider(provider: any) {
@@ -363,6 +385,7 @@ export const useSettingsStore = defineStore('settings', () => {
     orchestrator.value = DEFAULT_SETTINGS.orchestrator
     orchestratorMode.value = DEFAULT_SETTINGS.orchestratorMode
     enableChapterGeneration.value = DEFAULT_SETTINGS.enableChapterGeneration
+    syncFlushIntervalSec.value = DEFAULT_SETTINGS.syncFlushIntervalSec
     featureModels.value = {}
     saveSettings()
   }
@@ -438,6 +461,8 @@ export const useSettingsStore = defineStore('settings', () => {
     analysisTier,
     enableChapterGeneration,
     setEnableChapterGeneration,
+    syncFlushIntervalSec,
+    setSyncFlushIntervalSec,
     orchestrator,
     orchestratorMode,
     setOrchestrator,

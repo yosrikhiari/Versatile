@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useAuthStore } from '../../stores/authStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { getSyncEngine, syncStatus } from '../../services/sync-engine'
 import { hasToken } from '../../services/api'
 import { useNetworkStatus } from '../../composables/useNetworkStatus'
@@ -9,6 +10,7 @@ import { useNotifications } from '../../composables/useNotifications'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseTab from '../ui/BaseTab.vue'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseStepper from '../ui/BaseStepper.vue'
 import VoiceProfileDisplay from '../shared/VoiceProfileDisplay.vue'
 import VoiceUploadModal from './VoiceUploadModal.vue'
 import AISettingsTab from './AISettingsTab.vue'
@@ -39,6 +41,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 const { addToast } = useNotifications()
 const { pendingCount, refreshPendingCount } = useNetworkStatus({ pollMs: 10000 })
 const activeTab = ref('ai')
@@ -262,6 +265,18 @@ watch(
               <div class="flex items-center justify-between gap-3">
                 <span class="text-xs text-text-secondary">Pending local changes</span>
                 <span class="text-xs text-text-primary tabular-nums">{{ pendingCount }}</span>
+              </div>
+              <div v-if="canServerSync" class="flex items-center justify-between gap-3 pt-1">
+                <span class="text-xs text-text-secondary">Background push interval</span>
+                <BaseStepper
+                  :model-value="settingsStore.syncFlushIntervalSec"
+                  :min="10"
+                  :max="300"
+                  :step="10"
+                  suffix="s"
+                  size="sm"
+                  @update:model-value="settingsStore.setSyncFlushIntervalSec"
+                />
               </div>
               <p v-if="syncStatus.lastError" class="text-xs text-danger pt-1">
                 {{ syncStatus.lastError }}

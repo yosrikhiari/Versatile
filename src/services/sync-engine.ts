@@ -53,10 +53,15 @@ export function isPushComplete(outcome: { failed: number; deferred: number }): b
 }
 
 class SyncEngine {
+  private static readonly DEFAULT_FLUSH_MS = 30_000
+  private static readonly MIN_FLUSH_MS = 10_000
+  private static readonly MAX_FLUSH_MS = 300_000
+
   initialized = false
   private _hooksInstalled = false
   private _hooks: Array<{ table: any; creating: HookFn; updating: HookFn; deleting: HookFn }> = []
   private _flushTimer: ReturnType<typeof setInterval> | null = null
+  private _flushIntervalMs = SyncEngine.DEFAULT_FLUSH_MS
   private _retryTimer: ReturnType<typeof setInterval> | null = null
   private _destroyed = false
   private _failedTables = new Set<string>()
@@ -72,8 +77,20 @@ class SyncEngine {
     this._transport = new SyncTransport(api)
   }
 
-  async init(): Promise<void> {
+  getFlushIntervalMs(): number {
+    return this._flushIntervalMs
+  }
+
+  setFlushIntervalMs(ms: number): void {
+    const n = Number(ms)
+    if (!Number.isFinite(n)) return
+    this._flushIntervalMs = Math.min(SyncEngine.MAX_FLUSH_MS, Math.max(SyncEngine.MIN_FLUSH_MS, n))
+    if (this.initialized && !this._destroyed) this._startFlushTimer()
+  }
+
+  async init(options?: { flushIntervalMs?: number }): Promise<void> {
     if (this.initialized || this._destroyed) return
+    if (options?.flushIntervalMs != null) this.setFlushIntervalMs(options.flushIntervalMs)
     this._installHooks()
     this._installOnlineDetection()
     await this._idMap.rebuild()
@@ -464,7 +481,7 @@ class SyncEngine {
         syncStatus.state = 'error'
         trackError(err, { source: 'sync', severity: 'error', context: { phase: 'flush-cycle' } })
       }
-    }, 30_000)
+    }, this._flushIntervalMs)
   }
 
   private _stopFlushTimer(): void {
