@@ -32,7 +32,7 @@ was verified.
   both exports. It caught and guards reactive-form IndexedDB cloning and the
   `/study` scroll container inside the locked app shell.
 - **Validation:** frontend 345 files (1 skipped), 3,678 passed / 2 skipped;
-  19 labelling Python tests and 17 retrieval Python tests; `typecheck`, `lint`
+  23 labelling Python tests and 17 retrieval Python tests; `typecheck`, `lint`
   (0 errors, 4 known warnings), `lint:tokens`, `policy`, `evidence:check` and
   the production build pass. Backend untouched. Pipelines green.
 
