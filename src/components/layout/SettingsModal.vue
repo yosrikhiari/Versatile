@@ -255,17 +255,15 @@ watch(
             <div class="bg-bg-tertiary rounded-lg p-4 space-y-3">
               <h3 class="text-sm font-medium text-text-primary">Cloud sync</h3>
               <p class="text-xs text-text-secondary leading-relaxed">
-                Sign in to a server account to sync synced project data across browsers. This device
-                keeps a local copy (offline-first). Sync is not end-to-end encrypted, and
-                simultaneous edits use last-writer-wins; see the sync limitations in project docs.
+                Sync project data across browsers with a server account. Your work stays on this
+                device first. Not end-to-end encrypted; simultaneous edits use last-writer-wins.
               </p>
               <div v-if="!canServerSync" class="space-y-2 pt-1">
                 <p class="text-xs text-warning">
-                  You're not signed in to a server account. Local-only browser accounts don't sync
-                  across browsers.
+                  Local-only account — this device won't sync with others.
                 </p>
-                <BaseButton variant="secondary" size="sm" @click="emit('open-auth')">
-                  Sign in to server account
+                <BaseButton variant="primary" size="sm" @click="emit('open-auth')">
+                  Sign in to sync
                 </BaseButton>
               </div>
             </div>
@@ -315,7 +313,7 @@ watch(
               </p>
               <div class="flex flex-wrap gap-2">
                 <BaseButton
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
                   :disabled="!canServerSync || syncBusy || syncStatus.state === 'syncing'"
                   @click="syncNow"
