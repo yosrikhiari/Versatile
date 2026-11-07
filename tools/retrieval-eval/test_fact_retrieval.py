@@ -15,10 +15,12 @@ from fact_retrieval import (  # noqa: E402
     evaluate_manifest,
     load_corpus,
     load_manifest,
+    main,
     metrics,
     queries_from_rows,
     summarize,
     summaries,
+    validate_manifest,
 )
 
 
@@ -251,6 +253,51 @@ class ManifestEvaluationTests(unittest.TestCase):
             self.assertEqual(result["books"]["a"]["queries"], 1)
             self.assertEqual(result["books"]["b"]["queries"], 1)
             self.assertEqual(result["overall"]["summary"]["bm25"]["queries"], 2)
+
+
+class ValidateManifestTests(unittest.TestCase):
+    def test_validate_manifest_reports_structure_without_scoring(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus_path = os.path.join(tmp, "book.json")
+            with open(corpus_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    [
+                        {"index": 1, "chapter": 1, "draft": "a", "summary": "x", "storyBible": "Ch1: fact"},
+                        {"index": 2, "chapter": 1, "draft": "b", "summary": "y", "storyBible": ""},
+                    ],
+                    handle,
+                )
+            queries_path = os.path.join(tmp, "queries.json")
+            with open(queries_path, "w", encoding="utf-8") as handle:
+                json.dump([{"id": "q1", "text": "fact", "relevant": [0], "hard_negatives": [1]}], handle)
+            manifest_path = os.path.join(tmp, "manifest.json")
+            with open(manifest_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    {"books": [{"id": "book", "corpus": corpus_path, "queriesPath": queries_path, "docs": ["summary"]}]},
+                    handle,
+                )
+
+            books = load_manifest(manifest_path)
+            report = validate_manifest(books)
+            self.assertTrue(report["ok"])
+            self.assertEqual(report["books"]["book"]["querySource"], "explicit")
+            self.assertEqual(report["books"]["book"]["factQueries"], 1)
+
+    def test_cli_validate_does_not_write_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            corpus_path = os.path.join(tmp, "book.json")
+            with open(corpus_path, "w", encoding="utf-8") as handle:
+                json.dump(
+                    [{"index": 1, "chapter": 1, "draft": "a", "storyBible": "Ch1: fact"}],
+                    handle,
+                )
+            manifest_path = os.path.join(tmp, "manifest.json")
+            with open(manifest_path, "w", encoding="utf-8") as handle:
+                json.dump({"books": [{"id": "book", "corpus": corpus_path}]}, handle)
+            out_cache = os.path.join(tmp, "cache")
+            rc = main(["--manifest", manifest_path, "--cache", out_cache, "--validate"])
+            self.assertEqual(rc, 0)
+            self.assertFalse(os.path.exists(os.path.join(out_cache, "results.json")))
 
 
 if __name__ == "__main__":

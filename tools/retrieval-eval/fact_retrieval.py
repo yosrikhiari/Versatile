@@ -29,6 +29,7 @@ and keeps the old `docs|scorer` keys for compatibility.
 
     python -X utf8 tools/retrieval-eval/fact_retrieval.py
     python -X utf8 tools/retrieval-eval/fact_retrieval.py --manifest path.json
+    python -X utf8 tools/retrieval-eval/fact_retrieval.py --manifest path.json --validate --json
 """
 from __future__ import annotations
 
@@ -492,6 +493,35 @@ def _print_table(label: str, report: dict[str, dict]) -> None:
             )
 
 
+def validate_manifest(books: Sequence[dict]) -> dict:
+    """Validate manifest/corpora/queries without running scorers or embeddings.
+
+    Does not fabricate relevance judgments or results. A valid structure means
+    the data is loadable and query indices are in range; it does not prove that
+    relevance labels are human-checked or correct.
+    """
+    report: dict[str, dict] = {}
+    for book in books:
+        book_id = book["id"]
+        corpus = load_corpus(book["corpus"])
+        queries = load_queries(book, corpus)
+        facts = sum(1 for q in queries if q.kind == "fact")
+        noise = sum(1 for q in queries if q.kind == "noise")
+        has_explicit = book.get("queries") is not None or book.get("queriesPath") is not None
+        modes = book.get("docs") or ["summary", "prose"]
+        report[book_id] = {
+            "corpus": str(book["corpus"]),
+            "scenes": len(corpus),
+            "queries": len(queries),
+            "factQueries": facts,
+            "noiseQueries": noise,
+            "querySource": "explicit" if has_explicit else "story-ledger-derived",
+            "docs": list(modes),
+            "cache": book.get("cache"),
+        }
+    return {"ok": True, "books": report}
+
+
 def evaluate_manifest(
     books: Sequence[dict],
     cache_dir: str | Path = DEFAULT_CACHE,
@@ -556,12 +586,39 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--no-embed", action="store_true")
     parser.add_argument("--bootstrap", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="validate manifest/corpora/queries only; do not run scorers, embeddings, or write results",
+    )
+    parser.add_argument("--json", action="store_true", help="emit JSON (useful with --validate)")
     args = parser.parse_args(argv)
 
     if args.corpus:
         books = [{"id": Path(args.corpus).stem, "corpus": args.corpus, "cache": args.cache}]
     else:
         books = load_manifest(args.manifest)
+
+    if args.validate:
+        report = validate_manifest(books)
+        report["disclaimer"] = (
+            "Validation checks structure only. It does not fabricate or verify "
+            "relevance judgments; a multi-book claim requires explicit, human-checked "
+            "query relevance (or verified labels), not derived convenience queries alone."
+        )
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            print("retrieval manifest validation: OK (structure)")
+            for book_id, info in report["books"].items():
+                print(
+                    f"- {book_id}: {info['scenes']} scenes, {info['queries']} queries "
+                    f"({info['factQueries']} fact/{info['noiseQueries']} noise, {info['querySource']}), "
+                    f"docs={info['docs']}"
+                )
+            print(f"\n{report['disclaimer']}")
+        return 0
+
     models = [m.strip() for m in args.models.split(",") if m.strip()]
     result = evaluate_manifest(
         books,

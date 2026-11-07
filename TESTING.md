@@ -172,7 +172,7 @@ python tools/labelling/build_study_pack.py   # frozen 12 scenes, no labels/criti
 python tools/labelling/check_pilot_exports.py <rater-a.json> <rater-b.json> [--pack reports/live/labelling/human-review-pack.json]
 python tools/labelling/agreement.py <rater-a.json> <rater-b.json> --require-human [--json]
 
-python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v   # 17 tests
+python -m unittest discover -s tools/retrieval-eval -p "test_*.py" -v   # 19 tests
 python -X utf8 tools/retrieval-eval/fact_retrieval.py
 ```
 
