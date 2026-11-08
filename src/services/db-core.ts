@@ -33,6 +33,7 @@ export interface VersatileTables {
   agentDecisions: VersatileTable
   generatedStories: VersatileTable
   projectCovers: VersatileTable
+  compileEditions: VersatileTable
   graphEdges: VersatileTable
   graphGroupsV2: VersatileTable
   humanReviewStudies: VersatileTable

@@ -55,6 +55,7 @@ Each entry documents what changed, why, and whether a data-migration handler exi
 | — | projects | Added `cloudAuditOptIn` (boolean, unindexed, not in the Dexie store string) | Per-project consent for background cloud audits. It replaces the browser-wide `settings.cloudAuditOptIn`, which let one book inherit another's decision | None needed (non-indexed field; absent reads as `false`, and old global setting is ignored) |
 | 58 | humanReviewStudies, humanReviewSessions, humanReviewResponses | Added the local review-study workspace: imported packs, rater/pass sessions, and one response per `[sessionId+sceneId]` | The frozen 12-scene human-reference pilot needs separate anonymous rater sessions without exposing critic/gate output. These tables are local-only and deliberately excluded from sync | None needed (new tables) |
 | 59 | projectCovers | Added table `++id, &projectId, updatedAt` (one local cover image per project) | Open Library–inspired project metadata: optional cover for workspace/project identity. Stored as blob data; deliberately **local-only** (not in `SYNC_ENTITIES`) to avoid blob sync size/contract risk while `projects` remains synced | None needed (new table) |
+| 60 | compileEditions | Added table `++id, projectId, createdAt, [projectId+createdAt]` (local compile/export edition metadata) | Open Library–inspired "edition" records: store metadata for each compiled output (format, workflow, stats, filename) without file blobs. Deliberately **local-only** (not in `SYNC_ENTITIES`) | None needed (new table) |
 
 ## Rules
 

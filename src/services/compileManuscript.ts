@@ -15,6 +15,7 @@
 import { getVolumes, getSections, getSubsections } from './db-structure'
 import { getProject } from './db-projects'
 import { rtfEscape } from './rtf'
+import { recordCompileEdition } from './db-compile-editions'
 
 export type TitleStyle = 'none' | 'section' | 'numbered'
 
@@ -488,29 +489,41 @@ export async function exportCompiled(
     getProject(projectId)
   ])
   const title = project?.name || 'Manuscript'
+  let filename = ''
   if (format === 'markdown') {
-    triggerDownload(
-      new Blob([result.markdown], { type: 'text/markdown' }),
-      safeFilename(title, 'md')
-    )
+    filename = safeFilename(title, 'md')
+    triggerDownload(new Blob([result.markdown], { type: 'text/markdown' }), filename)
   } else if (format === 'docx') {
     const buf = await buildDocx(result, title)
+    filename = safeFilename(title, 'docx')
     triggerDownload(
       new Blob([buf], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       }),
-      safeFilename(title, 'docx')
+      filename
     )
   } else if (format === 'pdf') {
-    triggerDownload(await buildPdf(result, title), safeFilename(title, 'pdf'))
+    filename = safeFilename(title, 'pdf')
+    triggerDownload(await buildPdf(result, title), filename)
   } else if (format === 'rtf') {
-    triggerDownload(
-      new Blob([buildRtf(result, title)], { type: 'application/rtf' }),
-      safeFilename(title, 'rtf')
-    )
+    filename = safeFilename(title, 'rtf')
+    triggerDownload(new Blob([buildRtf(result, title)], { type: 'application/rtf' }), filename)
   } else {
     const blob = await buildEpub(result, { title, author: project?.author || undefined })
-    triggerDownload(blob, safeFilename(title, 'epub'))
+    filename = safeFilename(title, 'epub')
+    triggerDownload(blob, filename)
+  }
+  try {
+    await recordCompileEdition({
+      projectId,
+      format,
+      title,
+      filename,
+      workflow: workflow as Record<string, unknown>,
+      stats: result.stats as Record<string, unknown>
+    })
+  } catch {
+    // Local edition history is best-effort; export already succeeded.
   }
   return result.stats
 }

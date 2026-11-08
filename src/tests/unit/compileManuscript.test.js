@@ -6,6 +6,7 @@ import { db } from '@/services/db-core'
 import {
   compileMarkdown,
   compileManuscript,
+  exportCompiled,
   stripFrontmatter,
   proseToText,
   buildDocx,
@@ -146,6 +147,8 @@ describe('compileManuscript against Dexie', () => {
     await db.volumes.clear()
     await db.sections.clear()
     await db.subsections.clear()
+    await db.projects.clear()
+    await db.compileEditions.clear()
   })
 
   it('reads the project in order without touching volume.sectionIds', async () => {
@@ -175,6 +178,42 @@ describe('compileManuscript against Dexie', () => {
     const r = await compileManuscript('p1')
     expect(r.sections.map((s) => s.title)).toEqual(['One', 'Two'])
     expect(r.markdown).toContain('# Vol\n\n## One\n\none\n\n## Two\n\ntwo')
+  })
+
+  it('records a local compile edition when exporting markdown', async () => {
+    await db.projects.add({ id: 'p1', name: 'Salt Road', updatedAt: new Date().toISOString() })
+    await db.sections.add({ id: 'c1', projectId: 'p1', title: 'One', order: 0, volumeId: null })
+    await db.subsections.add({
+      id: 's1',
+      projectId: 'p1',
+      sectionId: 'c1',
+      order: 0,
+      content: '<p>one</p>'
+    })
+
+    const origCreate = globalThis.URL?.createObjectURL
+    const origRevoke = globalThis.URL?.revokeObjectURL
+    if (globalThis.URL) {
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:test')
+      globalThis.URL.revokeObjectURL = vi.fn()
+    }
+
+    try {
+      const stats = await exportCompiled('p1', 'markdown', { titleStyle: 'section' })
+      expect(stats.sections).toBe(1)
+      const editions = await db.compileEditions.where('projectId').equals('p1').toArray()
+      expect(editions).toHaveLength(1)
+      expect(editions[0].format).toBe('markdown')
+      expect(editions[0].title).toBe('Salt Road')
+      expect(editions[0].filename).toBe('Salt_Road.md')
+      expect(editions[0].stats.words).toBe(1)
+      expect(editions[0].workflow.titleStyle).toBe('section')
+    } finally {
+      if (globalThis.URL) {
+        globalThis.URL.createObjectURL = origCreate
+        globalThis.URL.revokeObjectURL = origRevoke
+      }
+    }
   })
 })
 

@@ -554,5 +554,14 @@ export const SCHEMA_VERSIONS = [
     stores: {
       projectCovers: '++id, &projectId, updatedAt'
     }
+  },
+  // v60 (2026-11-08): compiled-output "edition" records (Open Library–inspired).
+  // Stores metadata for each export/compile (format, workflow, stats, filename)
+  // — no file blob. Deliberately NOT in SYNC_ENTITIES (local-only).
+  {
+    version: 60,
+    stores: {
+      compileEditions: '++id, projectId, createdAt, [projectId+createdAt]'
+    }
   }
 ]

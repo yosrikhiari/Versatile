@@ -9,6 +9,7 @@ export {
   updateProjectMeta
 } from './db-projects'
 export { getProjectCover, saveProjectCover, deleteProjectCover } from './db-project-covers'
+export { listCompileEditions, recordCompileEdition } from './db-compile-editions'
 export {
   getCharacters,
   addCharacter,

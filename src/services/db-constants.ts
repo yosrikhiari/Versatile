@@ -37,6 +37,7 @@ export const TABLES = {
   GEN_RUNS: 'genRuns',
   PROJECT_BLURBS: 'projectBlurbs',
   PROJECT_COVERS: 'projectCovers',
+  COMPILE_EDITIONS: 'compileEditions',
   EVAL_RESULTS: 'evalResults',
   BRANCHES: 'branches',
   GRAPH_NODE_POSITIONS: 'graphNodePositions',
