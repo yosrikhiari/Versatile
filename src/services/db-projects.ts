@@ -9,15 +9,34 @@ const db = _db as any
  * nothing read — so a premise typed during onboarding never reached the
  * generator. `category` is the workspace type (creative, screenplay, …).
  */
+export type ProjectCreateMetadata = {
+  authorName?: string
+  subtitle?: string
+  language?: string
+  series?: string
+  tags?: string[]
+}
+
 export async function createProject(
   name: any,
   genre: any = '',
   description: any = '',
   userId: any = null,
-  category: any = ''
+  category: any = '',
+  metadata: ProjectCreateMetadata = {}
 ) {
   try {
     const now = new Date().toISOString()
+    const meta =
+      metadata && typeof metadata === 'object'
+        ? {
+            ...(metadata.authorName ? { authorName: metadata.authorName } : {}),
+            ...(metadata.subtitle ? { subtitle: metadata.subtitle } : {}),
+            ...(metadata.language ? { language: metadata.language } : {}),
+            ...(metadata.series ? { series: metadata.series } : {}),
+            ...(Array.isArray(metadata.tags) && metadata.tags.length ? { tags: metadata.tags } : {})
+          }
+        : {}
     const projectId = await db.transaction('rw', db.projects, db.manuscripts, async () => {
       const id = await db.projects.add({
         name,
@@ -27,6 +46,7 @@ export async function createProject(
         userId,
         // Cloud-audit consent is opt-in and per project; a new book starts off.
         cloudAuditOptIn: false,
+        ...meta,
         createdAt: now,
         updatedAt: now
       })

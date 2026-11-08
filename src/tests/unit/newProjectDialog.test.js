@@ -54,7 +54,14 @@ describe('NewProjectDialog', () => {
     await type('Project name', '  Salt Road  ')
     await type('Genre', 'Historical')
     await submit()
-    expect(createNewProject).toHaveBeenCalledWith('Salt Road', 'creative', '', null, 'Historical')
+    expect(createNewProject).toHaveBeenCalledWith(
+      'Salt Road',
+      'creative',
+      '',
+      null,
+      'Historical',
+      expect.any(Object)
+    )
     expect(addCharacterData).not.toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith('/editor/7')
     expect(w.emitted('close')).toHaveLength(1)
@@ -93,7 +100,8 @@ describe('NewProjectDialog', () => {
       'screenplay',
       'A nurse and a ghost.',
       blueprint.options[1].value,
-      ''
+      '',
+      expect.any(Object)
     )
     expect(addCharacterData).toHaveBeenCalledWith(
       7,

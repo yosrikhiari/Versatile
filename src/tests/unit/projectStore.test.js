@@ -69,7 +69,8 @@ describe('projectStore', () => {
       '',
       'A test',
       null,
-      'Fantasy'
+      'Fantasy',
+      expect.any(Object)
     )
   })
 
@@ -92,7 +93,14 @@ describe('projectStore', () => {
 
     await store.createNewProject('Owned', '', '')
 
-    expect(dbService.createProject).toHaveBeenCalledWith('Owned', '', '', 42, '')
+    expect(dbService.createProject).toHaveBeenCalledWith(
+      'Owned',
+      '',
+      '',
+      42,
+      '',
+      expect.any(Object)
+    )
   })
 
   it('stores the genre the New project dialog asks for (#67)', async () => {
@@ -111,8 +119,37 @@ describe('projectStore', () => {
       'Historical',
       'A road.',
       null,
-      'novel'
+      'novel',
+      expect.any(Object)
     )
+  })
+
+  it('passes optional metadata when creating a project (Open Library-inspired)', async () => {
+    const store = useProjectStore()
+    dbService.createProject.mockResolvedValue('p-meta')
+    dbService.getProject.mockResolvedValue({
+      id: 'p-meta',
+      name: 'Dune',
+      category: '',
+      description: '',
+      authorName: 'Frank Herbert',
+      language: 'eng'
+    })
+    dbService.getManuscript.mockResolvedValue(null)
+    dbService.getDailyGoal.mockResolvedValue(500)
+    dbService.getStreakData.mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
+    dbService.getLastSessionData.mockResolvedValue(null)
+
+    await store.createNewProject('Dune', '', '', null, '', {
+      authorName: 'Frank Herbert',
+      language: 'eng'
+    })
+
+    expect(dbService.createProject).toHaveBeenCalledWith('Dune', '', '', null, '', {
+      authorName: 'Frank Herbert',
+      language: 'eng'
+    })
+    expect(store.currentAuthorName).toBe('Frank Herbert')
   })
 
   it('should update content and recalculate word count', () => {

@@ -385,7 +385,14 @@ export const useProjectStore = defineStore('project', () => {
     category: any = '',
     description: any = '',
     blueprintId: any = null,
-    genre = ''
+    genre = '',
+    metadata: {
+      authorName?: string
+      subtitle?: string
+      language?: string
+      series?: string
+      tags?: string[]
+    } = {}
   ) {
     getSyncEngine().clearStoryId()
 
@@ -398,7 +405,7 @@ export const useProjectStore = defineStore('project', () => {
     const authStore = useAuthStore()
     const ownerId = authStore.localUser?.id ?? authStore.user?.id ?? null
 
-    const id = await createProject(name, genre, description, ownerId, category)
+    const id = await createProject(name, genre, description, ownerId, category, metadata)
     await loadProject(id)
 
     try {

@@ -23,6 +23,7 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useStoryBibleStore } from '../../stores/storyBibleStore'
 import { WORKSPACE_TYPES, VISIBLE_WORKSPACE_CONFIGS } from '../../config/workspace'
 import { CREATIVE_BLUEPRINTS } from '../../config/blueprints'
+import { searchOpenLibraryMetadata } from '../../services/openLibraryService'
 
 const props = defineProps({
   show: Boolean
@@ -43,6 +44,13 @@ const characterName = ref('')
 const characterRole = ref('')
 const creating = ref(false)
 const error = ref('')
+
+// Open Library lookup (opt-in; title only, no manuscript sent)
+const olLoading = ref(false)
+const olError = ref('')
+const olResults = ref([])
+const olAttribution = ref('')
+const pendingMeta = ref(null)
 
 const typeOptions = VISIBLE_WORKSPACE_CONFIGS.map((w) => ({
   value: w.type,
@@ -80,8 +88,47 @@ watch(
     characterName.value = ''
     characterRole.value = ''
     error.value = ''
+    olLoading.value = false
+    olError.value = ''
+    olResults.value = []
+    olAttribution.value = ''
+    pendingMeta.value = null
   }
 )
+
+async function lookupOpenLibrary() {
+  if (!name.value.trim()) return
+  olLoading.value = true
+  olError.value = ''
+  olResults.value = []
+  olAttribution.value = ''
+  try {
+    const res = await searchOpenLibraryMetadata({ title: name.value.trim(), limit: 4 })
+    olResults.value = Array.isArray(res?.results) ? res.results : []
+    olAttribution.value = res?.attribution || ''
+    if (res?.error && res.error !== 'aborted')
+      olError.value = 'Lookup unavailable. You can continue without it.'
+    if (!olResults.value.length && !olError.value) olError.value = 'No matching results found.'
+  } catch {
+    olError.value = 'Lookup failed. You can continue without it.'
+  } finally {
+    olLoading.value = false
+  }
+}
+
+function applyLookupResult(result) {
+  if (!result) return
+  if (result.name) name.value = result.name
+  pendingMeta.value = {
+    ...(result.authorName ? { authorName: result.authorName } : {}),
+    ...(result.subtitle ? { subtitle: result.subtitle } : {}),
+    ...(result.language ? { language: result.language } : {}),
+    ...(Array.isArray(result.tags) && result.tags.length ? { tags: result.tags.slice(0, 12) } : {})
+  }
+  if (result.tags?.length && !genre.value.trim()) {
+    genre.value = String(result.tags[0] || '')
+  }
+}
 
 async function create() {
   if (!canCreate.value) return
@@ -93,7 +140,8 @@ async function create() {
       type.value,
       synopsis.value.trim(),
       blueprintId.value || null,
-      genre.value.trim()
+      genre.value.trim(),
+      pendingMeta.value || {}
     )
     if (characterName.value.trim()) {
       await storyBibleStore.addCharacterData(id, {
@@ -124,6 +172,40 @@ async function create() {
       <h2 class="type-display text-sm text-text-primary">New project</h2>
 
       <BaseField v-model="name" label="Project name" placeholder="My Novel" required />
+      <div class="space-y-1 -mt-1">
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          icon="search"
+          :loading="olLoading"
+          :disabled="!name.trim() || olLoading"
+          data-test="ol-lookup-new"
+          @click="lookupOpenLibrary"
+        >
+          Look up metadata
+        </BaseButton>
+        <p v-if="olAttribution" class="font-ui text-[11px] text-text-hint">{{ olAttribution }}</p>
+        <p v-if="olError" class="font-ui text-xs text-danger">{{ olError }}</p>
+        <ul v-if="olResults.length" class="space-y-1" role="list">
+          <li
+            v-for="(result, idx) in olResults"
+            :key="result.sourceKey || idx"
+            class="flex items-center justify-between gap-2 rounded border border-border-subtle bg-bg-panel px-2 py-1"
+          >
+            <span class="min-w-0 font-ui text-xs text-text-primary truncate">
+              {{ result.name || 'Untitled' }}
+              <span v-if="result.authorName" class="text-text-hint">· {{ result.authorName }}</span>
+            </span>
+            <button
+              type="button"
+              class="shrink-0 px-2 py-0.5 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+              @click="applyLookupResult(result)"
+            >
+              Apply
+            </button>
+          </li>
+        </ul>
+      </div>
       <BaseField v-model="genre" label="Genre" placeholder="Fantasy, Sci-Fi, …" hint="Optional" />
 
       <BaseButton
