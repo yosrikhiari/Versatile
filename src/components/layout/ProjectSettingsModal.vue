@@ -10,6 +10,10 @@ import {
   saveProjectCover,
   deleteProjectCover
 } from '../../services/dbService'
+import {
+  searchOpenLibraryMetadata,
+  fetchOpenLibraryCoverBlob
+} from '../../services/openLibraryService'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
@@ -76,6 +80,15 @@ const coverPendingFile = ref(null)
 const coverRemoved = ref(false)
 const coverInputRef = ref(null)
 
+// Open Library lookup (opt-in, user-initiated; no manuscript content sent)
+const olQueryTitle = ref('')
+const olQueryAuthor = ref('')
+const olLoading = ref(false)
+const olError = ref('')
+const olResults = ref([])
+const olAttribution = ref('')
+const olSearched = ref(false)
+
 function tagsFromText(text) {
   return String(text || '')
     .split(',')
@@ -111,6 +124,9 @@ watch(
       coverPendingFile.value = null
       coverRemoved.value = false
       revokeCoverPreview()
+      olQueryTitle.value = projectStore.currentProjectName || ''
+      olQueryAuthor.value = projectStore.currentAuthorName || ''
+      resetOpenLibraryLookup()
       if (projectStore.currentProjectId) {
         try {
           const existing = await getDailyGoal(projectStore.currentProjectId)
@@ -131,6 +147,7 @@ watch(
       coverPendingFile.value = null
       coverRemoved.value = false
       revokeCoverPreview()
+      resetOpenLibraryLookup()
     }
   }
 )
@@ -272,6 +289,73 @@ function removeCover() {
   coverPendingFile.value = null
   revokeCoverPreview()
   if (coverInputRef.value) coverInputRef.value.value = ''
+}
+
+function resetOpenLibraryLookup() {
+  olLoading.value = false
+  olError.value = ''
+  olResults.value = []
+  olAttribution.value = ''
+  olSearched.value = false
+}
+
+async function lookupOpenLibraryMetadata() {
+  olLoading.value = true
+  olError.value = ''
+  olResults.value = []
+  olAttribution.value = ''
+  olSearched.value = true
+  try {
+    const res = await searchOpenLibraryMetadata({
+      title: olQueryTitle.value || localName.value,
+      author: olQueryAuthor.value || localAuthorName.value,
+      limit: 5
+    })
+    olResults.value = Array.isArray(res?.results) ? res.results : []
+    olAttribution.value = res?.attribution || ''
+    if (res?.error && res.error !== 'aborted')
+      olError.value = 'Lookup unavailable. Check your connection and try again.'
+    if (!olResults.value.length && !olError.value) olError.value = 'No matching results found.'
+  } catch {
+    olError.value = 'Lookup failed. You can enter metadata manually.'
+  } finally {
+    olLoading.value = false
+  }
+}
+
+function applyOpenLibraryResult(result) {
+  if (!result) return
+  if (result.name && !localName.value.trim()) localName.value = result.name
+  if (result.subtitle) localSubtitle.value = result.subtitle
+  if (result.authorName) localAuthorName.value = result.authorName
+  if (result.language) localLanguage.value = result.language
+  if (Array.isArray(result.tags) && result.tags.length) {
+    const existing = tagsFromText(localTagsText.value)
+    const merged = Array.from(new Set([...existing, ...result.tags])).slice(0, 12)
+    localTagsText.value = merged.join(', ')
+  }
+}
+
+async function applyOpenLibraryCover(result) {
+  if (!result?.coverUrl) return
+  olLoading.value = true
+  try {
+    const blob = await fetchOpenLibraryCoverBlob(result.coverUrl)
+    if (!blob) {
+      olError.value = 'Could not load cover image.'
+      return
+    }
+    coverRemoved.value = false
+    coverPendingFile.value = new File([blob], 'openlibrary-cover.jpg', {
+      type: blob.type || 'image/jpeg'
+    })
+    revokeCoverPreview()
+    coverPreviewUrl.value = URL.createObjectURL(blob)
+  } catch {
+    olError.value = 'Could not load cover image.'
+  } finally {
+    olLoading.value = false
+  }
 }
 
 async function handleEnhanceSynopsis() {
@@ -544,6 +628,97 @@ function handleOverlayClick(event) {
                     placeholder="Comma-separated"
                   />
                 </div>
+              </div>
+
+              <div class="rounded-lg border border-border-subtle bg-bg-tertiary/30 p-3 space-y-3">
+                <div>
+                  <p class="text-sm font-medium text-text-primary">Look up metadata (optional)</p>
+                  <p class="mt-1 text-xs text-text-hint">
+                    Search Open Library by title/author you enter. Only these search terms are sent;
+                    no manuscript content is shared. Network is optional.
+                    <span v-if="olAttribution" class="block mt-1">{{ olAttribution }}</span>
+                  </p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    v-model="olQueryTitle"
+                    type="text"
+                    class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                    placeholder="Search title"
+                    aria-label="Open Library search title"
+                  />
+                  <input
+                    v-model="olQueryAuthor"
+                    type="text"
+                    class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                    placeholder="Search author"
+                    aria-label="Open Library search author"
+                  />
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-ui border border-border-subtle rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors disabled:opacity-50"
+                    :disabled="
+                      olLoading ||
+                      (!olQueryTitle.trim() && !olQueryAuthor.trim() && !localName.trim())
+                    "
+                    @click="lookupOpenLibraryMetadata"
+                  >
+                    <BaseIcon
+                      :name="olLoading ? 'loader-2' : 'search'"
+                      :size="14"
+                      :class="{ 'animate-spin': olLoading }"
+                    />
+                    {{ olLoading ? 'Looking up…' : 'Search Open Library' }}
+                  </button>
+                  <span v-if="olError" class="text-xs text-danger">{{ olError }}</span>
+                </div>
+                <div
+                  v-if="olResults.length"
+                  class="space-y-2"
+                  role="list"
+                  aria-label="Open Library results"
+                >
+                  <div
+                    v-for="(result, idx) in olResults"
+                    :key="result.sourceKey || idx"
+                    class="flex items-start justify-between gap-3 rounded-md border border-border-subtle bg-bg-panel p-2"
+                    role="listitem"
+                  >
+                    <div class="min-w-0">
+                      <p class="text-sm text-text-primary truncate">
+                        {{ result.name || 'Untitled' }}
+                      </p>
+                      <p class="text-xs text-text-hint">
+                        <span v-if="result.authorName">{{ result.authorName }}</span>
+                        <span v-if="result.firstPublishYear"> · {{ result.firstPublishYear }}</span>
+                        <span v-if="result.language"> · {{ result.language }}</span>
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        class="px-2 py-1 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+                        @click="applyOpenLibraryResult(result)"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        v-if="result.coverUrl"
+                        type="button"
+                        class="px-2 py-1 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+                        :disabled="olLoading"
+                        @click="applyOpenLibraryCover(result)"
+                      >
+                        Use cover
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p v-else-if="olSearched && !olLoading && !olError" class="text-xs text-text-hint">
+                  No results. Try a different title or author.
+                </p>
               </div>
 
               <div>
