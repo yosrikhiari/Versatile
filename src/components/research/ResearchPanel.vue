@@ -15,6 +15,7 @@ import Skeleton from '../shared/Skeleton.vue'
 import { getDocumentStatusCounts, searchLexical, semanticSearch } from '../../services/researchDb'
 import { getEmbeddings } from '../../services/embeddingService'
 import { resume as resumeEmbeddingQueue } from '../../services/embeddingQueue'
+import { searchOpenLibraryMetadata } from '../../services/openLibraryService'
 import { useAsyncError } from '../../composables/useAsyncError'
 const { onAsyncError } = useAsyncError()
 const projectStore = useProjectStore()
@@ -70,6 +71,66 @@ const globalSearchResults = ref([])
 const globalSearchError = ref('')
 const isSearching = ref(false)
 let searchDebounceTimer = null
+
+// Open Library metadata lookup (opt-in; reference only, no manuscript/research content sent)
+const showOlLookup = ref(false)
+const olTitle = ref('')
+const olAuthor = ref('')
+const olLoading = ref(false)
+const olError = ref('')
+const olResults = ref([])
+const olAttribution = ref('')
+
+function toggleOlLookup() {
+  showOlLookup.value = !showOlLookup.value
+  if (showOlLookup.value) {
+    olTitle.value = projectStore.currentProjectName || ''
+    olAuthor.value = projectStore.currentAuthorName || ''
+    olError.value = ''
+    olResults.value = []
+    olAttribution.value = ''
+  }
+}
+
+async function lookupOpenLibraryReference() {
+  olLoading.value = true
+  olError.value = ''
+  olResults.value = []
+  olAttribution.value = ''
+  try {
+    const res = await searchOpenLibraryMetadata({
+      title: olTitle.value,
+      author: olAuthor.value,
+      limit: 5
+    })
+    olResults.value = Array.isArray(res?.results) ? res.results : []
+    olAttribution.value = res?.attribution || ''
+    if (res?.error && res.error !== 'aborted')
+      olError.value = 'Lookup unavailable. Check your connection.'
+    if (!olResults.value.length && !olError.value) olError.value = 'No matching results found.'
+  } catch {
+    olError.value = 'Lookup failed.'
+  } finally {
+    olLoading.value = false
+  }
+}
+
+async function applyOlReference(result) {
+  if (!result || !projectId.value) return
+  try {
+    await projectStore.updateProjectInfo({
+      ...(result.authorName ? { authorName: result.authorName } : {}),
+      ...(result.subtitle ? { subtitle: result.subtitle } : {}),
+      ...(result.language ? { language: result.language } : {}),
+      ...(Array.isArray(result.tags) && result.tags.length
+        ? { tags: result.tags.slice(0, 12) }
+        : {})
+    })
+    addToast('Project metadata updated from Open Library.', 'success')
+  } catch {
+    addToast('Could not update project metadata.', 'error')
+  }
+}
 
 async function runGlobalSearch(query) {
   if (!query || !projectId.value) {
@@ -407,6 +468,15 @@ function handleClearExtraction() {
           <BaseButton
             variant="ghost"
             size="sm"
+            icon="book"
+            :aria-pressed="showOlLookup"
+            title="Look up book metadata (Open Library)"
+            aria-label="Look up book metadata"
+            @click="toggleOlLookup"
+          />
+          <BaseButton
+            variant="ghost"
+            size="sm"
             icon="link"
             :disabled="isImporting"
             :aria-pressed="showUrlInput"
@@ -435,6 +505,64 @@ function handleClearExtraction() {
         class="hidden"
         @change="handleFileChange"
       />
+
+      <div
+        v-if="showOlLookup"
+        class="px-4 py-3 space-y-2 border-b border-border-subtle bg-bg-secondary/20"
+      >
+        <p class="font-ui text-xs text-text-hint">
+          Optional: look up book metadata on Open Library (title/author only; no research or
+          manuscript content sent).
+          <span v-if="olAttribution" class="block">{{ olAttribution }}</span>
+        </p>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <input
+            v-model="olTitle"
+            type="text"
+            class="w-full px-2 py-1.5 bg-bg-tertiary border border-border-subtle rounded text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+            placeholder="Title"
+            aria-label="Open Library title"
+          />
+          <input
+            v-model="olAuthor"
+            type="text"
+            class="w-full px-2 py-1.5 bg-bg-tertiary border border-border-subtle rounded text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+            placeholder="Author"
+            aria-label="Open Library author"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            icon="search"
+            :loading="olLoading"
+            @click="lookupOpenLibraryReference"
+          >
+            Search
+          </BaseButton>
+          <span v-if="olError" class="font-ui text-xs text-danger">{{ olError }}</span>
+        </div>
+        <ul v-if="olResults.length" class="space-y-1" role="list">
+          <li
+            v-for="(result, idx) in olResults"
+            :key="result.sourceKey || idx"
+            class="flex items-center justify-between gap-2 rounded border border-border-subtle bg-bg-panel px-2 py-1"
+          >
+            <span class="min-w-0 font-ui text-xs text-text-primary truncate">
+              {{ result.name || 'Untitled' }}
+              <span v-if="result.authorName" class="text-text-hint">· {{ result.authorName }}</span>
+            </span>
+            <button
+              type="button"
+              class="shrink-0 px-2 py-0.5 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+              @click="applyOlReference(result)"
+            >
+              Apply to project
+            </button>
+          </li>
+        </ul>
+      </div>
 
       <div class="px-4 py-3 space-y-2 border-b border-border-subtle">
         <div class="flex items-center gap-2">
