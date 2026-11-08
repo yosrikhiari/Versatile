@@ -96,6 +96,11 @@ const router = useRouter()
 
 const wordCount = computed(() => projectStore.manuscriptWordCount)
 const projectName = computed(() => projectStore.currentProjectName)
+const projectContextTitle = computed(() => {
+  const name = projectStore.currentProjectName || 'Untitled Project'
+  const author = projectStore.currentAuthorName
+  return author ? `${name} — ${author}` : name
+})
 const authTitle = computed(() => {
   if (authStore.localUser) {
     const name = authStore.localUser.displayName || authStore.localUser.username
@@ -514,7 +519,7 @@ watch(
         <div class="relative">
           <button
             class="hover:text-accent focus:outline-hidden focus:ring-2 focus:ring-accent rounded-lg px-2 py-1 text-sm flex items-center gap-1.5 transition-all duration-150 btn-ghost max-w-[44vw] sm:max-w-[16rem]"
-            title="Switch project"
+            :title="`Switch project: ${projectContextTitle}`"
             @click="toggleProjectDropdown"
           >
             <span class="truncate">{{ projectName || 'Untitled Project' }}</span>
