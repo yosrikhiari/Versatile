@@ -33,9 +33,21 @@ export interface WrittenImport {
  * analysis pass's job (step 3), which runs once, in the background, with a
  * progress bar, instead of one embedding request per scene at once.
  */
+export interface ImportProjectMetadata {
+  authorName?: string
+  subtitle?: string
+  language?: string
+  series?: string
+  tags?: string[]
+}
+
 export async function createProjectFromBook(
   book: ImportedBook,
-  { name, ownerId = null }: { name?: string; ownerId?: string | null } = {}
+  {
+    name,
+    ownerId = null,
+    metadata
+  }: { name?: string; ownerId?: string | null; metadata?: ImportProjectMetadata } = {}
 ): Promise<WrittenImport> {
   const title = (name || book.title || 'Imported book').trim()
   const projectId = await createProject(
@@ -103,6 +115,17 @@ export async function createProjectFromBook(
     }
   })
 
+  const meta =
+    metadata && typeof metadata === 'object'
+      ? {
+          ...(metadata.authorName ? { authorName: metadata.authorName } : {}),
+          ...(metadata.subtitle ? { subtitle: metadata.subtitle } : {}),
+          ...(metadata.language ? { language: metadata.language } : {}),
+          ...(metadata.series ? { series: metadata.series } : {}),
+          ...(Array.isArray(metadata.tags) && metadata.tags.length ? { tags: metadata.tags } : {})
+        }
+      : {}
+
   await updateProject(projectId, {
     source: 'import',
     importedAt: now,
@@ -110,7 +133,8 @@ export async function createProjectFromBook(
     // What the book arrived with: the writing statistics start this project
     // from here, so an imported novel is not counted as a day of writing.
     importedWords: words,
-    ...(book.frontMatter.length ? { frontMatter: book.frontMatter.join('\n\n') } : {})
+    ...(book.frontMatter.length ? { frontMatter: book.frontMatter.join('\n\n') } : {}),
+    ...meta
   })
 
   return { projectId, chapters: chapterOrder, scenes: sceneNumber, words }

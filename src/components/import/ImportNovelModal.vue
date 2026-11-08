@@ -20,6 +20,7 @@ import {
   excludeChapter
 } from '../../services/import/bookEdits'
 import { createProjectFromBook } from '../../services/import/writeProject'
+import { searchOpenLibraryMetadata } from '../../services/openLibraryService'
 import { useAuthStore } from '../../stores/authStore'
 
 const props = defineProps({ show: { type: Boolean, default: false } })
@@ -44,6 +45,13 @@ const error = ref('')
 const reading = ref(false)
 const importing = ref(false)
 const dragging = ref(false)
+
+// Open Library lookup (opt-in, user-initiated; no manuscript content sent)
+const olLoading = ref(false)
+const olError = ref('')
+const olResults = ref([])
+const olAttribution = ref('')
+const appliedMeta = ref(null)
 
 const chapters = computed(() => (book.value ? allChapters(book.value) : []))
 const stats = computed(() => {
@@ -70,6 +78,11 @@ function reset() {
   error.value = ''
   reading.value = false
   importing.value = false
+  olLoading.value = false
+  olError.value = ''
+  olResults.value = []
+  olAttribution.value = ''
+  appliedMeta.value = null
 }
 
 async function readFile(file) {
@@ -111,6 +124,41 @@ function exclude(i) {
   book.value = excludeChapter(book.value, i)
 }
 
+async function lookupOpenLibraryForImport() {
+  if (!book.value) return
+  olLoading.value = true
+  olError.value = ''
+  olResults.value = []
+  olAttribution.value = ''
+  try {
+    const res = await searchOpenLibraryMetadata({
+      title: projectName.value || book.value.title || '',
+      author: book.value.author || '',
+      limit: 5
+    })
+    olResults.value = Array.isArray(res?.results) ? res.results : []
+    olAttribution.value = res?.attribution || ''
+    if (res?.error && res.error !== 'aborted')
+      olError.value = 'Lookup unavailable. You can continue without it.'
+    if (!olResults.value.length && !olError.value) olError.value = 'No matching results found.'
+  } catch {
+    olError.value = 'Lookup failed. You can continue without it.'
+  } finally {
+    olLoading.value = false
+  }
+}
+
+function applyImportMetadata(result) {
+  if (!result) return
+  if (result.name) projectName.value = result.name
+  appliedMeta.value = {
+    ...(result.authorName ? { authorName: result.authorName } : {}),
+    ...(result.subtitle ? { subtitle: result.subtitle } : {}),
+    ...(result.language ? { language: result.language } : {}),
+    ...(Array.isArray(result.tags) && result.tags.length ? { tags: result.tags.slice(0, 12) } : {})
+  }
+}
+
 async function doImport() {
   if (!book.value || !stats.value.scenes || importing.value) return
   importing.value = true
@@ -120,7 +168,8 @@ async function doImport() {
     const ownerId = auth.localUser?.id ?? auth.user?.id ?? null
     const written = await createProjectFromBook(book.value, {
       name: projectName.value,
-      ownerId
+      ownerId,
+      ...(appliedMeta.value ? { metadata: appliedMeta.value } : {})
     })
     emit('imported', written)
     emit('close')
@@ -190,6 +239,48 @@ async function doImport() {
           <template v-if="book.author"> · by {{ book.author }}</template>
           <template v-if="encoding"> · read as {{ encoding }}</template>
         </p>
+
+        <div class="mt-3 rounded-lg border border-border-subtle bg-bg-tertiary/30 p-2.5">
+          <div class="flex flex-wrap items-center gap-2 justify-between">
+            <p class="font-ui text-xs text-text-hint">
+              Optional: fill metadata from Open Library (title/author only; no manuscript sent).
+              <span v-if="olAttribution" class="block">{{ olAttribution }}</span>
+            </p>
+            <BaseButton
+              variant="secondary"
+              size="sm"
+              icon="search"
+              :loading="olLoading"
+              data-test="ol-lookup"
+              @click="lookupOpenLibraryForImport"
+            >
+              Look up metadata
+            </BaseButton>
+          </div>
+          <p v-if="olError" class="mt-1 font-ui text-xs text-danger">{{ olError }}</p>
+          <ul v-if="olResults.length" class="mt-2 space-y-1" role="list">
+            <li
+              v-for="(result, idx) in olResults"
+              :key="result.sourceKey || idx"
+              class="flex items-center justify-between gap-2 rounded border border-border-subtle bg-bg-panel px-2 py-1"
+            >
+              <span class="min-w-0 font-ui text-xs text-text-primary truncate">
+                {{ result.name || 'Untitled' }}
+                <span v-if="result.authorName" class="text-text-hint"
+                  >· {{ result.authorName }}</span
+                >
+              </span>
+              <button
+                type="button"
+                class="shrink-0 px-2 py-0.5 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+                @click="applyImportMetadata(result)"
+              >
+                Apply
+              </button>
+            </li>
+          </ul>
+        </div>
+
         <BaseAlert v-for="w in book.warnings" :key="w" variant="warning" class="mt-2">
           {{ w }}
         </BaseAlert>

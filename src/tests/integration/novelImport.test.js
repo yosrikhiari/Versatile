@@ -91,4 +91,26 @@ describe('createProjectFromBook', () => {
       expect((await db.projects.get(written.projectId)).name).toBe('The Time Machine')
     }
   )
+
+  it('persists optional project metadata when provided (Open Library-inspired)', async () => {
+    const bytes = new TextEncoder().encode('CHAPTER 1\n\nOne.')
+    const d = await decodeFile('b.txt', bytes.buffer)
+    const book = detectStructure(d.blocks, { title: d.title, author: d.author })
+    const written = await createProjectFromBook(book, {
+      name: 'Dune',
+      metadata: {
+        authorName: 'Frank Herbert',
+        subtitle: 'A novel',
+        language: 'eng',
+        series: 'Dune',
+        tags: ['science fiction']
+      }
+    })
+    const project = await db.projects.get(written.projectId)
+    expect(project.authorName).toBe('Frank Herbert')
+    expect(project.subtitle).toBe('A novel')
+    expect(project.language).toBe('eng')
+    expect(project.series).toBe('Dune')
+    expect(project.tags).toEqual(['science fiction'])
+  })
 })
