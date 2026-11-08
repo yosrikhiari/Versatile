@@ -58,6 +58,8 @@ const EXPECTED = {
   plotThreads:
     '++id | *tags, apiId, generationStatus, lastSyncedAt, metadata, notes, projectId, status, syncStatus, title',
   projectBlurbs: '++id | generatedAt, projectId',
+  // v59: local-only project cover image (one per project); not in SYNC_ENTITIES.
+  projectCovers: '++id | &projectId, updatedAt',
   // v44: the derived-artifact layer. `&[projectId+subsectionId]` is unique —
   // one live digest per scene, replaced rather than accumulated.
   sceneDigests: '++id | &[projectId+subsectionId], contentHash, projectId, subsectionId, updatedAt',
@@ -120,7 +122,7 @@ describe('resolved Dexie schema', () => {
   })
 
   it('opens at the expected version', () => {
-    expect(verno).toBe(58)
+    expect(verno).toBe(59)
   })
 
   it('has exactly the expected set of tables', () => {

@@ -37,6 +37,12 @@ export const useProjectStore = defineStore('project', () => {
   const currentCategory = ref('')
   /** Free-text genre ("Fantasy, Mystery"). `category` is the workspace type. */
   const currentGenre = ref('')
+  // Optional metadata (local-first; inspired by Open Library work/edition fields).
+  const currentAuthorName = ref('')
+  const currentSubtitle = ref('')
+  const currentLanguage = ref('')
+  const currentSeries = ref('')
+  const currentTags = ref<string[]>([])
   const documentContent = ref('')
   const documentContentRaw = computed(() => stripHtmlTags(documentContent.value))
   const wordCount = ref(0)
@@ -178,6 +184,13 @@ export const useProjectStore = defineStore('project', () => {
     currentDescription.value = project.description || project.synopsis || ''
     currentCategory.value = project.category || ''
     currentGenre.value = project.genre || ''
+    currentAuthorName.value = project.authorName || ''
+    currentSubtitle.value = project.subtitle || ''
+    currentLanguage.value = project.language || ''
+    currentSeries.value = project.series || ''
+    currentTags.value = Array.isArray(project.tags)
+      ? project.tags.filter((t: unknown) => typeof t === 'string' && t.trim())
+      : []
     // Re-read on every project load: a previous project's consent must never
     // leak into a book the author has not opted in for.
     cloudAuditOptIn.value = project.cloudAuditOptIn === true
@@ -444,6 +457,15 @@ export const useProjectStore = defineStore('project', () => {
     if (data.category !== undefined) currentCategory.value = data.category
     if (data.genre !== undefined) currentGenre.value = data.genre
     if (data.description !== undefined) currentDescription.value = data.description
+    if (data.authorName !== undefined) currentAuthorName.value = data.authorName || ''
+    if (data.subtitle !== undefined) currentSubtitle.value = data.subtitle || ''
+    if (data.language !== undefined) currentLanguage.value = data.language || ''
+    if (data.series !== undefined) currentSeries.value = data.series || ''
+    if (data.tags !== undefined) {
+      currentTags.value = Array.isArray(data.tags)
+        ? data.tags.filter((t: unknown) => typeof t === 'string' && t.trim())
+        : []
+    }
     if (data.cloudAuditOptIn !== undefined) cloudAuditOptIn.value = data.cloudAuditOptIn === true
   }
 
@@ -473,6 +495,11 @@ export const useProjectStore = defineStore('project', () => {
     currentDescription,
     currentCategory,
     currentGenre,
+    currentAuthorName,
+    currentSubtitle,
+    currentLanguage,
+    currentSeries,
+    currentTags,
     activeWorkspaceType,
     terminology,
     structureTerms,

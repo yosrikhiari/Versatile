@@ -32,6 +32,7 @@ export interface VersatileTables {
   graphCheckpoints: VersatileTable
   agentDecisions: VersatileTable
   generatedStories: VersatileTable
+  projectCovers: VersatileTable
   graphEdges: VersatileTable
   graphGroupsV2: VersatileTable
   humanReviewStudies: VersatileTable

@@ -36,6 +36,7 @@ export const TABLES = {
   CHAT_SESSIONS: 'chatSessions',
   GEN_RUNS: 'genRuns',
   PROJECT_BLURBS: 'projectBlurbs',
+  PROJECT_COVERS: 'projectCovers',
   EVAL_RESULTS: 'evalResults',
   BRANCHES: 'branches',
   GRAPH_NODE_POSITIONS: 'graphNodePositions',

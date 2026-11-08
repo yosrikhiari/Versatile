@@ -1,14 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
-import { getAllProjects, getManuscript } from '../services/db-projects'
+import { getAllProjects, getManuscript, getProjectCover } from '../services/dbService'
 import { seedSampleStory } from '../services/seedSampleStory'
 import { editedAgo } from '../utils/relativeTime'
 import { useWritingStats } from '../composables/useWritingStats'
 import WritingStatsPanel from '../components/workspace/WritingStatsPanel.vue'
 import Sparkline from '../components/workspace/Sparkline.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
+import BaseIcon from '../components/shared/BaseIcon.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import OrganizationSwitcher from '../components/org/OrganizationSwitcher.vue'
 import CreateOrganizationDialog from '../components/org/CreateOrganizationDialog.vue'
@@ -25,8 +26,18 @@ const loading = ref(true)
 const showCreate = ref(false)
 const showImportNovel = ref(false)
 const seedingSample = ref(false)
+const coverUrls = ref({})
 
 const localUser = auth.localUser || { displayName: 'User' }
+
+function revokeCoverUrls() {
+  for (const url of Object.values(coverUrls.value)) {
+    if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url)
+  }
+  coverUrls.value = {}
+}
+
+onBeforeUnmount(revokeCoverUrls)
 
 // Destructured so each ref is a top-level binding and auto-unwraps in the
 // template; reaching through `stats.x.value` works but silently renders a ref
@@ -48,11 +59,13 @@ const heatmapColumns = ref([])
 onMounted(async () => {
   const raw =
     auth.localUser?.id != null ? await getAllProjects(auth.localUser.id) : await getAllProjects()
+  revokeCoverUrls()
+  const nextCoverUrls = {}
   // Attach each project's real word count from its manuscript (the app's own
   // authoritative per-project count — see projectStore).
   projects.value = await Promise.all(
     raw.map(async (p) => {
-      const manuscript = await getManuscript(p.id)
+      const [manuscript, cover] = await Promise.all([getManuscript(p.id), getProjectCover(p.id)])
       // "Last edited" = most recent of the project row (metadata edits) and the
       // manuscript (actual writing). ISO strings sort chronologically.
       const lastEdited =
@@ -61,9 +74,11 @@ onMounted(async () => {
       // written on every save. Projects predating that field fall back to the
       // root document's count.
       const wordCount = typeof p.wordCount === 'number' ? p.wordCount : manuscript?.wordCount || 0
+      if (cover?.blob instanceof Blob) nextCoverUrls[p.id] = URL.createObjectURL(cover.blob)
       return { ...p, wordCount, updatedAt: lastEdited }
     })
   )
+  coverUrls.value = nextCoverUrls
 
   // Writing history for the activity panel — one query over dailyGoals for all
   // of this user's projects, after the list is known.
@@ -250,27 +265,41 @@ async function handleLogout() {
           :key="project.id"
           variant="ghost"
           size="lg"
-          custom-class="group w-full flex flex-col gap-1 border-b border-border-subtle px-2 py-4 text-left"
+          custom-class="group w-full flex items-start gap-3 border-b border-border-subtle px-2 py-4 text-left"
           @click="openProject(project.id)"
         >
-          <span class="w-full flex items-baseline justify-between gap-4">
-            <span
-              class="min-w-0 truncate text-base font-medium text-text-primary group-hover:text-accent transition-colors"
-            >
-              {{ project.name }}
-            </span>
-            <span v-if="project.genre" class="shrink-0 text-xs text-text-hint">
-              {{ project.genre }}
-            </span>
+          <span
+            class="mt-0.5 w-9 h-12 rounded-sm border border-border-subtle bg-bg-panel overflow-hidden flex items-center justify-center shrink-0"
+            aria-hidden="true"
+          >
+            <img
+              v-if="coverUrls[project.id]"
+              :src="coverUrls[project.id]"
+              alt=""
+              class="w-full h-full object-cover"
+            />
+            <BaseIcon v-else name="book" :size="14" class="text-text-hint" />
           </span>
-          <span class="w-full flex items-center justify-between gap-4">
-            <span class="text-xs text-text-hint">
-              {{ formatWords(project.wordCount) }}
-              <span aria-hidden="true" class="px-1">·</span>
-              {{ editedAgo(project.updatedAt) }}
+          <span class="min-w-0 flex-1 flex flex-col gap-1">
+            <span class="w-full flex items-baseline justify-between gap-4">
+              <span
+                class="min-w-0 truncate text-base font-medium text-text-primary group-hover:text-accent transition-colors"
+              >
+                {{ project.name }}
+              </span>
+              <span v-if="project.genre" class="shrink-0 text-xs text-text-hint">
+                {{ project.genre }}
+              </span>
             </span>
-            <!-- Growth glyph, not a chart: it answers "is this one moving?" -->
-            <Sparkline :points="seriesFor(project.id)" />
+            <span class="w-full flex items-center justify-between gap-4">
+              <span class="text-xs text-text-hint">
+                {{ formatWords(project.wordCount) }}
+                <span aria-hidden="true" class="px-1">·</span>
+                {{ editedAgo(project.updatedAt) }}
+              </span>
+              <!-- Growth glyph, not a chart: it answers "is this one moving?" -->
+              <Sparkline :points="seriesFor(project.id)" />
+            </span>
           </span>
         </BaseButton>
       </div>

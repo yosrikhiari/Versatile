@@ -8,6 +8,7 @@ export {
   saveManuscript,
   updateProjectMeta
 } from './db-projects'
+export { getProjectCover, saveProjectCover, deleteProjectCover } from './db-project-covers'
 export {
   getCharacters,
   addCharacter,

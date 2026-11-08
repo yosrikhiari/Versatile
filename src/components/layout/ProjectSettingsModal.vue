@@ -1,9 +1,15 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { ollamaGenerate, ollamaEmbeddings, cosineSimilarity } from '../../services/ollamaService'
-import { getDailyGoal, setDailyGoal } from '../../services/dbService'
+import {
+  getDailyGoal,
+  setDailyGoal,
+  getProjectCover,
+  saveProjectCover,
+  deleteProjectCover
+} from '../../services/dbService'
 import ErrorBoundary from '../shared/ErrorBoundary.vue'
 import BaseIcon from '../shared/BaseIcon.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
@@ -58,6 +64,33 @@ const localDailyGoal = ref(500)
 // Stored on the project row (`projectStore.cloudAuditOptIn`), not in browser
 // settings: consent is given for one book, from this device.
 const localCloudAuditOptIn = ref(false)
+// Optional metadata (local-first). `synopsis` remains `currentDescription` for compatibility.
+const localAuthorName = ref('')
+const localSubtitle = ref('')
+const localLanguage = ref('')
+const localSeries = ref('')
+const localTagsText = ref('')
+// Cover is local-only (separate table, not synced). Preview is an object URL we own.
+const coverPreviewUrl = ref('')
+const coverPendingFile = ref(null)
+const coverRemoved = ref(false)
+const coverInputRef = ref(null)
+
+function tagsFromText(text) {
+  return String(text || '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+}
+
+function revokeCoverPreview() {
+  if (coverPreviewUrl.value && coverPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+  }
+  coverPreviewUrl.value = ''
+}
+
+onBeforeUnmount(revokeCoverPreview)
 
 watch(
   () => props.show,
@@ -66,10 +99,18 @@ watch(
       localName.value = projectStore.currentProjectName
       localGenre.value = projectStore.currentGenre
       localSynopsis.value = projectStore.currentDescription
+      localAuthorName.value = projectStore.currentAuthorName || ''
+      localSubtitle.value = projectStore.currentSubtitle || ''
+      localLanguage.value = projectStore.currentLanguage || ''
+      localSeries.value = projectStore.currentSeries || ''
+      localTagsText.value = (projectStore.currentTags || []).join(', ')
       localPromptOverrides.value = { ...projectStore.promptOverrides }
       activeTab.value = 'general'
       localDailyGoal.value = projectStore.dailyGoal || 500
       localCloudAuditOptIn.value = projectStore.cloudAuditOptIn === true
+      coverPendingFile.value = null
+      coverRemoved.value = false
+      revokeCoverPreview()
       if (projectStore.currentProjectId) {
         try {
           const existing = await getDailyGoal(projectStore.currentProjectId)
@@ -77,7 +118,19 @@ watch(
         } catch (e) {
           console.warn('[ProjectSettingsModal] failed to read daily goal:', e)
         }
+        try {
+          const cover = await getProjectCover(projectStore.currentProjectId)
+          if (props.show && cover?.blob instanceof Blob) {
+            coverPreviewUrl.value = URL.createObjectURL(cover.blob)
+          }
+        } catch (e) {
+          console.warn('[ProjectSettingsModal] failed to read project cover:', e)
+        }
       }
+    } else {
+      coverPendingFile.value = null
+      coverRemoved.value = false
+      revokeCoverPreview()
     }
   }
 )
@@ -205,6 +258,22 @@ Write a clear, engaging synopsis that could hook a reader or serve as a blurb.`
   }
 }
 
+function onCoverFileChange(event) {
+  const file = event?.target?.files?.[0]
+  if (!file || !file.type?.startsWith('image/')) return
+  coverRemoved.value = false
+  coverPendingFile.value = file
+  revokeCoverPreview()
+  coverPreviewUrl.value = URL.createObjectURL(file)
+}
+
+function removeCover() {
+  coverRemoved.value = true
+  coverPendingFile.value = null
+  revokeCoverPreview()
+  if (coverInputRef.value) coverInputRef.value.value = ''
+}
+
 async function handleEnhanceSynopsis() {
   const currentSynopsis = localSynopsis.value?.trim()
   const documentContent = projectStore.documentContent
@@ -263,9 +332,22 @@ async function handleSave() {
       name: localName.value.trim(),
       genre: localGenre.value.trim(),
       description: localSynopsis.value.trim(),
+      authorName: localAuthorName.value.trim(),
+      subtitle: localSubtitle.value.trim(),
+      language: localLanguage.value.trim(),
+      series: localSeries.value.trim(),
+      tags: tagsFromText(localTagsText.value),
       cloudAuditOptIn: localCloudAuditOptIn.value
     })
     await projectStore.savePromptOverrides(localPromptOverrides.value)
+
+    if (projectStore.currentProjectId) {
+      if (coverRemoved.value) {
+        await deleteProjectCover(projectStore.currentProjectId)
+      } else if (coverPendingFile.value) {
+        await saveProjectCover(projectStore.currentProjectId, coverPendingFile.value)
+      }
+    }
 
     const goal = parseInt(localDailyGoal.value, 10)
     if (projectStore.currentProjectId && goal > 0) {
@@ -410,6 +492,104 @@ function handleOverlayClick(event) {
                   placeholder="e.g. Fantasy, Adventure, Mystery..."
                 ></textarea>
                 <p class="mt-1 text-xs text-text-hint">Separate multiple genres with commas.</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">Author</label>
+                  <input
+                    v-model="localAuthorName"
+                    type="text"
+                    class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                    placeholder="Your name or pen name"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">Language</label>
+                  <input
+                    v-model="localLanguage"
+                    type="text"
+                    class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                    placeholder="e.g. English"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-text-primary mb-2">Subtitle</label>
+                <input
+                  v-model="localSubtitle"
+                  type="text"
+                  class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                  placeholder="Optional subtitle"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">Series</label>
+                  <input
+                    v-model="localSeries"
+                    type="text"
+                    class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                    placeholder="Series name (optional)"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">Tags</label>
+                  <input
+                    v-model="localTagsText"
+                    type="text"
+                    class="w-full px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
+                    placeholder="Comma-separated"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-text-primary mb-2">Cover image</label>
+                <div class="flex items-start gap-3">
+                  <div
+                    class="w-16 h-24 rounded-lg border border-border-subtle bg-bg-tertiary overflow-hidden flex items-center justify-center shrink-0"
+                  >
+                    <img
+                      v-if="coverPreviewUrl"
+                      :src="coverPreviewUrl"
+                      alt="Project cover preview"
+                      class="w-full h-full object-cover"
+                    />
+                    <BaseIcon v-else name="image" :size="18" class="text-text-hint" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs text-text-hint mb-2">
+                      Optional. Stored locally on this device (not synced).
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                      <label
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-ui border border-border-subtle rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover cursor-pointer transition-colors"
+                      >
+                        <BaseIcon name="upload" :size="14" />
+                        Choose image
+                        <input
+                          ref="coverInputRef"
+                          type="file"
+                          accept="image/*"
+                          class="hidden"
+                          @change="onCoverFileChange"
+                        />
+                      </label>
+                      <button
+                        v-if="coverPreviewUrl"
+                        type="button"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-ui border border-border-subtle rounded-lg text-text-secondary hover:text-danger transition-colors"
+                        @click="removeCover"
+                      >
+                        <BaseIcon name="trash-2" :size="14" />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!--

@@ -313,4 +313,72 @@ describe('projectStore', () => {
       )
     })
   })
+
+  describe('project metadata (Open Library–inspired, local-first)', () => {
+    async function openWithMeta(project = {}) {
+      const store = useProjectStore()
+      dbService.getProject.mockResolvedValue({
+        id: 'p1',
+        name: 'Test',
+        description: 'Desc',
+        category: '',
+        genre: '',
+        ...project
+      })
+      dbService.getManuscript.mockResolvedValue(null)
+      dbService.getDailyGoal.mockResolvedValue(500)
+      dbService.getStreakData.mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
+      dbService.getLastSessionData.mockResolvedValue(null)
+      dbService.updateProject.mockResolvedValue(undefined)
+      await store.loadProject('p1')
+      return store
+    }
+
+    it('loads optional metadata fields with safe defaults', async () => {
+      const store = await openWithMeta({
+        authorName: 'Ada',
+        subtitle: 'A novel',
+        language: 'en',
+        series: 'Cycle',
+        tags: ['fantasy', 'myth']
+      })
+      expect(store.currentAuthorName).toBe('Ada')
+      expect(store.currentSubtitle).toBe('A novel')
+      expect(store.currentLanguage).toBe('en')
+      expect(store.currentSeries).toBe('Cycle')
+      expect(store.currentTags).toEqual(['fantasy', 'myth'])
+    })
+
+    it('defaults missing metadata to empty values', async () => {
+      const store = await openWithMeta({})
+      expect(store.currentAuthorName).toBe('')
+      expect(store.currentSubtitle).toBe('')
+      expect(store.currentLanguage).toBe('')
+      expect(store.currentSeries).toBe('')
+      expect(store.currentTags).toEqual([])
+    })
+
+    it('persists metadata through updateProjectInfo', async () => {
+      const store = await openWithMeta({})
+      await store.updateProjectInfo({
+        authorName: 'Ada',
+        subtitle: 'A novel',
+        language: 'en',
+        series: 'Cycle',
+        tags: ['fantasy']
+      })
+      expect(store.currentAuthorName).toBe('Ada')
+      expect(store.currentTags).toEqual(['fantasy'])
+      expect(dbService.updateProject).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({
+          authorName: 'Ada',
+          subtitle: 'A novel',
+          language: 'en',
+          series: 'Cycle',
+          tags: ['fantasy']
+        })
+      )
+    })
+  })
 })

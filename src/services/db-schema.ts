@@ -544,5 +544,15 @@ export const SCHEMA_VERSIONS = [
       humanReviewResponses:
         '++id, sessionId, sceneId, overall, createdAt, updatedAt, &[sessionId+sceneId]'
     }
+  },
+  // v59 (2026-11-08): local project cover images (Open Library–inspired
+  // project metadata/cover). One cover per project; stores image blob/data
+  // locally. Deliberately NOT in SYNC_ENTITIES — local-only to avoid blob
+  // sync size/contract risk (projects table is synced).
+  {
+    version: 59,
+    stores: {
+      projectCovers: '++id, &projectId, updatedAt'
+    }
   }
 ]
