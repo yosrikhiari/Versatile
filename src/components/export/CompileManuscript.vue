@@ -5,6 +5,7 @@ import BaseButton from '../ui/BaseButton.vue'
 import BaseSegmented from '../ui/BaseSegmented.vue'
 import BaseCheckbox from '../ui/BaseCheckbox.vue'
 import { compileManuscript, exportCompiled } from '../../services/compileManuscript'
+import { listCompileEditions } from '../../services/dbService'
 import { useNotifications } from '../../composables/useNotifications'
 
 /**
@@ -33,6 +34,7 @@ const result = ref(null)
 const isCompiling = ref(false)
 const exporting = ref(null)
 const error = ref(null)
+const editions = ref([])
 
 const workflow = computed(() => ({
   titleStyle: titleStyle.value,
@@ -40,6 +42,19 @@ const workflow = computed(() => ({
   stripFrontmatter: stripFrontmatter.value,
   separator: separator.value.trim() ? `\n\n${separator.value.trim()}\n\n` : '\n\n'
 }))
+
+async function loadEditions() {
+  if (!props.projectId) {
+    editions.value = []
+    return
+  }
+  try {
+    const rows = await listCompileEditions(props.projectId)
+    editions.value = Array.isArray(rows) ? rows.slice(0, 8) : []
+  } catch {
+    editions.value = []
+  }
+}
 
 async function preview() {
   if (!props.projectId) return
@@ -65,6 +80,7 @@ async function doExport(format) {
       `Compiled ${stats.sections} chapter${stats.sections === 1 ? '' : 's'}, ${stats.words.toLocaleString()} words as ${format.toUpperCase()}`,
       'success'
     )
+    await loadEditions()
   } catch (e) {
     error.value = e?.message || 'Export failed'
   } finally {
@@ -74,8 +90,12 @@ async function doExport(format) {
 
 watch(
   () => [props.show, props.projectId, workflow.value],
-  ([open]) => {
-    if (open) preview()
+  ([open, projectId], prev) => {
+    const [prevOpen, prevProjectId] = Array.isArray(prev) ? prev : []
+    if (open) {
+      preview()
+      if (!prevOpen || prevProjectId !== projectId) loadEditions()
+    }
   },
   { immediate: true, deep: true }
 )
@@ -84,6 +104,20 @@ const previewText = computed(() => {
   const md = result.value?.markdown || ''
   return md.length > 4000 ? md.slice(0, 4000) + '\n…' : md
 })
+
+function formatEditionDate(iso) {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
 </script>
 
 <template>
@@ -136,6 +170,30 @@ const previewText = computed(() => {
             ? 'Compiling…'
             : previewText || 'Nothing to compile yet — add chapters and scenes.'
         }}</pre>
+
+      <div
+        v-if="editions.length"
+        class="mt-3 rounded-lg border border-border-subtle bg-bg-secondary/40 p-2.5"
+        data-test="edition-history"
+      >
+        <p class="font-ui text-[11px] text-text-hint mb-1.5">Recent exports (local)</p>
+        <ul class="space-y-1">
+          <li
+            v-for="ed in editions"
+            :key="ed.id || `${ed.createdAt}-${ed.format}`"
+            class="flex items-center justify-between gap-3 font-ui text-xs text-text-secondary"
+          >
+            <span class="min-w-0 truncate">
+              <span class="text-text-primary">{{ String(ed.format || '').toUpperCase() }}</span>
+              <span v-if="ed.filename" class="text-text-hint"> · {{ ed.filename }}</span>
+            </span>
+            <span class="shrink-0 text-text-hint">
+              {{ Number(ed.stats?.words || 0).toLocaleString() }} words
+              <span v-if="ed.createdAt"> · {{ formatEditionDate(ed.createdAt) }}</span>
+            </span>
+          </li>
+        </ul>
+      </div>
 
       <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
         <BaseButton variant="ghost" size="sm" @click="emit('close')">Close</BaseButton>

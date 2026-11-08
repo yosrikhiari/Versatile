@@ -223,11 +223,20 @@ describe('CompileManuscript.vue', () => {
   })
 
   it('previews the workflow and exports each format', async () => {
-    vi.doMock('@/services/compileManuscript', async (orig) => ({
+    vi.resetModules()
+    const compileMock = async (orig) => ({
       ...(await orig()),
       compileManuscript: vi.fn(async () => compileMarkdown(INPUT)),
       exportCompiled: vi.fn(async () => ({ sections: 4, subsections: 5, words: 10 }))
-    }))
+    })
+    const dbMock = async (orig) => ({
+      ...(await orig()),
+      listCompileEditions: vi.fn(async () => [])
+    })
+    vi.doMock('@/services/compileManuscript', compileMock)
+    vi.doMock('../../services/compileManuscript', compileMock)
+    vi.doMock('@/services/dbService', dbMock)
+    vi.doMock('../../services/dbService', dbMock)
     const { default: CompileManuscript } = await import('@/components/export/CompileManuscript.vue')
     const svc = await import('@/services/compileManuscript')
     const stubs = {
@@ -263,5 +272,50 @@ describe('CompileManuscript.vue', () => {
     expect(svc.exportCompiled).toHaveBeenLastCalledWith('p1', 'rtf', expect.anything())
     expect(w.emitted('export-pdf')).toBeFalsy()
     vi.doUnmock('@/services/compileManuscript')
+    vi.doUnmock('@/services/dbService')
+  })
+
+  it('shows local edition history', async () => {
+    vi.resetModules()
+    const compileMock = async (orig) => ({
+      ...(await orig()),
+      compileManuscript: vi.fn(async () => compileMarkdown(INPUT)),
+      exportCompiled: vi.fn(async () => ({ sections: 4, subsections: 5, words: 10 }))
+    })
+    const dbMock = async (orig) => ({
+      ...(await orig()),
+      listCompileEditions: vi.fn(async () => [
+        {
+          id: 1,
+          projectId: 'p1',
+          format: 'epub',
+          title: 'Salt Road',
+          filename: 'Salt_Road.epub',
+          workflow: {},
+          stats: { words: 1200, sections: 3 },
+          createdAt: '2026-11-08T07:00:00.000Z'
+        }
+      ])
+    })
+    vi.doMock('@/services/compileManuscript', compileMock)
+    vi.doMock('../../services/compileManuscript', compileMock)
+    vi.doMock('@/services/dbService', dbMock)
+    vi.doMock('../../services/dbService', dbMock)
+    const { default: CompileManuscript } = await import('@/components/export/CompileManuscript.vue')
+    const stubs = {
+      Modal: { template: '<div><slot /></div>', props: ['show'] },
+      BaseIcon: { template: '<i />' }
+    }
+    const w = mount(CompileManuscript, {
+      props: { show: true, projectId: 'p1' },
+      global: { stubs }
+    })
+    await flushPromises()
+    expect(w.find('[data-test="edition-history"]').exists()).toBe(true)
+    expect(w.text()).toContain('Recent exports')
+    expect(w.text()).toContain('EPUB')
+    expect(w.text()).toContain('1,200 words')
+    vi.doUnmock('@/services/compileManuscript')
+    vi.doUnmock('@/services/dbService')
   })
 })
