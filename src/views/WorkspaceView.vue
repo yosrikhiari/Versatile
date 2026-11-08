@@ -293,6 +293,10 @@ async function handleLogout() {
             </span>
             <span class="w-full flex items-center justify-between gap-4">
               <span class="text-xs text-text-hint">
+                <template v-if="project.authorName">
+                  {{ project.authorName }}
+                  <span aria-hidden="true" class="px-1">·</span>
+                </template>
                 {{ formatWords(project.wordCount) }}
                 <span aria-hidden="true" class="px-1">·</span>
                 {{ editedAgo(project.updatedAt) }}
