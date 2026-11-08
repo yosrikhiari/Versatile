@@ -20,7 +20,11 @@ import {
   excludeChapter
 } from '../../services/import/bookEdits'
 import { createProjectFromBook } from '../../services/import/writeProject'
-import { searchOpenLibraryMetadata } from '../../services/openLibraryService'
+import {
+  searchOpenLibraryMetadata,
+  fetchOpenLibraryCoverBlob
+} from '../../services/openLibraryService'
+import { saveProjectCover } from '../../services/dbService'
 import { useAuthStore } from '../../stores/authStore'
 
 const props = defineProps({ show: { type: Boolean, default: false } })
@@ -52,6 +56,7 @@ const olError = ref('')
 const olResults = ref([])
 const olAttribution = ref('')
 const appliedMeta = ref(null)
+const appliedCoverBlob = ref(null)
 
 const chapters = computed(() => (book.value ? allChapters(book.value) : []))
 const stats = computed(() => {
@@ -83,6 +88,7 @@ function reset() {
   olResults.value = []
   olAttribution.value = ''
   appliedMeta.value = null
+  appliedCoverBlob.value = null
 }
 
 async function readFile(file) {
@@ -122,6 +128,24 @@ function merge(i) {
 }
 function exclude(i) {
   book.value = excludeChapter(book.value, i)
+}
+
+async function useImportCover(result) {
+  if (!result?.coverUrl) return
+  olLoading.value = true
+  olError.value = ''
+  try {
+    const blob = await fetchOpenLibraryCoverBlob(result.coverUrl)
+    if (!blob) {
+      olError.value = 'Could not load cover image. You can add one in Project settings.'
+      return
+    }
+    appliedCoverBlob.value = blob
+  } catch {
+    olError.value = 'Could not load cover image. You can add one in Project settings.'
+  } finally {
+    olLoading.value = false
+  }
 }
 
 async function lookupOpenLibraryForImport() {
@@ -171,6 +195,13 @@ async function doImport() {
       ownerId,
       ...(appliedMeta.value ? { metadata: appliedMeta.value } : {})
     })
+    if (appliedCoverBlob.value && written?.projectId != null) {
+      try {
+        await saveProjectCover(written.projectId, appliedCoverBlob.value)
+      } catch {
+        // Cover is optional; import already succeeded.
+      }
+    }
     emit('imported', written)
     emit('close')
     await router.push(`/editor/${written.projectId}`)
@@ -257,6 +288,9 @@ async function doImport() {
               Look up metadata
             </BaseButton>
           </div>
+          <p v-if="appliedCoverBlob" class="mt-1 font-ui text-xs text-text-hint">
+            Cover selected (saved after import).
+          </p>
           <p v-if="olError" class="mt-1 font-ui text-xs text-danger">{{ olError }}</p>
           <ul v-if="olResults.length" class="mt-2 space-y-1" role="list">
             <li
@@ -270,13 +304,24 @@ async function doImport() {
                   >· {{ result.authorName }}</span
                 >
               </span>
-              <button
-                type="button"
-                class="shrink-0 px-2 py-0.5 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
-                @click="applyImportMetadata(result)"
-              >
-                Apply
-              </button>
+              <span class="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  class="px-2 py-0.5 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+                  @click="applyImportMetadata(result)"
+                >
+                  Apply
+                </button>
+                <button
+                  v-if="result.coverUrl"
+                  type="button"
+                  class="px-2 py-0.5 text-xs border border-border-subtle rounded text-text-secondary hover:text-text-primary"
+                  :disabled="olLoading"
+                  @click="useImportCover(result)"
+                >
+                  Use cover
+                </button>
+              </span>
             </li>
           </ul>
         </div>
