@@ -832,7 +832,7 @@ STORY ARC (for tonal reference):
 - Genre: ${storyArc?.genre || ''}
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
-- Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty, sex, coercion or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. Explicitness is a craft choice governed by the tone above, not a thing to be minimised.
+- Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. The tone above governs how far the scene goes.
 
 ${storyContextBlock}
 Target word count: approximately ${sceneBrief.estimatedWords || 800} words.
@@ -1122,7 +1122,7 @@ STORY ARC (for tonal reference):
 - Genre: ${storyArc?.genre || ''}
 - Tone: ${storyArc?.tone || ''}
 - Central conflict: ${storyArc?.centralConflict || ''}
-- Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty, sex, coercion or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. Explicitness is a craft choice governed by the tone above, not a thing to be minimised.
+- Write this scene at the full intensity its genre and tone imply. Where the beat calls for violence, cruelty or bodily horror, render it on the page with the same specificity as any other beat. Do not fade out, skip ahead, summarise past the difficult moment, or substitute a milder event than the brief describes. The tone above governs how far the scene goes.
 
 ${fitted.storyContextBlock}${existingContext}
 LENGTH: about ${sceneBrief.estimatedWords || 800} words — between ${Math.floor((sceneBrief.estimatedWords || 800) * LENGTH_TOLERANCE_RATIO)} and ${Math.ceil((sceneBrief.estimatedWords || 800) * LENGTH_LONG_RATIO)}. Bring the scene to its close inside that range. Do not pad to reach it and do not run past it; a scene that ends when its beat is done is right.

@@ -45,7 +45,7 @@ export const GENRE_PROFILES: Record<string, string> = {
     'Chemistry lives in specific, grounded details — a glance held a beat too long, an unexpected kindness',
     'Conflict should be emotional and character-driven, not manufactured misunderstanding',
     'The resolution must feel earned — the obstacles were real and the growth is visible',
-    'Sexual tension is about what does not happen as much as what does'
+    'Romantic tension is about what does not happen as much as what does'
   ].join('\n'),
 
   mystery: [
